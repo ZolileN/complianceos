@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
@@ -12,24 +11,24 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ clients: 0, tasks: 0, documents: 0, overdue: 0 });
   const [recentClients, setRecentClients] = useState<Array<{ id: string; company_name: string; status: string; created_at: string }>>([]);
   const [recentTasks, setRecentTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; due_date: string | null }>>([]);
-  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!tenant) return;
     async function load() {
-      const [c, t, d, o] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant!.id),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant!.id).neq('status', 'completed'),
-        supabase.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant!.id),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant!.id).eq('status', 'overdue'),
-      ]);
-      setStats({ clients: c.count || 0, tasks: t.count || 0, documents: d.count || 0, overdue: o.count || 0 });
-
-      const { data: rc } = await supabase.from('clients').select('id, company_name, status, created_at').eq('tenant_id', tenant!.id).order('created_at', { ascending: false }).limit(5);
-      if (rc) setRecentClients(rc);
-
-      const { data: rt } = await supabase.from('tasks').select('id, title, status, priority, due_date').eq('tenant_id', tenant!.id).neq('status', 'completed').order('created_at', { ascending: false }).limit(5);
-      if (rt) setRecentTasks(rt);
+      try {
+        const res = await fetch('/api/dashboard');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.stats) setStats(data.stats);
+          if (data.recentClients) setRecentClients(data.recentClients);
+          if (data.recentTasks) setRecentTasks(data.recentTasks);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [tenant]);
@@ -46,12 +45,14 @@ export default function DashboardPage() {
     return map[s] || 'badge-gray';
   };
 
+  if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Welcome back, {user?.full_name?.split(' ')[0] || 'there'} 👋</p>
+          <p className="page-subtitle">Welcome back, {user?.name?.split(' ')[0] || 'there'} 👋</p>
         </div>
         <Link href="/dashboard/clients/new" className="btn btn-primary">+ New Client</Link>
       </div>
@@ -83,7 +84,7 @@ export default function DashboardPage() {
           ) : (
             <div className="stack" style={{ gap: 8 }}>
               {recentClients.map((c) => (
-                <Link key={c.id} href={`/dashboard/clients/${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', transition: 'background var(--transition)', color: 'inherit' }} className="card-hover" onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                <Link key={c.id} href={`/dashboard/clients/${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', transition: 'background var(--transition)', color: 'inherit', textDecoration: 'none' }} className="card-hover">
                   <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{c.company_name}</span>
                   <span className={`badge ${statusBadge(c.status)}`}>{c.status}</span>
                 </Link>

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', user.id).single();
-  if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+  const tenantId = (session.user as { tenantId: string }).tenantId;
+  if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
@@ -15,25 +16,70 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = (page - 1) * limit;
 
-  let query = supabase.from('clients').select('*, assigned_consultant:users!clients_assigned_consultant_id_fkey(id, full_name)', { count: 'exact' }).eq('tenant_id', profile.tenant_id).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+  try {
+    const data = await prisma.client.findMany({
+      where: {
+        tenantId,
+        ...(search ? { companyName: { contains: search } } : {})
+      },
+      include: {
+        assignedConsultant: { select: { id: true, name: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit,
+    });
 
-  if (search) query = query.ilike('company_name', `%${search}%`);
+    const count = await prisma.client.count({
+      where: {
+        tenantId,
+        ...(search ? { companyName: { contains: search } } : {})
+      }
+    });
 
-  const { data, count, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ data, count });
+    // Map Prisma schema back to the shape expected by UI
+    const mappedData = data.map(client => ({
+      ...client,
+      assigned_consultant: client.assignedConsultant,
+      company_name: client.companyName,
+      registration_number: client.registrationNumber,
+      tax_number: client.taxNumber,
+      vat_number: client.vatNumber,
+      whatsapp_number: client.whatsappNumber,
+      created_at: client.createdAt,
+    }));
+
+    return NextResponse.json({ data: mappedData, count });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', user.id).single();
-  if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+  const tenantId = (session.user as { tenantId: string }).tenantId;
+  if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   const body = await request.json();
-  const { data, error } = await supabase.from('clients').insert({ ...body, tenant_id: profile.tenant_id }).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ data }, { status: 201 });
+  try {
+    const client = await prisma.client.create({
+      data: {
+        companyName: body.company_name,
+        registrationNumber: body.registration_number,
+        taxNumber: body.tax_number,
+        vatNumber: body.vat_number,
+        email: body.email,
+        phone: body.phone,
+        whatsappNumber: body.whatsapp_number,
+        directors: body.directors ? JSON.stringify(body.directors) : '[]',
+        status: body.status || 'active',
+        tenantId,
+      }
+    });
+    return NextResponse.json({ data: client }, { status: 201 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
 }

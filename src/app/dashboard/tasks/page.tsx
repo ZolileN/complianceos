@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/lib/constants';
 import type { Task } from '@/types';
@@ -10,7 +9,6 @@ const statusCols = TASK_STATUSES.filter(s => s.value !== 'overdue');
 
 export default function TasksPage() {
   const { tenant } = useAuth();
-  const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -18,25 +16,54 @@ export default function TasksPage() {
 
   const loadTasks = useCallback(async () => {
     if (!tenant) return;
-    const { data } = await supabase.from('tasks').select('*, client:clients(id, company_name)').eq('tenant_id', tenant.id).order('created_at', { ascending: false });
-    setTasks((data as unknown as Task[]) || []);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/tasks');
+      if (res.ok) {
+        const { data } = await res.json();
+        setTasks(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [tenant]);
 
-  useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => {
+    const init = async () => {
+      await loadTasks();
+    };
+    init();
+  }, [loadTasks]);
 
   const createTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenant) return;
-    await supabase.from('tasks').insert({ ...form, tenant_id: tenant.id, due_date: form.due_date || null });
-    setShowModal(false);
-    setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '' });
-    loadTasks();
+    try {
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, due_date: form.due_date || null }),
+      });
+      setShowModal(false);
+      setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '' });
+      loadTasks();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const updateStatus = async (taskId: string, status: string) => {
-    await supabase.from('tasks').update({ status }).eq('id', taskId);
-    loadTasks();
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      loadTasks();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const priorityBadge = (p: string) => {

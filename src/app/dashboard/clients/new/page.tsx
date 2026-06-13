@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import type { Director } from '@/types';
@@ -9,7 +8,6 @@ import type { Director } from '@/types';
 export default function NewClientPage() {
   const { tenant } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -29,11 +27,22 @@ export default function NewClientPage() {
     setLoading(true);
     setError('');
     try {
-      const { error: err } = await supabase.from('clients').insert({
-        ...form, tenant_id: tenant.id, directors: directors.filter((d) => d.name),
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          directors: directors.filter((d) => d.name),
+        })
       });
-      if (err) throw err;
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to create client');
+      }
+      
       router.push('/dashboard/clients');
+      router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create client');
     } finally {

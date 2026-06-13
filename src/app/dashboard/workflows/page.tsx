@@ -1,45 +1,62 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import type { WorkflowTemplate } from '@/types';
 
 const DEFAULT_TEMPLATES = [
-  { name: 'Company Registration', category: 'company_registration', description: 'Full CIPC company registration process', steps: ['Document Collection', 'Name Reservation', 'Mandate Signature', 'Registration Filing', 'Certificate Delivery'] },
-  { name: 'VAT Registration', category: 'vat_registration', description: 'SARS VAT registration process', steps: ['Collect Documents', 'Verify Information', 'Submit to SARS', 'Follow Up', 'Completed'] },
-  { name: 'Tax Compliance', category: 'tax_compliance', description: 'Annual tax compliance workflow', steps: ['Gather Financials', 'Prepare Return', 'Review', 'Submit to SARS', 'Assessment Received'] },
-  { name: 'BEE Certification', category: 'bee_certification', description: 'BEE verification and certification', steps: ['Collect Scorecard Data', 'Calculate Scores', 'Submit to Agency', 'Verification', 'Certificate Issued'] },
-  { name: 'Annual Returns', category: 'annual_returns', description: 'CIPC annual return filing', steps: ['Confirm Details', 'Prepare Return', 'Submit to CIPC', 'Payment', 'Confirmation'] },
-  { name: 'Payroll Setup', category: 'payroll_setup', description: 'New client payroll setup', steps: ['Employee Details', 'SARS Registration', 'UIF Registration', 'COIDA Registration', 'Payroll Configuration'] },
+  { name: 'Company Registration', category: 'company_registration', description: 'Full CIPC company registration process', steps: [{ name: 'Document Collection' }, { name: 'Name Reservation' }, { name: 'Mandate Signature' }, { name: 'Registration Filing' }, { name: 'Certificate Delivery' }] },
+  { name: 'VAT Registration', category: 'vat_registration', description: 'SARS VAT registration process', steps: [{ name: 'Collect Documents' }, { name: 'Verify Information' }, { name: 'Submit to SARS' }, { name: 'Follow Up' }, { name: 'Completed' }] },
+  { name: 'Tax Compliance', category: 'tax_compliance', description: 'Annual tax compliance workflow', steps: [{ name: 'Gather Financials' }, { name: 'Prepare Return' }, { name: 'Review' }, { name: 'Submit to SARS' }, { name: 'Assessment Received' }] },
+  { name: 'BEE Certification', category: 'bee_certification', description: 'BEE verification and certification', steps: [{ name: 'Collect Scorecard Data' }, { name: 'Calculate Scores' }, { name: 'Submit to Agency' }, { name: 'Verification' }, { name: 'Certificate Issued' }] },
+  { name: 'Annual Returns', category: 'annual_returns', description: 'CIPC annual return filing', steps: [{ name: 'Confirm Details' }, { name: 'Prepare Return' }, { name: 'Submit to CIPC' }, { name: 'Payment' }, { name: 'Confirmation' }] },
+  { name: 'Payroll Setup', category: 'payroll_setup', description: 'New client payroll setup', steps: [{ name: 'Employee Details' }, { name: 'SARS Registration' }, { name: 'UIF Registration' }, { name: 'COIDA Registration' }, { name: 'Payroll Configuration' }] },
 ];
 
 export default function WorkflowsPage() {
   const { tenant } = useAuth();
-  const supabase = createClient();
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadTemplates = useCallback(async () => {
     if (!tenant) return;
-    const { data } = await supabase.from('workflow_templates').select('*, steps:workflow_steps(*)').eq('tenant_id', tenant.id).order('created_at');
-    setTemplates((data as unknown as WorkflowTemplate[]) || []);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/workflows');
+      if (res.ok) {
+        const { data } = await res.json();
+        setTemplates(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [tenant]);
 
-  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+  useEffect(() => {
+    const init = async () => {
+      await loadTemplates();
+    };
+    init();
+  }, [loadTemplates]);
 
   const seedTemplates = async () => {
     if (!tenant) return;
-    for (const tpl of DEFAULT_TEMPLATES) {
-      const { data: created } = await supabase.from('workflow_templates').insert({ name: tpl.name, category: tpl.category, description: tpl.description, tenant_id: tenant.id }).select().single();
-      if (created) {
-        const stepsData = tpl.steps.map((s, i) => ({ template_id: created.id, name: s, step_order: i + 1, sla_days: 3 }));
-        await supabase.from('workflow_steps').insert(stepsData);
+    setLoading(true);
+    try {
+      for (const tpl of DEFAULT_TEMPLATES) {
+        await fetch('/api/workflows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tpl)
+        });
       }
+      loadTemplates();
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
     }
-    loadTemplates();
   };
 
   const getCategoryInfo = (cat: string) => WORKFLOW_CATEGORIES.find((c) => c.value === cat) || WORKFLOW_CATEGORIES[6];
@@ -83,7 +100,7 @@ export default function WorkflowsPage() {
                 {tpl.description && <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>{tpl.description}</p>}
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>{steps.length} STEPS</div>
-                  {steps.sort((a, b) => a.step_order - b.step_order).map((s, si) => (
+                  {steps.map((s, si) => (
                     <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: '0.8rem' }}>
                       <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{si + 1}</div>
                       <span>{s.name}</span>

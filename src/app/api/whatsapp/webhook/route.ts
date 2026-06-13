@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/prisma';
 import { markAsRead } from '@/lib/whatsapp';
 
 /**
@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  // Validate webhook structure
   if (!body.entry?.[0]?.changes?.[0]?.value) {
     return NextResponse.json({ status: 'ok' });
   }
@@ -32,11 +31,11 @@ export async function POST(request: NextRequest) {
 
   // Handle message status updates
   if (value.statuses) {
-    const supabase = await createClient();
     for (const status of value.statuses) {
-      await supabase.from('messages')
-        .update({ status: status.status })
-        .eq('whatsapp_message_id', status.id);
+      await prisma.message.updateMany({
+        where: { whatsappMessageId: status.id },
+        data: { status: status.status }
+      });
     }
     return NextResponse.json({ status: 'ok' });
   }
@@ -46,36 +45,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' });
   }
 
-  const supabase = await createClient();
-
   for (const msg of value.messages) {
     const from = msg.from; // sender's WhatsApp number
     const waMessageId = msg.id;
 
     // Find or create conversation
-    // First try to find by whatsapp_number
-    let { data: conversation } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('whatsapp_number', from)
-      .single();
+    let conversation = await prisma.conversation.findFirst({
+      where: { whatsappNumber: from }
+    });
 
     if (!conversation) {
-      // Try to find a client with this WhatsApp number to link
-      const { data: client } = await supabase
-        .from('clients')
-        .select('id, tenant_id')
-        .eq('whatsapp_number', from)
-        .single();
+      // Try to find a client with this WhatsApp number
+      const client = await prisma.client.findFirst({
+        where: { whatsappNumber: from }
+      });
 
-      // We need a tenant_id — use the client's or fall back to the first tenant
-      let tenantId = client?.tenant_id;
+      let tenantId = client?.tenantId;
       if (!tenantId) {
-        const { data: firstTenant } = await supabase
-          .from('tenants')
-          .select('id')
-          .limit(1)
-          .single();
+        const firstTenant = await prisma.tenant.findFirst();
         tenantId = firstTenant?.id;
       }
 
@@ -83,24 +70,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No tenant found' }, { status: 400 });
       }
 
-      const { data: newConvo } = await supabase
-        .from('conversations')
-        .insert({
-          whatsapp_number: from,
-          tenant_id: tenantId,
-          client_id: client?.id || null,
+      conversation = await prisma.conversation.create({
+        data: {
+          whatsappNumber: from,
+          tenantId,
+          clientId: client?.id || null,
           status: 'open',
-          last_message_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      conversation = newConvo;
+        }
+      });
     }
 
     if (!conversation) continue;
 
-    // Extract message content
     let content = '';
     let messageType = 'text';
     let mediaUrl: string | null = null;
@@ -110,38 +91,32 @@ export async function POST(request: NextRequest) {
     } else if (msg.type === 'image') {
       messageType = 'image';
       content = msg.image?.caption || 'Image';
-      mediaUrl = msg.image?.id; // Media ID, to be downloaded
+      mediaUrl = msg.image?.id;
     } else if (msg.type === 'document') {
       messageType = 'document';
       content = msg.document?.filename || 'Document';
       mediaUrl = msg.document?.id;
-    } else if (msg.type === 'audio') {
-      messageType = 'audio';
-      content = 'Audio message';
-      mediaUrl = msg.audio?.id;
-    } else if (msg.type === 'video') {
-      messageType = 'video';
-      content = 'Video';
-      mediaUrl = msg.video?.id;
     }
 
     // Store message
-    await supabase.from('messages').insert({
-      conversation_id: conversation.id,
-      tenant_id: conversation.tenant_id,
-      direction: 'inbound',
-      content,
-      message_type: messageType,
-      media_url: mediaUrl,
-      whatsapp_message_id: waMessageId,
-      status: 'delivered',
+    await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        tenantId: conversation.tenantId,
+        direction: 'inbound',
+        content,
+        messageType,
+        mediaUrl,
+        whatsappMessageId: waMessageId,
+        status: 'delivered',
+      }
     });
 
-    // Update conversation last_message_at
-    await supabase
-      .from('conversations')
-      .update({ last_message_at: new Date().toISOString(), status: 'open' })
-      .eq('id', conversation.id);
+    // Update conversation lastMessageAt
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessageAt: new Date(), status: 'open' }
+    });
 
     // Mark as read on WhatsApp
     try {

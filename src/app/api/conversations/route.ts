@@ -10,36 +10,23 @@ export async function GET(request: NextRequest) {
   const tenantId = (session.user as { tenantId: string }).tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get('category');
-
   try {
-    const data = await prisma.document.findMany({
-      where: {
-        tenantId,
-        ...(category ? { category } : {})
-      },
+    const data = await prisma.conversation.findMany({
+      where: { tenantId },
       include: {
         client: { select: { id: true, companyName: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { lastMessageAt: 'desc' }
     });
 
-    const count = await prisma.document.count({
-      where: {
-        tenantId,
-        ...(category ? { category } : {})
-      }
-    });
-
-    const mappedData = data.map(doc => ({
-      ...doc,
-      file_size: Number(doc.fileSize), // Convert BigInt to Number for JSON
-      created_at: doc.createdAt,
-      client: doc.client ? { id: doc.client.id, company_name: doc.client.companyName } : null,
+    const mappedData = data.map(convo => ({
+      ...convo,
+      whatsapp_number: convo.whatsappNumber,
+      last_message_at: convo.lastMessageAt,
+      client: convo.client ? { id: convo.client.id, company_name: convo.client.companyName } : null,
     }));
 
-    return NextResponse.json({ data: mappedData, count });
+    return NextResponse.json({ data: mappedData });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

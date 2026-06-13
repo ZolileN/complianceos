@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Conversation, Message } from '@/types';
 
 export default function InboxPage() {
   const { tenant } = useAuth();
-  const supabase = createClient();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvo, setActiveConvo] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,30 +16,57 @@ export default function InboxPage() {
 
   const loadConversations = useCallback(async () => {
     if (!tenant) return;
-    const { data } = await supabase.from('conversations').select('*, client:clients(id, company_name)').eq('tenant_id', tenant.id).order('last_message_at', { ascending: false });
-    setConversations((data as unknown as Conversation[]) || []);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/conversations');
+      if (res.ok) {
+        const { data } = await res.json();
+        setConversations(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [tenant]);
 
-  useEffect(() => { loadConversations(); }, [loadConversations]);
+  useEffect(() => {
+    const init = async () => {
+      await loadConversations();
+    };
+    init();
+  }, [loadConversations]);
+
+  const loadMessages = useCallback(async () => {
+    if (!activeConvo) return;
+    try {
+      const res = await fetch(`/api/messages?conversation_id=${activeConvo}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setMessages(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [activeConvo]);
 
   useEffect(() => {
-    if (!activeConvo) return;
-    async function loadMessages() {
-      const { data } = await supabase.from('messages').select('*').eq('conversation_id', activeConvo).order('created_at');
-      setMessages((data as Message[]) || []);
+    const init = async () => {
+      await loadMessages();
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }
-    loadMessages();
+    };
+    init();
 
-    // Realtime subscription
-    const channel = supabase.channel(`messages-${activeConvo}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConvo}` }, (payload) => {
-      setMessages((prev) => [...prev, payload.new as Message]);
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    }).subscribe();
+    // Simple polling for MVP since we removed Supabase Realtime
+    const interval = setInterval(() => {
+      const poll = async () => {
+        await loadMessages();
+        await loadConversations();
+      };
+      poll();
+    }, 5000);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [activeConvo]);
+    return () => clearInterval(interval);
+  }, [loadMessages, loadConversations]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,13 +74,13 @@ export default function InboxPage() {
     setSending(true);
     const convo = conversations.find((c) => c.id === activeConvo);
     try {
-      // Send via WhatsApp API
       await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: convo?.whatsapp_number, message: newMessage, conversation_id: activeConvo }),
       });
       setNewMessage('');
+      loadMessages();
     } catch (err) {
       console.error('Failed to send:', err);
     } finally {
@@ -97,7 +122,6 @@ export default function InboxPage() {
         </div>
       ) : (
         <div className="inbox-layout">
-          {/* Conversation List */}
           <div className="conversation-list">
             <div className="conversation-list-header">
               <input className="input" placeholder="Search conversations..." style={{ fontSize: '0.85rem' }} />
@@ -114,7 +138,6 @@ export default function InboxPage() {
             ))}
           </div>
 
-          {/* Chat Panel */}
           <div className="chat-panel">
             {!activeConvo ? (
               <div className="flex-center" style={{ flex: 1, color: 'var(--text-muted)' }}>

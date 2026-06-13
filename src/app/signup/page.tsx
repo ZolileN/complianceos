@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 export default function SignupPage() {
   const [firmName, setFirmName] = useState('');
@@ -13,38 +13,34 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Signup failed');
+      // Call custom registration endpoint
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firmName, fullName, email, password }),
+      });
 
-      // 2. Create tenant
-      const slug = firmName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .insert({ name: firmName, slug, plan: 'starter' })
-        .select()
-        .single();
-      if (tenantError) throw tenantError;
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Signup failed');
+      }
 
-      // 3. Create user profile
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          tenant_id: tenant.id,
-          email,
-          full_name: fullName,
-          role: 'administrator',
-        });
-      if (profileError) throw profileError;
+      // Automatically sign in after successful registration
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
+
+      if (signInResult?.error) {
+        throw new Error(signInResult.error);
+      }
 
       router.push('/dashboard');
       router.refresh();

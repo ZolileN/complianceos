@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import type { Client } from '@/types';
@@ -11,20 +10,30 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
-  useEffect(() => {
+  const loadClients = useCallback(async () => {
     if (!tenant) return;
-    async function load() {
-      setLoading(true);
-      let query = supabase.from('clients').select('*, assigned_consultant:users!clients_assigned_consultant_id_fkey(id, full_name)').eq('tenant_id', tenant!.id).order('created_at', { ascending: false });
-      if (search) query = query.ilike('company_name', `%${search}%`);
-      const { data } = await query;
-      setClients((data as unknown as Client[]) || []);
+    setLoading(true);
+    try {
+      const url = search ? `/api/clients?search=${encodeURIComponent(search)}` : `/api/clients`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const { data } = await res.json();
+        setClients(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
     }
-    load();
   }, [tenant, search]);
+
+  useEffect(() => {
+    const init = async () => {
+      await loadClients();
+    };
+    init();
+  }, [loadClients]);
 
   const statusBadge = (s: string) => {
     const m: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue' };

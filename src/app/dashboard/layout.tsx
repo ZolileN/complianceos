@@ -3,14 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { NAV_ITEMS } from '@/lib/constants';
 
 const icons: Record<string, string> = {
   grid: '⊞', users: '👥', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬',
 };
 
-function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut, loading } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,9 +43,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="sidebar-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="header-avatar">{user?.full_name?.[0] || 'U'}</div>
+            <div className="header-avatar">{user?.name?.[0] || 'U'}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.full_name}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role?.replace('_', ' ')}</div>
             </div>
             <button className="btn btn-ghost btn-icon" onClick={signOut} title="Sign out" style={{ fontSize: '1rem' }}>⏻</button>
@@ -64,7 +64,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="header-actions">
           <button className="btn btn-ghost btn-icon" title="Notifications">🔔</button>
-          <div className="header-avatar">{user?.full_name?.[0] || 'U'}</div>
+          <div className="header-avatar">{user?.name?.[0] || 'U'}</div>
         </div>
       </header>
 
@@ -77,13 +77,5 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         }
       `}</style>
     </>
-  );
-}
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <DashboardShell>{children}</DashboardShell>
-    </AuthProvider>
   );
 }

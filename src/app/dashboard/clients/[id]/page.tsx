@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -12,7 +11,6 @@ type TabType = 'overview' | 'documents' | 'tasks' | 'workflows';
 export default function ClientDetailPage() {
   const { id } = useParams();
   const { tenant } = useAuth();
-  const supabase = createClient();
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<TabType>('overview');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -22,13 +20,35 @@ export default function ClientDetailPage() {
   useEffect(() => {
     if (!tenant || !id) return;
     async function load() {
-      const { data } = await supabase.from('clients').select('*').eq('id', id as string).single();
-      if (data) setClient(data as Client);
-      const { data: t } = await supabase.from('tasks').select('*').eq('client_id', id as string).order('created_at', { ascending: false });
-      if (t) setTasks(t as Task[]);
-      const { data: d } = await supabase.from('documents').select('*').eq('client_id', id as string).order('created_at', { ascending: false });
-      if (d) setDocuments(d as Doc[]);
-      setLoading(false);
+      try {
+        const [clientRes, tasksRes, docsRes] = await Promise.all([
+          fetch(`/api/clients/${id}`),
+          fetch(`/api/tasks?client_id=${id}`), // The backend might need an update to filter by client_id if requested
+          fetch(`/api/documents?client_id=${id}`) // Assuming the backend supports this
+        ]);
+
+        if (clientRes.ok) {
+          const { data } = await clientRes.json();
+          if (data && typeof data.directors === 'string') {
+            try { data.directors = JSON.parse(data.directors); } catch { data.directors = []; }
+          }
+          setClient(data as Client);
+        }
+
+        if (tasksRes.ok) {
+          const { data } = await tasksRes.json();
+          setTasks(data.filter((t: { client?: { id?: string } }) => t.client?.id === id) as Task[]);
+        }
+
+        if (docsRes.ok) {
+          const { data } = await docsRes.json();
+          setDocuments(data.filter((d: { client?: { id?: string } }) => d.client?.id === id) as Doc[]);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, [tenant, id]);
@@ -116,7 +136,7 @@ export default function ClientDetailPage() {
                 <tbody>
                   {documents.map((d) => (
                     <tr key={d.id}>
-                      <td style={{ fontWeight: 500 }}>{d.name}</td>
+                      <td style={{ fontWeight: 500 }}><a href={d.file_path} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{d.name}</a></td>
                       <td><span className="badge badge-blue">{d.category}</span></td>
                       <td style={{ color: 'var(--text-secondary)' }}>{d.file_type || '—'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString()}</td>

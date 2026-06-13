@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── NextAuth Models ──
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Added for credentials provider
+  role          String    @default("consultant") // administrator, operations_manager, consultant, client
+  
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  // ComplianceOS Relations
+  assignedClients        Client[]
+  completedStepProgresses WorkflowStepProgress[]
+  uploadedDocuments      Document[]
+  assignedTasks          Task[]
+  assignedConversations  Conversation[]
+  assignedClientWorkflows ClientWorkflow[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── ComplianceOS Models ──
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("starter")
+  settings  String   @default("{}") // SQLite doesn't support JSON, use String
+  
+  users               User[]
+  clients             Client[]
+  workflowTemplates   WorkflowTemplate[]
+  clientWorkflows     ClientWorkflow[]
+  documents           Document[]
+  tasks               Task[]
+  conversations       Conversation[]
+  messages            Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  companyName         String
+  registrationNumber  String?
+  taxNumber           String?
+  vatNumber           String?
+  directors           String   @default("[]") // JSON string
+  email               String?
+  phone               String?
+  whatsappNumber      String?
+  
+  assignedConsultantId String?
+  assignedConsultant   User?   @relation(fields: [assignedConsultantId], references: [id], onDelete: SetNull)
+  
+  status              String   @default("active") // active, inactive, onboarding
+
+  clientWorkflows     ClientWorkflow[]
+  documents           Document[]
+  tasks               Task[]
+  conversations       Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  category    String   @default("custom")
+  isActive    Boolean  @default(true)
+
+  steps           WorkflowStep[]
+  clientWorkflows ClientWorkflow[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WorkflowStep {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  stepOrder   Int      @default(0)
+  slaDays     Int      @default(3)
+
+  progress WorkflowStepProgress[]
+}
+
+model ClientWorkflow {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  templateId  String
+  template    WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  status      String   @default("not_started") // not_started, in_progress, completed, cancelled
+  
+  assignedTo  String?
+  assignee    User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  progress    WorkflowStepProgress[]
+  tasks       Task[]
+
+  startedAt   DateTime?
+  completedAt DateTime?
+}
+
+model WorkflowStepProgress {
+  id                 String   @id @default(cuid())
+  clientWorkflowId   String
+  clientWorkflow     ClientWorkflow @relation(fields: [clientWorkflowId], references: [id], onDelete: Cascade)
+  
+  stepId             String
+  step               WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Restrict)
+  
+  status             String   @default("pending") // pending, in_progress, completed, skipped
+  notes              String?
+  
+  completedById      String?
+  completedBy        User?    @relation(fields: [completedById], references: [id], onDelete: SetNull)
+
+  completedAt        DateTime?
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  filePath    String
+  fileType    String?
+  category    String   @default("other")
+  version     Int      @default(1)
+  fileSize    BigInt   @default(0)
+  
+  uploadedById String?
+  uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
+  assignedTo  String?
+  assignee    User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  
+  workflowId  String?
+  workflow    ClientWorkflow? @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+  status      String   @default("new") // new, waiting_on_client, processing, submitted, completed, overdue
+  priority    String   @default("medium") // low, medium, high, critical
+  dueDate     DateTime?
+  slaDays     Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id              String   @id @default(cuid())
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  whatsappNumber  String
+  status          String   @default("open") // open, closed, pending
+  
+  assignedTo      String?
+  assignee        User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  messages        Message[]
+
+  lastMessageAt   DateTime @default(now())
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  direction       String   // inbound, outbound
+  content         String   @default("")
+  messageType     String   @default("text") // text, image, document, audio, video, template
+  mediaUrl        String?
+  whatsappMessageId String?
+  status          String   @default("sent") // sent, delivered, read, failed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
