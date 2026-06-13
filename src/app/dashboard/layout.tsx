@@ -11,9 +11,20 @@ const icons: Record<string, string> = {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, signOut, loading } = useAuth();
+  const { user, tenant, signOut, loading } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        window.location.href = '/login';
+      } else if (!tenant) {
+        // If the DB was wiped but the cookie remains, the user won't have a valid tenant
+        signOut();
+      }
+    }
+  }, [loading, user, tenant, signOut]);
 
   if (loading) {
     return <div className="flex-center" style={{ minHeight: '100vh' }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
