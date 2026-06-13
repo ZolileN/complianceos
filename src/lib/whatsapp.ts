@@ -2,7 +2,7 @@
    ComplianceOS — WhatsApp Meta Business API Utilities
    ============================================================ */
 
-const GRAPH_API_URL = 'https://graph.facebook.com/v21.0';
+const GRAPH_API_URL = 'https://graph.facebook.com/v25.0';
 
 interface WhatsAppTextMessage {
   messaging_product: 'whatsapp';
@@ -69,8 +69,9 @@ export async function sendTextMessage(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`WhatsApp API Error: ${JSON.stringify(error)}`);
+    const errorData = await response.json();
+    console.error("Meta API Validation Failure:", JSON.stringify(errorData, null, 2));
+    throw new Error(`WhatsApp API Error: ${JSON.stringify(errorData)}`);
   }
 
   return response.json();
@@ -119,8 +120,9 @@ export async function sendTemplateMessage(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`WhatsApp API Error: ${JSON.stringify(error)}`);
+    const errorData = await response.json();
+    console.error("Meta API Validation Failure:", JSON.stringify(errorData, null, 2));
+    throw new Error(`WhatsApp API Error: ${JSON.stringify(errorData)}`);
   }
 
   return response.json();
