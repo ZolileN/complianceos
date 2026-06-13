@@ -11,6 +11,7 @@ export default function TasksPage() {
   const { tenant } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
   const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
@@ -44,17 +45,43 @@ export default function TasksPage() {
       .then(({ data }) => setClients(data || []));
   }, [tenant]);
 
-  const createTask = async (e: React.FormEvent) => {
+  const saveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenant) return;
     try {
-      await fetch('/api/tasks', {
-        method: 'POST',
+      const url = editTaskId ? `/api/tasks/${editTaskId}` : '/api/tasks';
+      const method = editTaskId ? 'PUT' : 'POST';
+      await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, due_date: form.due_date || null }),
       });
       setShowModal(false);
       setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
+      setEditTaskId(null);
+      loadTasks();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditTaskId(task.id);
+    setForm({
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority,
+      status: task.status,
+      due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+      client_id: task.client?.id || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
       loadTasks();
     } catch (err) {
       console.error(err);
@@ -86,7 +113,11 @@ export default function TasksPage() {
           <h1 className="page-title">Tasks</h1>
           <p className="page-subtitle">{tasks.length} total tasks</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New Task</button>
+        <button className="btn btn-primary" onClick={() => {
+          setEditTaskId(null);
+          setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
+          setShowModal(true);
+        }}>+ New Task</button>
       </div>
 
       {loading ? (
@@ -107,7 +138,13 @@ export default function TasksPage() {
                 <div className="kanban-cards">
                   {colTasks.map((t) => (
                     <div key={t.id} className="kanban-card">
-                      <div className="kanban-card-title">{t.title}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div className="kanban-card-title">{t.title}</div>
+                        <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+                          <button type="button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => handleEditTask(t)}>✏️</button>
+                          <button type="button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }} onClick={() => handleDeleteTask(t.id)}>🗑️</button>
+                        </div>
+                      </div>
                       {t.client && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 6 }}>
                           🏢 {t.client.company_name}
@@ -138,10 +175,10 @@ export default function TasksPage() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">New Task</h2>
+              <h2 className="modal-title">{editTaskId ? 'Edit Task' : 'New Task'}</h2>
               <button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}>✕</button>
             </div>
-            <form onSubmit={createTask}>
+            <form onSubmit={saveTask}>
               <div className="modal-body stack">
                 <div className="form-group">
                   <label className="form-label">Client *</label>
@@ -173,7 +210,7 @@ export default function TasksPage() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Task</button>
+                <button type="submit" className="btn btn-primary">{editTaskId ? 'Save Changes' : 'Create Task'}</button>
               </div>
             </form>
           </div>

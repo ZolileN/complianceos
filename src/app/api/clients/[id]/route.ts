@@ -39,8 +39,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const body = await request.json();
   try {
     const data: Record<string, unknown> = {};
-    if (body.company_name) data.companyName = body.company_name;
-    if (body.status) data.status = body.status;
+    if (body.company_name !== undefined) data.companyName = body.company_name;
+    if (body.status !== undefined) data.status = body.status;
+    if (body.registration_number !== undefined) data.registrationNumber = body.registration_number;
+    if (body.tax_number !== undefined) data.taxNumber = body.tax_number;
+    if (body.vat_number !== undefined) data.vatNumber = body.vat_number;
+    if (body.email !== undefined) data.email = body.email;
+    if (body.phone !== undefined) data.phone = body.phone;
+    if (body.whatsapp_number !== undefined) data.whatsappNumber = body.whatsapp_number;
+    if (body.directors !== undefined) {
+      data.directors = typeof body.directors === 'string' ? body.directors : JSON.stringify(body.directors);
+    }
     
     const client = await prisma.client.update({
       where: { id, tenantId },

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc } from '@/types';
 
@@ -10,6 +10,7 @@ type TabType = 'overview' | 'documents' | 'tasks' | 'workflows';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
+  const router = useRouter();
   const { tenant } = useAuth();
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<TabType>('overview');
@@ -58,6 +59,16 @@ export default function ClientDetailPage() {
     return m[s] || 'badge-gray';
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) return;
+    try {
+      await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      router.push('/dashboard/clients');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
   if (!client) return <div className="empty-state"><h3>Client not found</h3></div>;
 
@@ -76,6 +87,10 @@ export default function ClientDetailPage() {
             </div>
             <p className="page-subtitle">{client.registration_number || 'No registration number'}</p>
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link href={`/dashboard/clients/${id}/edit`} className="btn btn-secondary">✏️ Edit</Link>
+          <button className="btn btn-secondary" style={{ color: 'var(--red)', borderColor: 'var(--border)' }} onClick={handleDelete}>🗑️ Delete</button>
         </div>
       </div>
 

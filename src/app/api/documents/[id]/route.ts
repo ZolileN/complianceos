@@ -12,20 +12,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const body = await request.json();
   try {
     const data: Record<string, unknown> = {};
-    if (body.status !== undefined) data.status = body.status;
-    if (body.title !== undefined) data.title = body.title;
-    if (body.description !== undefined) data.description = body.description;
-    if (body.priority !== undefined) data.priority = body.priority;
-    if (body.due_date !== undefined) {
-      data.dueDate = body.due_date ? new Date(body.due_date) : null;
-    }
-    if (body.client_id !== undefined) data.clientId = body.client_id || null;
+    if (body.name) data.name = body.name;
+    if (body.category) data.category = body.category;
     
-    const task = await prisma.task.update({
+    const document = await prisma.document.update({
       where: { id, tenantId },
       data
     });
-    return NextResponse.json({ data: task });
+    
+    const mappedDoc = { ...document, fileSize: Number(document.fileSize) };
+    return NextResponse.json({ data: mappedDoc });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
@@ -38,7 +34,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const tenantId = (session.user as { tenantId: string }).tenantId;
 
   try {
-    await prisma.task.delete({
+    await prisma.document.delete({
       where: { id, tenantId }
     });
     return NextResponse.json({ success: true });

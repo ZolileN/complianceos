@@ -13,6 +13,9 @@ export default function DocumentsPage() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', category: 'other' });
   const [uploadForm, setUploadForm] = useState({ client_id: '', category: 'other' });
   const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
 
@@ -45,6 +48,38 @@ export default function DocumentsPage() {
       .then(res => res.json())
       .then(({ data }) => setClients(data || []));
   }, [tenant]);
+
+  const handleDeleteDoc = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    try {
+      await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+      loadDocs();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEditDoc = (doc: Doc) => {
+    setEditDocId(doc.id);
+    setEditForm({ name: doc.name, category: doc.category });
+    setShowEdit(true);
+  };
+
+  const saveEditDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editDocId) return;
+    try {
+      await fetch(`/api/documents/${editDocId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      setShowEdit(false);
+      loadDocs();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -80,7 +115,7 @@ export default function DocumentsPage() {
       ) : (
         <div className="table-container">
           <table className="table">
-            <thead><tr><th>Name</th><th>Client</th><th>Category</th><th>Size</th><th>Uploaded</th></tr></thead>
+            <thead><tr><th>Name</th><th>Client</th><th>Category</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr></thead>
             <tbody>
               {documents.map((d) => (
                 <tr key={d.id}>
@@ -89,6 +124,13 @@ export default function DocumentsPage() {
                   <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>
                   <td style={{ color: 'var(--text-muted)' }}>{formatSize(d.file_size)}</td>
                   <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <a href={d.file_path} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }}>View</a>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => handleEditDoc(d)}>Edit</button>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', color: 'var(--red)' }} onClick={() => handleDeleteDoc(d.id)}>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -152,6 +194,35 @@ export default function DocumentsPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showEdit && (
+        <div className="modal-overlay" onClick={() => setShowEdit(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Edit Document</h2>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowEdit(false)}>✕</button>
+            </div>
+            <form onSubmit={saveEditDoc}>
+              <div className="modal-body stack">
+                <div className="form-group">
+                  <label className="form-label">Name *</label>
+                  <input className="input" required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select className="select" value={editForm.category} onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}>
+                    {DOCUMENT_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEdit(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
