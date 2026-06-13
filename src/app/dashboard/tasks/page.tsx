@@ -12,7 +12,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: '', description: '', priority: 'medium', status: 'new', due_date: '' });
+  const [form, setForm] = useState({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
+  const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
 
   const loadTasks = useCallback(async () => {
     if (!tenant) return;
@@ -36,6 +37,13 @@ export default function TasksPage() {
     init();
   }, [loadTasks]);
 
+  useEffect(() => {
+    if (!tenant) return;
+    fetch('/api/clients?limit=100')
+      .then(res => res.json())
+      .then(({ data }) => setClients(data || []));
+  }, [tenant]);
+
   const createTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenant) return;
@@ -46,7 +54,7 @@ export default function TasksPage() {
         body: JSON.stringify({ ...form, due_date: form.due_date || null }),
       });
       setShowModal(false);
-      setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '' });
+      setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
       loadTasks();
     } catch (err) {
       console.error(err);
@@ -100,6 +108,11 @@ export default function TasksPage() {
                   {colTasks.map((t) => (
                     <div key={t.id} className="kanban-card">
                       <div className="kanban-card-title">{t.title}</div>
+                      {t.client && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 6 }}>
+                          🏢 {t.client.company_name}
+                        </div>
+                      )}
                       <div className="kanban-card-meta">
                         <span className={`badge ${priorityBadge(t.priority)}`}>{t.priority}</span>
                         {t.due_date && <span>📅 {new Date(t.due_date).toLocaleDateString()}</span>}
@@ -130,6 +143,13 @@ export default function TasksPage() {
             </div>
             <form onSubmit={createTask}>
               <div className="modal-body stack">
+                <div className="form-group">
+                  <label className="form-label">Client *</label>
+                  <select className="select" required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+                    <option value="">Select client...</option>
+                    {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Title *</label>
                   <input className="input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. File annual return for Mkhize Holdings" />

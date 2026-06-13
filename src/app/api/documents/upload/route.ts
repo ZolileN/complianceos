@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         filePath: url,
         fileType: type || 'application/octet-stream',
         category: category || 'other',
-        fileSize: size || 0,
+        fileSize: size ? BigInt(size) : BigInt(0),
         uploadedById: userId,
       }
     });

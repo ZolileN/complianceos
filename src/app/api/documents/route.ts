@@ -32,12 +32,15 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const mappedData = data.map(doc => ({
-      ...doc,
-      file_size: Number(doc.fileSize), // Convert BigInt to Number for JSON
-      created_at: doc.createdAt,
-      client: doc.client ? { id: doc.client.id, company_name: doc.client.companyName } : null,
-    }));
+    const mappedData = data.map(doc => {
+      const { fileSize, ...rest } = doc;
+      return {
+        ...rest,
+        file_size: Number(fileSize), // Convert BigInt to Number for JSON
+        created_at: rest.createdAt,
+        client: rest.client ? { id: rest.client.id, company_name: rest.client.companyName } : null,
+      };
+    });
 
     return NextResponse.json({ data: mappedData, count });
   } catch (error: unknown) {
