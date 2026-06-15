@@ -32,6 +32,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
+
+    if (body.client_id) {
+      const client = await prisma.client.findFirst({
+        where: { id: body.client_id, tenantId }
+      });
+      if (!client) {
+        return NextResponse.json({ error: 'Client not found in this tenant' }, { status: 400 });
+      }
+    }
+
+    if (body.assigned_to) {
+      const assignedUser = await prisma.user.findFirst({
+        where: { id: body.assigned_to, tenantId }
+      });
+      if (!assignedUser) {
+        return NextResponse.json({ error: 'Assignee not found in this tenant' }, { status: 400 });
+      }
+    }
+
     const data: Record<string, unknown> = {};
     if (body.status !== undefined) data.status = body.status;
     if (body.title !== undefined) data.title = body.title;
@@ -41,6 +60,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data.dueDate = body.due_date ? new Date(body.due_date) : null;
     }
     if (body.client_id !== undefined) data.clientId = body.client_id || null;
+    if (body.assigned_to !== undefined) data.assignedTo = body.assigned_to || null;
     
     const task = await prisma.task.update({
       where: { id, tenantId },

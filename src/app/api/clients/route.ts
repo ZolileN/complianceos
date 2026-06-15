@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = (page - 1) * limit;
 
-  const where: any = {
+  const where: Prisma.ClientWhereInput = {
     tenantId,
     ...(search ? { companyName: { contains: search } } : {}),
     ...(!includeInactive ? { status: { not: 'inactive' } } : {}),
@@ -81,6 +82,14 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   try {
+    if (body.assigned_consultant_id) {
+      const assignedUser = await prisma.user.findFirst({
+        where: { id: body.assigned_consultant_id, tenantId }
+      });
+      if (!assignedUser) {
+        return NextResponse.json({ error: 'Assigned consultant not found in this tenant' }, { status: 400 });
+      }
+    }
     const client = await prisma.client.create({
       data: {
         companyName: body.company_name,

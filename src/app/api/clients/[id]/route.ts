@@ -72,6 +72,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
+
+    if (body.assigned_consultant_id !== undefined) {
+      if (currentUser.role === 'consultant') {
+        return NextResponse.json({ error: 'Consultants cannot change the assigned consultant' }, { status: 403 });
+      }
+      if (body.assigned_consultant_id) {
+        const assignedUser = await prisma.user.findFirst({
+          where: { id: body.assigned_consultant_id, tenantId }
+        });
+        if (!assignedUser) {
+          return NextResponse.json({ error: 'Assigned consultant not found in this tenant' }, { status: 400 });
+        }
+      }
+    }
+
     const data: Record<string, unknown> = {};
     if (body.company_name !== undefined) data.companyName = body.company_name;
     if (body.status !== undefined) data.status = body.status;

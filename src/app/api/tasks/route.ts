@@ -79,6 +79,24 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   try {
+    if (body.client_id) {
+      const client = await prisma.client.findFirst({
+        where: { id: body.client_id, tenantId }
+      });
+      if (!client) {
+        return NextResponse.json({ error: 'Client not found in this tenant' }, { status: 400 });
+      }
+    }
+
+    if (body.assigned_to) {
+      const assignedUser = await prisma.user.findFirst({
+        where: { id: body.assigned_to, tenantId }
+      });
+      if (!assignedUser) {
+        return NextResponse.json({ error: 'Assignee not found in this tenant' }, { status: 400 });
+      }
+    }
+
     const task = await prisma.task.create({
       data: {
         title: body.title,
@@ -87,6 +105,7 @@ export async function POST(request: NextRequest) {
         status: body.status || 'new',
         dueDate: body.due_date ? new Date(body.due_date) : null,
         clientId: body.client_id || null,
+        assignedTo: body.assigned_to || null,
         tenantId,
       }
     });
