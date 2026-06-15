@@ -226,10 +226,10 @@ a:hover { color: var(--accent-hover); }
 .chat-composer input { flex: 1; }
 
 /* ── Tabs ── */
-.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-primary); margin-bottom: 24px; }
-.tab { padding: 12px 20px; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition); }
-.tab:hover { color: var(--text-primary); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border-primary); margin-bottom: 24px; padding-bottom: 4px; }
+.tab { background: transparent; border: none; padding: 10px 16px; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-radius: var(--radius-md); transition: all var(--transition); outline: none; }
+.tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.tab.active { background: var(--accent-muted); color: var(--accent); font-weight: 600; }
 
 /* ── File Upload ── */
 .upload-zone { border: 2px dashed var(--border-primary); border-radius: var(--radius-lg); padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: all var(--transition); }
@@ -280,3 +280,48 @@ a:hover { color: var(--accent-hover); }
 @keyframes spin { to { transform: rotate(360deg); } }
 .skeleton { background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-hover) 50%, var(--bg-elevated) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-md); }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Toast Notifications ── */
+@keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: var(--radius-md);
+  font-size: 0.875rem; font-weight: 500; min-width: 260px; max-width: 380px;
+  box-shadow: var(--shadow-lg); border: 1px solid;
+  animation: toastIn 300ms cubic-bezier(0.16,1,0.3,1) both;
+}
+.toast-success { background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3); }
+.toast-error   { background: rgba(239,68,68,0.15);  color: #f87171; border-color: rgba(239,68,68,0.3); }
+.toast-info    { background: rgba(59,130,246,0.15);  color: #60a5fa; border-color: rgba(59,130,246,0.3); }
+.toast-warning { background: rgba(245,158,11,0.15);  color: #fbbf24; border-color: rgba(245,158,11,0.3); }
+.toast-icon { font-size: 1rem; flex-shrink: 0; }
+.toast-message { flex: 1; }
+
+/* ── Global Search Dropdown ── */
+.search-wrapper { position: relative; }
+.search-dropdown {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--bg-card); border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md); overflow: hidden;
+  box-shadow: var(--shadow-lg); z-index: 200;
+  animation: slideUp 200ms ease;
+}
+.search-result-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; cursor: pointer; transition: background var(--transition);
+  font-size: 0.875rem; border-bottom: 1px solid var(--border-subtle);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--bg-hover); }
+.search-result-name { font-weight: 600; }
+.search-result-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+.search-empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+
+/* ── Pagination ── */
+.pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding: 0 4px; }
+.pagination-info { font-size: 0.8rem; color: var(--text-muted); }
+.pagination-controls { display: flex; align-items: center; gap: 8px; }
+.pagination-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border-primary); color: var(--text-secondary); font-size: 0.8rem; cursor: pointer; transition: all var(--transition); }
+.pagination-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+.pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination-page { font-size: 0.8rem; color: var(--text-secondary); padding: 0 4px; }

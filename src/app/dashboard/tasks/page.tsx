@@ -2,48 +2,55 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/lib/constants';
 import type { Task } from '@/types';
 
 const statusCols = TASK_STATUSES.filter(s => s.value !== 'overdue');
+const PAGE_LIMIT = 100;
 
 export default function TasksPage() {
   const { tenant } = useAuth();
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [form, setForm] = useState({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
   const [clients, setClients] = useState<Array<{ id: string; company_name: string }>>([]);
 
-  const loadTasks = useCallback(async () => {
+  const refresh = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  useEffect(() => {
     if (!tenant) return;
-    try {
-      const res = await fetch('/api/tasks');
-      if (res.ok) {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/tasks?limit=${PAGE_LIMIT}`);
         const { data } = await res.json();
-        setTasks(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenant]);
-
-  useEffect(() => {
-    const init = async () => {
-      await loadTasks();
-    };
-    init();
-  }, [loadTasks]);
+        if (!cancelled) setTasks(data || []);
+      } catch (err) { console.error(err); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, refreshKey]);
 
   useEffect(() => {
     if (!tenant) return;
-    fetch('/api/clients?limit=100')
-      .then(res => res.json())
-      .then(({ data }) => setClients(data || []));
+    (async () => {
+      const res = await fetch('/api/clients?limit=100');
+      const { data } = await res.json();
+      setClients(data || []);
+    })();
   }, [tenant]);
+
+  const openNew = () => {
+    setEditTaskId(null);
+    setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
+    setShowModal(true);
+  };
 
   const saveTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,17 +58,19 @@ export default function TasksPage() {
     try {
       const url = editTaskId ? `/api/tasks/${editTaskId}` : '/api/tasks';
       const method = editTaskId ? 'PUT' : 'POST';
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, due_date: form.due_date || null }),
       });
+      if (!res.ok) throw new Error('Failed to save task');
       setShowModal(false);
       setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
       setEditTaskId(null);
-      loadTasks();
+      toast(editTaskId ? 'Task updated successfully' : 'Task created successfully');
+      refresh();
     } catch (err) {
-      console.error(err);
+      toast((err as Error).message || 'Failed to save task', 'error');
     }
   };
 
@@ -81,10 +90,12 @@ export default function TasksPage() {
   const handleDeleteTask = async (id: string) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     try {
-      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-      loadTasks();
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete task');
+      toast('Task deleted');
+      refresh();
     } catch (err) {
-      console.error(err);
+      toast((err as Error).message || 'Failed to delete task', 'error');
     }
   };
 
@@ -95,9 +106,10 @@ export default function TasksPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
-      loadTasks();
+      toast('Status updated', 'info');
+      refresh();
     } catch (err) {
-      console.error(err);
+      toast((err as Error).message || 'Failed to update status', 'error');
     }
   };
 
@@ -113,15 +125,11 @@ export default function TasksPage() {
           <h1 className="page-title">Tasks</h1>
           <p className="page-subtitle">{tasks.length} total tasks</p>
         </div>
-        <button className="btn btn-primary" onClick={() => {
-          setEditTaskId(null);
-          setForm({ title: '', description: '', priority: 'medium', status: 'new', due_date: '', client_id: '' });
-          setShowModal(true);
-        }}>+ New Task</button>
+        <button className="btn btn-primary" onClick={openNew}>+ New Task</button>
       </div>
 
       {loading ? (
-        <div className="kanban-board">{[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 300, minWidth: 280 }} />)}</div>
+        <div className="kanban-board">{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 300, minWidth: 280 }} />)}</div>
       ) : (
         <div className="kanban-board">
           {statusCols.map((col) => {
@@ -170,7 +178,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* New Task Modal */}
+      {/* Task Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -181,9 +189,10 @@ export default function TasksPage() {
             <form onSubmit={saveTask}>
               <div className="modal-body stack">
                 <div className="form-group">
-                  <label className="form-label">Client *</label>
-                  <select className="select" required value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
-                    <option value="">Select client...</option>
+                  <label className="form-label">Client <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                  {/* Removed 'required' — tasks can exist without a client */}
+                  <select className="select" value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+                    <option value="">No client (internal task)</option>
                     {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                   </select>
                 </div>

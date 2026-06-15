@@ -12,25 +12,31 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
+  const clientId = searchParams.get('client_id');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const offset = (page - 1) * limit;
+
+  const hasClientId = clientId && clientId !== 'null' && clientId !== 'undefined';
+
+  const where = {
+    tenantId,
+    ...(category ? { category } : {}),
+    ...(hasClientId ? { clientId } : {}),
+  };
 
   try {
     const data = await prisma.document.findMany({
-      where: {
-        tenantId,
-        ...(category ? { category } : {})
-      },
+      where,
       include: {
         client: { select: { id: true, companyName: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit,
     });
 
-    const count = await prisma.document.count({
-      where: {
-        tenantId,
-        ...(category ? { category } : {})
-      }
-    });
+    const count = await prisma.document.count({ where });
 
     const mappedData = data.map(doc => {
       const { fileSize, ...rest } = doc;
@@ -38,6 +44,8 @@ export async function GET(request: NextRequest) {
         ...rest,
         file_size: Number(fileSize), // Convert BigInt to Number for JSON
         created_at: rest.createdAt,
+        file_path: doc.filePath,
+        file_type: doc.fileType,
         client: rest.client ? { id: rest.client.id, company_name: rest.client.companyName } : null,
       };
     });

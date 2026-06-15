@@ -1,72 +1,63 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import type { Conversation, Message } from '@/types';
 
 export default function InboxPage() {
   const { tenant } = useAuth();
+  const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvo, setActiveConvo] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [convoRefreshKey, setConvoRefreshKey] = useState(0);
+  const [msgRefreshKey, setMsgRefreshKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const loadConversations = useCallback(async () => {
+  // Load conversations — correct effect pattern
+  useEffect(() => {
     if (!tenant) return;
-    try {
-      const res = await fetch('/api/conversations');
-      if (res.ok) {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/conversations');
         const { data } = await res.json();
-        setConversations(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenant]);
+        if (!cancelled) setConversations(data || []);
+      } catch (err) { console.error(err); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, convoRefreshKey]);
 
   useEffect(() => {
-    const init = async () => {
-      await loadConversations();
-    };
-    init();
-  }, [loadConversations]);
-
-  const loadMessages = useCallback(async () => {
     if (!activeConvo) return;
-    try {
-      const res = await fetch(`/api/messages?conversation_id=${activeConvo}`);
-      if (res.ok) {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/messages?conversation_id=${activeConvo}`);
         const { data } = await res.json();
-        setMessages(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [activeConvo]);
+        if (!cancelled) {
+          setMessages(data || []);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      } catch (err) { console.error(err); }
+    })();
+    return () => { cancelled = true; };
+  }, [activeConvo, msgRefreshKey]);
 
+  // 5-second polling
   useEffect(() => {
-    const init = async () => {
-      await loadMessages();
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    };
-    init();
-
-    // Simple polling for MVP since we removed Supabase Realtime
     const interval = setInterval(() => {
-      const poll = async () => {
-        await loadMessages();
-        await loadConversations();
-      };
-      poll();
+      setConvoRefreshKey(k => k + 1);
+      if (activeConvo) setMsgRefreshKey(k => k + 1);
     }, 5000);
-
     return () => clearInterval(interval);
-  }, [loadMessages, loadConversations]);
+  }, [activeConvo]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,15 +65,20 @@ export default function InboxPage() {
     setSending(true);
     const convo = conversations.find((c) => c.id === activeConvo);
     try {
-      await fetch('/api/whatsapp/send', {
+      const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: convo?.whatsapp_number, message: newMessage, conversation_id: activeConvo }),
       });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || 'Failed to send message');
+      }
       setNewMessage('');
-      loadMessages();
+      setMsgRefreshKey(k => k + 1);
+      toast('Message sent', 'success');
     } catch (err) {
-      console.error('Failed to send:', err);
+      toast((err as Error).message || 'Failed to send message', 'error');
     } finally {
       setSending(false);
     }
@@ -124,7 +120,7 @@ export default function InboxPage() {
         <div className="inbox-layout">
           <div className="conversation-list">
             <div className="conversation-list-header">
-              <input className="input" placeholder="Search conversations..." style={{ fontSize: '0.85rem' }} />
+              <input className="input" placeholder="Search conversations..." style={{ fontSize: '0.85rem' }} readOnly title="Search coming soon" />
             </div>
             {conversations.map((c) => (
               <div key={c.id} className={`conversation-item ${activeConvo === c.id ? 'active' : ''}`} onClick={() => setActiveConvo(c.id)}>

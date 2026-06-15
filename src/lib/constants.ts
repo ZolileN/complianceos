@@ -66,6 +66,7 @@ export const CLIENT_STATUSES = [
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
   { href: '/dashboard/clients', label: 'Clients', icon: 'users' },
+  { href: '/dashboard/team', label: 'Team', icon: 'user' },
   { href: '/dashboard/tasks', label: 'Tasks', icon: 'check-square' },
   { href: '/dashboard/workflows', label: 'Workflows', icon: 'git-branch' },
   { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },

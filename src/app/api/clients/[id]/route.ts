@@ -11,12 +11,21 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   try {
     const client = await prisma.client.findFirst({
-      where: { id, tenantId }
+      where: { id, tenantId },
+      include: {
+        assignedConsultant: { select: { id: true, name: true } }
+      }
     });
     if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     
     const mappedData = {
       ...client,
+      assigned_consultant: client.assignedConsultant ? {
+        id: client.assignedConsultant.id,
+        name: client.assignedConsultant.name,
+        full_name: client.assignedConsultant.name,
+      } : null,
+      assigned_consultant_id: client.assignedConsultantId,
       company_name: client.companyName,
       registration_number: client.registrationNumber,
       tax_number: client.taxNumber,
@@ -47,15 +56,35 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.email !== undefined) data.email = body.email;
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.whatsapp_number !== undefined) data.whatsappNumber = body.whatsapp_number;
+    if (body.assigned_consultant_id !== undefined) data.assignedConsultantId = body.assigned_consultant_id || null;
     if (body.directors !== undefined) {
       data.directors = typeof body.directors === 'string' ? body.directors : JSON.stringify(body.directors);
     }
     
     const client = await prisma.client.update({
       where: { id, tenantId },
-      data
+      data,
+      include: {
+        assignedConsultant: { select: { id: true, name: true } }
+      }
     });
-    return NextResponse.json({ data: client });
+
+    const mappedData = {
+      ...client,
+      assigned_consultant: client.assignedConsultant ? {
+        id: client.assignedConsultant.id,
+        name: client.assignedConsultant.name,
+        full_name: client.assignedConsultant.name,
+      } : null,
+      assigned_consultant_id: client.assignedConsultantId,
+      company_name: client.companyName,
+      registration_number: client.registrationNumber,
+      tax_number: client.taxNumber,
+      vat_number: client.vatNumber,
+      whatsapp_number: client.whatsappNumber,
+      created_at: client.createdAt,
+    };
+    return NextResponse.json({ data: mappedData });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }

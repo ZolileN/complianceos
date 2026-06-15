@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import type { Client } from '@/types';
@@ -9,31 +9,32 @@ export default function ClientsPage() {
   const { tenant } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const loadClients = useCallback(async () => {
-    if (!tenant) return;
-    setLoading(true);
-    try {
-      const url = search ? `/api/clients?search=${encodeURIComponent(search)}` : `/api/clients`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const { data } = await res.json();
-        setClients(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenant, search]);
-
+  // Debounce the search input by 300ms
   useEffect(() => {
-    const init = async () => {
-      await loadClients();
-    };
-    init();
-  }, [loadClients]);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch clients whenever tenant or debounced search changes — correct effect pattern
+  useEffect(() => {
+    if (!tenant) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setLoading(true);
+    });
+    const url = debouncedSearch
+      ? `/api/clients?search=${encodeURIComponent(debouncedSearch)}`
+      : `/api/clients`;
+    fetch(url)
+      .then((res) => res.json())
+      .then(({ data }) => { if (!cancelled) setClients(data || []); })
+      .catch((err) => console.error(err))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [tenant, debouncedSearch]);
 
   const statusBadge = (s: string) => {
     const m: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue' };
@@ -51,11 +52,20 @@ export default function ClientsPage() {
       </div>
 
       <div style={{ marginBottom: 20 }}>
-        <input className="input" placeholder="Search clients by name..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ maxWidth: 400 }} />
+        <input
+          className="input"
+          placeholder="Search clients by name..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setLoading(true);
+          }}
+          style={{ maxWidth: 400 }}
+        />
       </div>
 
       {loading ? (
-        <div className="stack" style={{ gap: 8 }}>{[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 60 }} />)}</div>
+        <div className="stack" style={{ gap: 8 }}>{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 60 }} />)}</div>
       ) : clients.length === 0 ? (
         <div className="card">
           <div className="empty-state">
@@ -85,7 +95,10 @@ export default function ClientsPage() {
                   <td style={{ color: 'var(--text-secondary)' }}>{c.registration_number || '—'}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{c.tax_number || '—'}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{c.email || c.phone || '—'}</td>
-                  <td style={{ color: 'var(--text-secondary)' }}>{(c.assigned_consultant as unknown as { full_name: string })?.full_name || 'Unassigned'}</td>
+                  {/* Fix: API returns { name } not { full_name } */}
+                  <td style={{ color: 'var(--text-secondary)' }}>
+                    {(c.assigned_consultant as unknown as { name?: string })?.name || 'Unassigned'}
+                  </td>
                   <td><span className={`badge ${statusBadge(c.status)}`}>{c.status}</span></td>
                 </tr>
               ))}

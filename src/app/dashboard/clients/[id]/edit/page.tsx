@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useRouter, useParams } from 'next/navigation';
 import type { Director } from '@/types';
 
 export default function EditClientPage() {
   const { tenant } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
   const { id } = useParams();
   
@@ -19,14 +21,19 @@ export default function EditClientPage() {
     email: '', phone: '', whatsapp_number: '', status: 'active',
   });
   const [directors, setDirectors] = useState<Director[]>([{ name: '', id_number: '', email: '', phone: '' }]);
+  const [consultants, setConsultants] = useState<{ id: string; full_name: string }[]>([]);
+  const [assignedConsultantId, setAssignedConsultantId] = useState<string>('');
 
   useEffect(() => {
     if (!tenant || !id) return;
     async function load() {
       try {
-        const res = await fetch(`/api/clients/${id}`);
-        if (!res.ok) throw new Error('Failed to load client');
-        const { data } = await res.json();
+        const [clientRes, usersRes] = await Promise.all([
+          fetch(`/api/clients/${id}`),
+          fetch('/api/users')
+        ]);
+        if (!clientRes.ok) throw new Error('Failed to load client');
+        const { data } = await clientRes.json();
         
         setForm({
           company_name: data.company_name || '',
@@ -38,6 +45,12 @@ export default function EditClientPage() {
           whatsapp_number: data.whatsapp_number || '',
           status: data.status || 'active',
         });
+        setAssignedConsultantId(data.assigned_consultant_id || '');
+
+        if (usersRes.ok) {
+          const { data: userData } = await usersRes.json();
+          setConsultants(userData || []);
+        }
         
         let parsedDirectors = [];
         if (data.directors) {
@@ -75,6 +88,7 @@ export default function EditClientPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          assigned_consultant_id: assignedConsultantId || null,
           directors: directors.filter((d) => d.name),
         })
       });
@@ -83,15 +97,19 @@ export default function EditClientPage() {
         const data = await res.json();
         throw new Error(data.error || 'Failed to update client');
       }
-      
+
+      toast('Client updated successfully');
       router.push(`/dashboard/clients/${id}`);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update client');
+      const msg = err instanceof Error ? err.message : 'Failed to update client';
+      setError(msg);
+      toast(msg, 'error');
     } finally {
       setSaving(false);
     }
   };
+
 
   if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
 
@@ -152,13 +170,46 @@ export default function EditClientPage() {
         </div>
 
         <div className="card" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 20 }}>Assignment & Status</h3>
+          <div className="stack">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Assigned Consultant</label>
+                <select 
+                  className="select" 
+                  value={assignedConsultantId} 
+                  onChange={(e) => setAssignedConsultantId(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {consultants.map((user) => (
+                    <option key={user.id} value={user.id}>{user.full_name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select 
+                  className="select" 
+                  value={form.status} 
+                  onChange={(e) => updateForm('status', e.target.value)}
+                >
+                  <option value="active">Active</option>
+                  <option value="onboarding">Onboarding</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 24 }}>
           <div className="flex-between" style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Directors</h3>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDirectors([...directors, { name: '', id_number: '', email: '', phone: '' }])}>+ Add Director</button>
           </div>
           <div className="stack">
             {directors.map((d, i) => (
-              <div key={i} className="form-row">
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                 <div className="form-group">
                   <label className="form-label">Name</label>
                   <input className="input" value={d.name} onChange={(e) => updateDirector(i, 'name', e.target.value)} placeholder="Full name" />
@@ -167,6 +218,14 @@ export default function EditClientPage() {
                   <label className="form-label">ID Number</label>
                   <input className="input" value={d.id_number} onChange={(e) => updateDirector(i, 'id_number', e.target.value)} placeholder="SA ID number" />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setDirectors(directors.filter((_, idx) => idx !== i))}
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--red)', borderRadius: 'var(--radius-md)', width: 36, height: 40, cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}
+                  title="Remove director"
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>

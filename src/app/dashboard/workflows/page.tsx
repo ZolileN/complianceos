@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import type { WorkflowTemplate } from '@/types';
 
@@ -16,30 +17,25 @@ const DEFAULT_TEMPLATES = [
 
 export default function WorkflowsPage() {
   const { tenant } = useAuth();
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const loadTemplates = useCallback(async () => {
-    if (!tenant) return;
-    try {
-      const res = await fetch('/api/workflows');
-      if (res.ok) {
-        const { data } = await res.json();
-        setTemplates(data || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenant]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const init = async () => {
-      await loadTemplates();
-    };
-    init();
-  }, [loadTemplates]);
+    if (!tenant) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/workflows');
+        const { data } = await res.json();
+        if (!cancelled) setTemplates(data || []);
+      } catch (err) { console.error(err); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, refreshKey]);
 
   const seedTemplates = async () => {
     if (!tenant) return;
@@ -52,9 +48,10 @@ export default function WorkflowsPage() {
           body: JSON.stringify(tpl)
         });
       }
-      loadTemplates();
+      toast('Default workflow templates loaded successfully');
+      setRefreshKey(k => k + 1);
     } catch (err) {
-      console.error(err);
+      toast((err as Error).message || 'Failed to load templates', 'error');
       setLoading(false);
     }
   };
@@ -74,7 +71,7 @@ export default function WorkflowsPage() {
       </div>
 
       {loading ? (
-        <div className="content-grid grid-3">{[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 200 }} />)}</div>
+        <div className="content-grid grid-3">{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 200 }} />)}</div>
       ) : templates.length === 0 ? (
         <div className="card">
           <div className="empty-state">

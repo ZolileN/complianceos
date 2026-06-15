@@ -12,16 +12,20 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
+  const includeInactive = searchParams.get('include_inactive') === 'true';
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = (page - 1) * limit;
 
+  const where = {
+    tenantId,
+    ...(search ? { companyName: { contains: search } } : {}),
+    ...(!includeInactive ? { status: { not: 'inactive' } } : {}),
+  };
+
   try {
     const data = await prisma.client.findMany({
-      where: {
-        tenantId,
-        ...(search ? { companyName: { contains: search } } : {})
-      },
+      where,
       include: {
         assignedConsultant: { select: { id: true, name: true } }
       },
@@ -30,17 +34,16 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    const count = await prisma.client.count({
-      where: {
-        tenantId,
-        ...(search ? { companyName: { contains: search } } : {})
-      }
-    });
+    const count = await prisma.client.count({ where });
 
     // Map Prisma schema back to the shape expected by UI
     const mappedData = data.map(client => ({
       ...client,
-      assigned_consultant: client.assignedConsultant,
+      assigned_consultant: client.assignedConsultant ? {
+        id: client.assignedConsultant.id,
+        name: client.assignedConsultant.name,
+        full_name: client.assignedConsultant.name,
+      } : null,
       company_name: client.companyName,
       registration_number: client.registrationNumber,
       tax_number: client.taxNumber,
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest) {
         whatsappNumber: body.whatsapp_number,
         directors: body.directors ? JSON.stringify(body.directors) : '[]',
         status: body.status || 'active',
+        assignedConsultantId: body.assigned_consultant_id || null,
         tenantId,
       }
     });

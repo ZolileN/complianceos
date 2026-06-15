@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc } from '@/types';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
 
 type TabType = 'overview' | 'documents' | 'tasks' | 'workflows';
 
@@ -12,11 +14,13 @@ export default function ClientDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const { tenant } = useAuth();
+  const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<TabType>('overview');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [documents, setDocuments] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeViewDoc, setActiveViewDoc] = useState<Doc | null>(null);
 
   useEffect(() => {
     if (!tenant || !id) return;
@@ -59,13 +63,16 @@ export default function ClientDetailPage() {
     return m[s] || 'badge-gray';
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this client? This action cannot be undone.')) return;
+  const handleArchive = async () => {
+    if (!confirm('Archive this client? They will be marked inactive and hidden from active lists. You can reactivate them later.')) return;
     try {
-      await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to archive client');
+      toast('Client archived successfully');
       router.push('/dashboard/clients');
     } catch (err) {
       console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to archive client', 'error');
     }
   };
 
@@ -90,7 +97,7 @@ export default function ClientDetailPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link href={`/dashboard/clients/${id}/edit`} className="btn btn-secondary">✏️ Edit</Link>
-          <button className="btn btn-secondary" style={{ color: 'var(--red)', borderColor: 'var(--border)' }} onClick={handleDelete}>🗑️ Delete</button>
+          <button className="btn btn-secondary" style={{ color: 'var(--amber)', borderColor: 'var(--border)' }} onClick={handleArchive}>📦 Archive</button>
         </div>
       </div>
 
@@ -114,6 +121,7 @@ export default function ClientDetailPage() {
                 ['Email', client.email],
                 ['Phone', client.phone],
                 ['WhatsApp', client.whatsapp_number],
+                ['Consultant', client.assigned_consultant?.full_name || 'Unassigned'],
               ].map(([label, val]) => (
                 <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
@@ -147,14 +155,27 @@ export default function ClientDetailPage() {
           ) : (
             <div className="table-container">
               <table className="table">
-                <thead><tr><th>Name</th><th>Category</th><th>Type</th><th>Uploaded</th></tr></thead>
+                <thead><tr><th>Name</th><th>Category</th><th>Type</th><th>Uploaded</th><th>Actions</th></tr></thead>
                 <tbody>
                   {documents.map((d) => (
                     <tr key={d.id}>
-                      <td style={{ fontWeight: 500 }}><a href={d.file_path} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{d.name}</a></td>
-                      <td><span className="badge badge-blue">{d.category}</span></td>
+                      <td>
+                        <button 
+                          onClick={() => setActiveViewDoc(d)}
+                          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', fontWeight: 500, color: 'inherit', textAlign: 'left' }}
+                        >
+                          {d.name}
+                        </button>
+                      </td>
+                      <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>
                       <td style={{ color: 'var(--text-secondary)' }}>{d.file_type || '—'}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setActiveViewDoc(d)}>View</button>
+                          <a href={d.file_path} download={d.name} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', textDecoration: 'none' }}>Download</a>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,10 +211,17 @@ export default function ClientDetailPage() {
         <div className="card animate-in">
           <div className="empty-state">
             <div className="empty-icon">⑂</div>
-            <h3>No active workflows</h3>
-            <p>Start a workflow for this client from the Workflows page</p>
+            <h3>Workflow Tracking — Coming Soon</h3>
+            <p>Per-client workflow assignment and step tracking is on the roadmap.<br />For now, manage workflow templates from the <Link href="/dashboard/workflows" style={{ color: 'var(--accent)' }}>Workflows</Link> page.</p>
           </div>
         </div>
+      )}
+      {/* Document Viewer Modal */}
+      {activeViewDoc && (
+        <DocumentViewerModal 
+          document={activeViewDoc} 
+          onClose={() => setActiveViewDoc(null)} 
+        />
       )}
     </div>
   );

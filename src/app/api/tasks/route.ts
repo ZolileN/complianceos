@@ -12,26 +12,32 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
+  const clientId = searchParams.get('client_id');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '100');
+  const offset = (page - 1) * limit;
+
+  const hasClientId = clientId && clientId !== 'null' && clientId !== 'undefined';
+
+  const where = {
+    tenantId,
+    ...(status ? { status } : {}),
+    ...(hasClientId ? { clientId } : {}),
+  };
 
   try {
     const data = await prisma.task.findMany({
-      where: {
-        tenantId,
-        ...(status ? { status } : {})
-      },
+      where,
       include: {
         client: { select: { id: true, companyName: true } },
         assignee: { select: { id: true, name: true } }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit,
     });
 
-    const count = await prisma.task.count({
-      where: {
-        tenantId,
-        ...(status ? { status } : {})
-      }
-    });
+    const count = await prisma.task.count({ where });
 
     const mappedData = data.map(task => ({
       ...task,
