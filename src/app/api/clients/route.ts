@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
@@ -17,11 +18,18 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = (page - 1) * limit;
 
-  const where = {
+  const where: any = {
     tenantId,
     ...(search ? { companyName: { contains: search } } : {}),
     ...(!includeInactive ? { status: { not: 'inactive' } } : {}),
   };
+
+  // Role-based restrictions
+  if (currentUser.role === 'client') {
+    where.email = currentUser.email;
+  } else if (currentUser.role === 'consultant') {
+    where.assignedConsultantId = currentUser.id;
+  }
 
   try {
     const data = await prisma.client.findMany({
@@ -62,8 +70,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  // Only administrators and operations managers can create clients
+  if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const body = await request.json();
   try {

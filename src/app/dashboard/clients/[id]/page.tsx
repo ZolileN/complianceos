@@ -13,7 +13,7 @@ type TabType = 'overview' | 'documents' | 'tasks' | 'workflows';
 export default function ClientDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { tenant } = useAuth();
+  const { user, tenant } = useAuth();
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<TabType>('overview');
@@ -86,7 +86,9 @@ export default function ClientDetailPage() {
       {/* Header */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/dashboard/clients" className="btn btn-ghost btn-icon">←</Link>
+          {user?.role !== 'client' && (
+            <Link href="/dashboard/clients" className="btn btn-ghost btn-icon">←</Link>
+          )}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <h1 className="page-title">{client.company_name}</h1>
@@ -96,8 +98,12 @@ export default function ClientDetailPage() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Link href={`/dashboard/clients/${id}/edit`} className="btn btn-secondary">✏️ Edit</Link>
-          <button className="btn btn-secondary" style={{ color: 'var(--amber)', borderColor: 'var(--border)' }} onClick={handleArchive}>📦 Archive</button>
+          {user?.role !== 'client' && (
+            <Link href={`/dashboard/clients/${id}/edit`} className="btn btn-secondary">✏️ Edit</Link>
+          )}
+          {(user?.role === 'administrator' || user?.role === 'operations_manager') && (
+            <button className="btn btn-secondary" style={{ color: 'var(--amber)', borderColor: 'var(--border)' }} onClick={handleArchive}>📦 Archive</button>
+          )}
         </div>
       </div>
 

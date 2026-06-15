@@ -27,6 +27,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     });
     if (!targetUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
+    // Prevent operations manager from deleting administrator
+    if (currentUser.role === 'operations_manager' && targetUser.role === 'administrator') {
+      return NextResponse.json({ error: 'Operations managers cannot delete administrators' }, { status: 403 });
+    }
+
     await prisma.user.delete({
       where: { id }
     });

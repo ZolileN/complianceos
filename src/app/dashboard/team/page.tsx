@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useRouter } from 'next/navigation';
 
 interface TeamMember {
   id: string;
@@ -15,8 +16,15 @@ interface TeamMember {
 export default function TeamPage() {
   const { user, tenant } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user && user.role !== 'administrator' && user.role !== 'operations_manager') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
   
   // Modal / Form state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -173,6 +181,8 @@ export default function TeamPage() {
                     <td style={{ textAlign: 'right' }}>
                       {m.id === user?.id ? (
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>You</span>
+                      ) : (user?.role === 'operations_manager' && m.role === 'administrator') ? (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>Admin</span>
                       ) : (
                         <button 
                           className="btn btn-ghost btn-sm" 
@@ -253,7 +263,9 @@ export default function TeamPage() {
                   value={form.role} 
                   onChange={(e) => setForm(p => ({ ...p, role: e.target.value as any }))}
                 >
-                  <option value="administrator">Administrator (Full Access)</option>
+                  {user?.role === 'administrator' && (
+                    <option value="administrator">Administrator (Full Access)</option>
+                  )}
                   <option value="operations_manager">Operations Manager</option>
                   <option value="consultant">Consultant</option>
                   <option value="client">Client</option>

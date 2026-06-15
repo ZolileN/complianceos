@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
+import { useRouter } from 'next/navigation';
 import type { WorkflowTemplate } from '@/types';
 
 const DEFAULT_TEMPLATES = [
@@ -16,11 +17,18 @@ const DEFAULT_TEMPLATES = [
 ];
 
 export default function WorkflowsPage() {
-  const { tenant } = useAuth();
+  const { user, tenant } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (user && user.role !== 'administrator' && user.role !== 'operations_manager') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     if (!tenant) return;

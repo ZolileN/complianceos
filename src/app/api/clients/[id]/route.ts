@@ -7,7 +7,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
 
   try {
     const client = await prisma.client.findFirst({
@@ -17,6 +18,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       }
     });
     if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    
+    // Role-based authorization checks
+    if (currentUser.role === 'client' && client.email !== currentUser.email) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    if (currentUser.role === 'consultant' && client.assignedConsultantId !== currentUser.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     
     const mappedData = {
       ...client,
@@ -43,10 +52,26 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
 
-  const body = await request.json();
+  // Clients cannot modify anything
+  if (currentUser.role === 'client') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
+    // Check if client exists and is assigned (if consultant)
+    const existing = await prisma.client.findFirst({
+      where: { id, tenantId }
+    });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (currentUser.role === 'consultant' && existing.assignedConsultantId !== currentUser.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json();
     const data: Record<string, unknown> = {};
     if (body.company_name !== undefined) data.companyName = body.company_name;
     if (body.status !== undefined) data.status = body.status;
@@ -94,7 +119,13 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
+
+  // Only administrators and operations managers can archive/delete clients
+  if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     await prisma.client.update({

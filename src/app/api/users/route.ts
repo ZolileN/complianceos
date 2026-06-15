@@ -59,6 +59,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Prevent operations manager from creating an administrator
+    if (currentUser.role === 'operations_manager' && role === 'administrator') {
+      return NextResponse.json({ error: 'Operations managers cannot create administrator accounts' }, { status: 403 });
+    }
+
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }

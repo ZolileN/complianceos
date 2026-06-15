@@ -22,6 +22,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'client') {
+      fetch('/api/clients')
+        .then((r) => r.json())
+        .then(({ data }) => {
+          if (data && data[0]) {
+            setClientId(data[0].id);
+          }
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.role === 'client' && clientId && pathname === '/dashboard') {
+      router.push(`/dashboard/clients/${clientId}`);
+    }
+  }, [user, clientId, pathname, router]);
+
+  const getFilteredNavItems = () => {
+    if (!user) return [];
+    
+    if (user.role === 'client') {
+      return [
+        { href: clientId ? `/dashboard/clients/${clientId}` : '/dashboard', label: 'My Company', icon: 'grid' },
+        { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
+        { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },
+      ];
+    }
+    
+    if (user.role === 'consultant') {
+      return [
+        { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
+        { href: '/dashboard/clients', label: 'Clients', icon: 'users' },
+        { href: '/dashboard/tasks', label: 'Tasks', icon: 'check-square' },
+        { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
+        { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },
+      ];
+    }
+
+    return NAV_ITEMS;
+  };
 
   // ── Global Search ──
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <h1>ComplianceOS</h1>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => {
+          {getFilteredNavItems().map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             return (
               <Link key={item.href} href={item.href} className={`nav-item ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
@@ -121,52 +165,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }} id="mobile-menu-btn">☰</button>
           {/* Global Search */}
-          <div className="search-wrapper" ref={searchRef}>
-            <div className="header-search">
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {searchLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> : '⌕'}
-              </span>
-              <input
-                type="text"
-                placeholder="Search clients..."
-                value={searchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  if (!val.trim() || val.length < 2) {
-                    setSearchResults([]);
-                    setShowDropdown(false);
-                  }
-                }}
-                onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchQuery(''); setShowDropdown(false); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', lineHeight: 1 }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            {showDropdown && (
-              <div className="search-dropdown">
-                {searchResults.length === 0 ? (
-                  <div className="search-empty">No clients found for &quot;{searchQuery}&quot;</div>
-                ) : (
-                  searchResults.map((r) => (
-                    <div key={r.id} className="search-result-item" onClick={() => handleSelectResult(r.id)}>
-                      <div>
-                        <div className="search-result-name">{r.company_name}</div>
-                        {r.registration_number && <div className="search-result-meta">{r.registration_number}</div>}
-                      </div>
-                      <span className={`badge ${statusBadge(r.status)}`}>{r.status}</span>
-                    </div>
-                  ))
+          {user?.role !== 'client' && (
+            <div className="search-wrapper" ref={searchRef}>
+              <div className="header-search">
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {searchLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> : '⌕'}
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    if (!val.trim() || val.length < 2) {
+                      setSearchResults([]);
+                      setShowDropdown(false);
+                    }
+                  }}
+                  onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchQuery(''); setShowDropdown(false); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', lineHeight: 1 }}
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
-            )}
-          </div>
+              {showDropdown && (
+                <div className="search-dropdown">
+                  {searchResults.length === 0 ? (
+                    <div className="search-empty">No clients found for &quot;{searchQuery}&quot;</div>
+                  ) : (
+                    searchResults.map((r) => (
+                      <div key={r.id} className="search-result-item" onClick={() => handleSelectResult(r.id)}>
+                        <div>
+                          <div className="search-result-name">{r.company_name}</div>
+                          {r.registration_number && <div className="search-result-meta">{r.registration_number}</div>}
+                        </div>
+                        <span className={`badge ${statusBadge(r.status)}`}>{r.status}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="header-actions">
           <button className="btn btn-ghost btn-icon" title="Notifications">🔔</button>

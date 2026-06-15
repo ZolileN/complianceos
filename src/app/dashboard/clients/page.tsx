@@ -3,14 +3,23 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Client } from '@/types';
 
 export default function ClientsPage() {
-  const { tenant } = useAuth();
+  const { user, tenant } = useAuth();
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Redirect client roles
+  useEffect(() => {
+    if (user?.role === 'client') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   // Debounce the search input by 300ms
   useEffect(() => {
@@ -48,7 +57,9 @@ export default function ClientsPage() {
           <h1 className="page-title">Clients</h1>
           <p className="page-subtitle">{clients.length} total clients</p>
         </div>
-        <Link href="/dashboard/clients/new" className="btn btn-primary">+ Add Client</Link>
+        {(user?.role === 'administrator' || user?.role === 'operations_manager') && (
+          <Link href="/dashboard/clients/new" className="btn btn-primary">+ Add Client</Link>
+        )}
       </div>
 
       <div style={{ marginBottom: 20 }}>

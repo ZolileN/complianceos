@@ -7,8 +7,14 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  // Clients cannot view workflow templates
+  if (currentUser.role === 'client') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   try {
     const data = await prisma.workflowTemplate.findMany({
@@ -27,8 +33,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  // Only administrators and operations managers can manage workflow templates
+  if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const { name, description, category, steps } = await request.json();
 

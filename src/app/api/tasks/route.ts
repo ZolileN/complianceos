@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   const { searchParams } = new URL(request.url);
@@ -19,11 +21,21 @@ export async function GET(request: NextRequest) {
 
   const hasClientId = clientId && clientId !== 'null' && clientId !== 'undefined';
 
-  const where = {
+  const where: Prisma.TaskWhereInput = {
     tenantId,
     ...(status ? { status } : {}),
     ...(hasClientId ? { clientId } : {}),
   };
+
+  // Role-based restrictions
+  if (currentUser.role === 'consultant') {
+    where.OR = [
+      { assignedTo: currentUser.id },
+      { client: { assignedConsultantId: currentUser.id } }
+    ];
+  } else if (currentUser.role === 'client') {
+    where.client = { email: currentUser.email };
+  }
 
   try {
     const data = await prisma.task.findMany({
@@ -56,8 +68,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  // Clients cannot create tasks
+  if (currentUser.role === 'client') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const body = await request.json();
   try {
