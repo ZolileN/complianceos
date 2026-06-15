@@ -34,27 +34,36 @@ export default function TeamPage() {
     name: '',
     email: '',
     password: '',
-    role: 'consultant',
+    role: 'consultant' as 'administrator' | 'operations_manager' | 'consultant' | 'client',
   });
 
-  const loadMembers = async () => {
-    try {
-      const res = await fetch('/api/users');
-      if (!res.ok) throw new Error('Failed to load team members');
-      const { data } = await res.json();
-      setMembers(data || []);
-    } catch (err) {
-      toast((err as Error).message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Reset Password Modal state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState('');
+
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (tenant) {
-      loadMembers();
-    }
-  }, [tenant]);
+    if (!tenant) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to load team members');
+        const { data } = await res.json();
+        if (!cancelled) setMembers(data || []);
+      } catch (err) {
+        if (!cancelled) toast((err as Error).message, 'error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, refreshKey, toast]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +84,7 @@ export default function TeamPage() {
       toast('Team member added successfully');
       setForm({ name: '', email: '', password: '', role: 'consultant' });
       setShowAddModal(false);
-      loadMembers();
+      setRefreshKey(k => k + 1);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -97,9 +106,37 @@ export default function TeamPage() {
       }
 
       toast('Team member removed successfully');
-      loadMembers();
+      setRefreshKey(k => k + 1);
     } catch (err) {
       toast((err as Error).message, 'error');
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember) return;
+    setResetSubmitting(true);
+    setResetError('');
+    try {
+      const res = await fetch(`/api/users/${selectedMember.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: resetPassword }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      toast(`Password for ${selectedMember.full_name} has been reset successfully`);
+      setResetPassword('');
+      setShowResetModal(false);
+      setSelectedMember(null);
+    } catch (err) {
+      setResetError((err as Error).message);
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
@@ -179,19 +216,35 @@ export default function TeamPage() {
                   </td>
                   {canManage && (
                     <td style={{ textAlign: 'right' }}>
-                      {m.id === user?.id ? (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>You</span>
-                      ) : (user?.role === 'operations_manager' && m.role === 'administrator') ? (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>Admin</span>
-                      ) : (
-                        <button 
-                          className="btn btn-ghost btn-sm" 
-                          style={{ color: 'var(--red)', padding: '2px 8px' }}
-                          onClick={() => handleDeleteMember(m.id, m.full_name)}
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {user?.role === 'administrator' && (
+                          <button 
+                            className="btn btn-ghost btn-sm" 
+                            style={{ color: 'var(--accent)', padding: '2px 8px' }}
+                            onClick={() => {
+                              setSelectedMember(m);
+                              setResetPassword('');
+                              setResetError('');
+                              setShowResetModal(true);
+                            }}
+                          >
+                            Reset Password
+                          </button>
+                        )}
+                        {m.id === user?.id ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>You</span>
+                        ) : (user?.role === 'operations_manager' && m.role === 'administrator') ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>Admin</span>
+                        ) : (
+                          <button 
+                            className="btn btn-ghost btn-sm" 
+                            style={{ color: 'var(--red)', padding: '2px 8px' }}
+                            onClick={() => handleDeleteMember(m.id, m.full_name)}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -261,7 +314,7 @@ export default function TeamPage() {
                 <select 
                   className="select" 
                   value={form.role} 
-                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as any }))}
+                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as 'administrator' | 'operations_manager' | 'consultant' | 'client' }))}
                 >
                   {user?.role === 'administrator' && (
                     <option value="administrator">Administrator (Full Access)</option>
@@ -276,6 +329,63 @@ export default function TeamPage() {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? <span className="spinner" /> : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Reset Password Modal */}
+      {showResetModal && selectedMember && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="card" style={{ width: '100%', maxWidth: 500, border: '1px solid var(--border-primary)', position: 'relative' }}>
+            <button 
+              onClick={() => {
+                setShowResetModal(false);
+                setSelectedMember(null);
+              }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              ✕
+            </button>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Reset Password</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
+              Enter a new password for <strong>{selectedMember.full_name}</strong> ({selectedMember.email}).
+            </p>
+
+            {resetError && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: 20, color: 'var(--red)', fontSize: '0.85rem' }}>
+                {resetError}
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword} className="stack">
+              <div className="form-group">
+                <label className="form-label">New Password *</label>
+                <input 
+                  className="input" 
+                  type="password" 
+                  required 
+                  value={resetPassword} 
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setShowResetModal(false);
+                    setSelectedMember(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={resetSubmitting}>
+                  {resetSubmitting ? <span className="spinner" /> : 'Reset Password'}
                 </button>
               </div>
             </form>
