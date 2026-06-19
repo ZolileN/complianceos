@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Conversation, Message } from '@/types';
 
 export default function InboxPage() {
@@ -35,6 +36,7 @@ export default function InboxPage() {
   }, [tenant, convoRefreshKey]);
 
   const lastConvoRef = useRef<string | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!activeConvo) return;
@@ -48,10 +50,29 @@ export default function InboxPage() {
             const isNewConvo = lastConvoRef.current !== activeConvo;
             const hasNewMessage = data && data.length > prev.length;
             
-            if (isNewConvo || hasNewMessage) {
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-              lastConvoRef.current = activeConvo;
+            let shouldScroll = false;
+            if (isNewConvo) {
+              shouldScroll = true;
+            } else if (hasNewMessage) {
+              // Check if user is near the bottom
+              if (chatContainerRef.current) {
+                const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+                // If within 150px of the bottom, auto-scroll
+                if (scrollHeight - scrollTop - clientHeight < 150) {
+                  shouldScroll = true;
+                }
+              } else {
+                shouldScroll = true;
+              }
             }
+            
+            if (shouldScroll) {
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }, 100);
+            }
+            
+            lastConvoRef.current = activeConvo;
             return data || [];
           });
         }
@@ -96,7 +117,7 @@ export default function InboxPage() {
 
   const activeConversation = conversations.find((c) => c.id === activeConvo);
 
-  const handleSaveToDocuments = async (url: string, name: string) => {
+  const handleSaveToDocuments = async (url: string, name: string, category: string) => {
     const clientId = (activeConversation?.client as unknown as { id: string })?.id;
     if (!clientId) {
       toast('No client associated with this conversation', 'error');
@@ -111,7 +132,7 @@ export default function InboxPage() {
           name: name || 'WhatsApp Media',
           type: 'application/octet-stream',
           client_id: clientId,
-          category: 'other'
+          category: category
         })
       });
       if (!res.ok) throw new Error('Failed to save to documents');
@@ -186,7 +207,7 @@ export default function InboxPage() {
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeConversation?.whatsapp_number}</div>
                   </div>
                 </div>
-                <div className="chat-messages">
+                <div className="chat-messages" ref={chatContainerRef}>
                   {messages.map((m) => {
                     const mData = m as unknown as { messageType?: string; mediaUrl?: string };
                     const messageType = mData.messageType || m.message_type;
@@ -207,9 +228,18 @@ export default function InboxPage() {
                               <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
                                 ↓ Download Image
                               </a>
-                              <button onClick={() => handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Image')} style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
-                                💾 Save to Documents
-                              </button>
+                              <select 
+                                style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', outline: 'none' }}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Image', e.target.value);
+                                    e.target.value = '';
+                                  }
+                                }}
+                              >
+                                <option value="">💾 Save to Documents...</option>
+                                {DOCUMENT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                              </select>
                             </div>
                           </div>
                         ) : messageType === 'document' && mediaUrl ? (
@@ -222,9 +252,18 @@ export default function InboxPage() {
                               <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
                                 ↓ Download Document
                               </a>
-                              <button onClick={() => handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Document')} style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
-                                💾 Save to Documents
-                              </button>
+                              <select 
+                                style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', outline: 'none' }}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Document', e.target.value);
+                                    e.target.value = '';
+                                  }
+                                }}
+                              >
+                                <option value="">💾 Save to Documents...</option>
+                                {DOCUMENT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                              </select>
                             </div>
                           </div>
                         ) : (
