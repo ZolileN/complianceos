@@ -87,6 +87,13 @@ export async function GET() {
       select: { id: true, title: true, status: true, priority: true, dueDate: true }
     });
 
+    const complianceIssues = await prisma.complianceItem.findMany({
+      where: { tenantId, status: { in: ['action_required', 'critical'] } },
+      orderBy: { updatedAt: 'desc' },
+      take: 5,
+      include: { client: { select: { id: true, companyName: true } } }
+    });
+
     return NextResponse.json({
       stats: {
         clients: clientsCount,
@@ -100,7 +107,16 @@ export async function GET() {
         }
       },
       recentClients: recentClients.map(c => ({ ...c, company_name: c.companyName, created_at: c.createdAt })),
-      recentTasks: recentTasks.map(t => ({ ...t, due_date: t.dueDate }))
+      recentTasks: recentTasks.map(t => ({ ...t, due_date: t.dueDate })),
+      complianceIssues: complianceIssues.map(i => ({
+        id: i.id,
+        client_id: i.clientId,
+        company_name: i.client.companyName,
+        category: i.category,
+        name: i.name,
+        status: i.status,
+        due_date: i.dueDate
+      }))
     });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ clients: 0, tasks: 0, documents: 0, overdue: 0 });
   const [recentClients, setRecentClients] = useState<Array<{ id: string; company_name: string; status: string; created_at: string }>>([]);
   const [recentTasks, setRecentTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; due_date: string | null }>>([]);
+  const [complianceIssues, setComplianceIssues] = useState<Array<{ id: string; client_id: string; company_name: string; category: string; name: string; status: string; due_date: string | null }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function DashboardPage() {
           if (data.stats) setStats(data.stats);
           if (data.recentClients) setRecentClients(data.recentClients);
           if (data.recentTasks) setRecentTasks(data.recentTasks);
+          if (data.complianceIssues) setComplianceIssues(data.complianceIssues);
         }
       } catch (err) {
         console.error(err);
@@ -53,7 +55,7 @@ export default function DashboardPage() {
   ];
 
   const statusBadge = (s: string) => {
-    const map: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue', new: 'badge-purple', waiting_on_client: 'badge-amber', processing: 'badge-blue', submitted: 'badge-purple', completed: 'badge-green', overdue: 'badge-red' };
+    const map: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue', new: 'badge-purple', waiting_on_client: 'badge-amber', processing: 'badge-blue', submitted: 'badge-purple', completed: 'badge-green', overdue: 'badge-red', action_required: 'badge-amber', critical: 'badge-red' };
     return map[s] || 'badge-gray';
   };
 
@@ -125,7 +127,7 @@ export default function DashboardPage() {
       )}
 
       {/* Recent Activity */}
-      <div className="content-grid grid-2">
+      <div className="content-grid grid-3">
         <div className="card animate-in" style={{ animationDelay: '200ms' }}>
           <div className="flex-between" style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Recent Clients</h3>
@@ -170,6 +172,32 @@ export default function DashboardPage() {
                   </div>
                   <span className={`badge ${statusBadge(t.status)}`}>{t.status.replace('_', ' ')}</span>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card animate-in" style={{ animationDelay: '300ms' }}>
+          <div className="flex-between" style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Compliance Alerts</h3>
+            <span className="badge badge-amber">{stats.compliance?.action_required || 0} Pending</span>
+          </div>
+          {complianceIssues.length === 0 ? (
+            <div className="empty-state" style={{ padding: '32px 16px' }}>
+              <div className="empty-icon">🛡️</div>
+              <h3>All clear!</h3>
+              <p>No critical compliance issues</p>
+            </div>
+          ) : (
+            <div className="stack" style={{ gap: 8 }}>
+              {complianceIssues.map((issue) => (
+                <Link key={issue.id} href={`/dashboard/clients/${issue.client_id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', transition: 'background var(--transition)', color: 'inherit', textDecoration: 'none' }} className="card-hover">
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{issue.company_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>{issue.category} - {issue.name}</div>
+                  </div>
+                  <span className={`badge ${statusBadge(issue.status)}`}>{issue.status.replace('_', ' ')}</span>
+                </Link>
               ))}
             </div>
           )}
