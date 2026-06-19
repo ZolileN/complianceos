@@ -199,36 +199,15 @@ export default function DocumentsPage() {
                 ) : (
                    <UploadDropzone
                     endpoint="documentUploader"
-                    onClientUploadComplete={async (res) => {
-                      try {
-                        for (const file of res) {
-                          // UploadThing v7 uses `ufsUrl` (formerly `url`)
-                          const fileUrl = (file as unknown as { ufsUrl?: string; url?: string }).ufsUrl ?? file.url;
-                          const uploadRes = await fetch('/api/documents/upload', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              url: fileUrl,
-                              name: file.name,
-                              size: file.size,
-                              type: file.type,
-                              client_id: uploadForm.client_id,
-                              category: uploadForm.category
-                            })
-                          });
-                          if (!uploadRes.ok) {
-                            const errData = await uploadRes.json().catch(() => ({}));
-                            throw new Error(errData.error || `HTTP ${uploadRes.status} Error`);
-                          }
-                        }
-                        toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
-                        refresh();
-                      } catch (err) {
-                        console.error("Document registration failed:", err);
-                        toast(err instanceof Error ? err.message : 'Failed to register document on server', 'error');
-                      } finally {
-                        setShowUpload(false);
-                      }
+                    headers={{
+                      "x-client-id": uploadForm.client_id,
+                      "x-category": uploadForm.category,
+                    }}
+                    onClientUploadComplete={(res) => {
+                      // DB registration is handled server-side in onUploadComplete
+                      toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
+                      setShowUpload(false);
+                      refresh();
                     }}
                     onUploadError={(error: Error) => {
                       toast(`Upload failed: ${error.message}`, 'error');
