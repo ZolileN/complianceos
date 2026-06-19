@@ -37,6 +37,39 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // --- NEW LOGIC FOR COMPLIANCE AUTOMATION ---
+    const mapping: Record<string, { cat: string; name: string }> = {
+      'vat_certificate': { cat: 'SARS', name: 'VAT' },
+      'bee_certificate': { cat: 'BEE', name: 'Certificate Expiry' },
+      'tax_certificate': { cat: 'SARS', name: 'Income Tax' },
+      'cor_document': { cat: 'CIPC', name: 'Annual Returns' }
+    };
+
+    if (category && mapping[category]) {
+      const match = mapping[category];
+      const itemToUpdate = await prisma.complianceItem.findFirst({
+        where: {
+          tenantId,
+          clientId: client_id,
+          category: match.cat,
+          name: match.name,
+          status: { in: ['action_required', 'critical'] }
+        }
+      });
+
+      if (itemToUpdate) {
+        await prisma.complianceItem.update({
+          where: { id: itemToUpdate.id },
+          data: {
+            status: 'compliant',
+            lastChecked: new Date(),
+            notes: (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') + `Status automatically updated via document upload: ${document.name}`
+          }
+        });
+      }
+    }
+    // --- END NEW LOGIC ---
+
     const mappedDocument = {
       ...document,
       fileSize: Number(document.fileSize)
