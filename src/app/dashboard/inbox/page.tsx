@@ -49,16 +49,17 @@ export default function InboxPage() {
           setMessages((prev) => {
             const isNewConvo = lastConvoRef.current !== activeConvo;
             const hasNewMessage = data && data.length > prev.length;
+            const lastMessageIsOutbound = data && data.length > 0 && data[data.length - 1].direction === 'outbound';
             
             let shouldScroll = false;
-            if (isNewConvo) {
+            if (isNewConvo || lastMessageIsOutbound) {
               shouldScroll = true;
             } else if (hasNewMessage) {
               // Check if user is near the bottom
               if (chatContainerRef.current) {
                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-                // If within 150px of the bottom, auto-scroll
-                if (scrollHeight - scrollTop - clientHeight < 150) {
+                // If within 250px of the bottom, auto-scroll
+                if (scrollHeight - scrollTop - clientHeight < 250) {
                   shouldScroll = true;
                 }
               } else {
@@ -68,8 +69,8 @@ export default function InboxPage() {
             
             if (shouldScroll) {
               setTimeout(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-              }, 100);
+                messagesEndRef.current?.scrollIntoView({ block: 'end' });
+              }, 50);
             }
             
             lastConvoRef.current = activeConvo;
@@ -173,7 +174,7 @@ export default function InboxPage() {
           </div>
         </div>
       ) : (
-        <div className="inbox-layout">
+        <div className="inbox-layout" style={{ height: 'calc(100vh - 220px)' }}>
           <div className="conversation-list">
             <div className="conversation-list-header">
               <input className="input" placeholder="Search conversations..." style={{ fontSize: '0.85rem' }} readOnly title="Search coming soon" />
@@ -229,7 +230,16 @@ export default function InboxPage() {
                                 ↓ Download Image
                               </a>
                               <select 
-                                style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', outline: 'none' }}
+                                style={{ 
+                                  background: 'var(--bg-elevated)', 
+                                  border: '1px solid var(--border-primary)', 
+                                  color: 'var(--text-primary)', 
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer', 
+                                  padding: '2px 8px', 
+                                  fontSize: '0.75rem',
+                                  outline: 'none'
+                                }}
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Image', e.target.value);
@@ -237,8 +247,12 @@ export default function InboxPage() {
                                   }
                                 }}
                               >
-                                <option value="">💾 Save to Documents...</option>
-                                {DOCUMENT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>💾 Save to...</option>
+                                {DOCUMENT_CATEGORIES.map(c => (
+                                  <option key={c.value} value={c.value} style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
+                                    {c.label}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
@@ -253,7 +267,16 @@ export default function InboxPage() {
                                 ↓ Download Document
                               </a>
                               <select 
-                                style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit', outline: 'none' }}
+                                style={{ 
+                                  background: 'var(--bg-elevated)', 
+                                  border: '1px solid var(--border-primary)', 
+                                  color: 'var(--text-primary)', 
+                                  borderRadius: 'var(--radius-sm)',
+                                  cursor: 'pointer', 
+                                  padding: '2px 8px', 
+                                  fontSize: '0.75rem',
+                                  outline: 'none'
+                                }}
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Document', e.target.value);
@@ -261,8 +284,12 @@ export default function InboxPage() {
                                   }
                                 }}
                               >
-                                <option value="">💾 Save to Documents...</option>
-                                {DOCUMENT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>💾 Save to...</option>
+                                {DOCUMENT_CATEGORIES.map(c => (
+                                  <option key={c.value} value={c.value} style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
+                                    {c.label}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
