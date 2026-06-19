@@ -17,7 +17,7 @@ export default function Home() {
             <a href="#solutions" className="landing-nav-link">Solutions</a>
             <a href="#how-it-works" className="landing-nav-link">How It Works</a>
             <a href="#dashboard" className="landing-nav-link">Dashboard</a>
-            <a href="#why-us" className="landing-nav-link">Why PraxisOne</a>
+            <a href="#pricing" className="landing-nav-link">Pricing</a>
           </nav>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link href="/login" className="btn btn-ghost" style={{ fontSize: '0.9rem' }}>Sign In</Link>
@@ -443,14 +443,70 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Future Vision Section ── */}
-      <section className="landing-section">
-        <div className="vision-banner">
-          <h4 className="section-tagline" style={{ color: '#8B5CF6' }}>Future Vision</h4>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 16 }}>Built For The Future Of Professional Services</h2>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: 700, margin: '0 auto', fontSize: '1rem', lineHeight: 1.6 }}>
-            PraxisOne combines workflow automation, document intelligence, and AI-powered assistance to help firms scale expertise without scaling administrative burden.
-          </p>
+      {/* ── Pricing Section ── */}
+      <section id="pricing" className="landing-section" style={{ backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+        <h4 className="section-tagline" style={{ color: '#F59E0B' }}>Pricing Strategy</h4>
+        <h2 className="section-title">Transparent Pricing for Any Size</h2>
+        <p className="section-subtitle" style={{ marginBottom: 48 }}>
+          Choose the right tier to help your firm scale seamlessly.
+        </p>
+
+        <div className="content-grid grid-4" style={{ maxWidth: 1200, margin: '0 auto', alignItems: 'stretch' }}>
+          {/* Starter */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Starter</h3>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent)', marginBottom: 24, lineHeight: 1 }}>
+              R999<span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 500 }}>/mo</span>
+            </div>
+            <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
+              <li>3 users</li>
+              <li>100 clients</li>
+            </ul>
+            <Link href="/signup" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Get Started</Link>
+          </div>
+
+          {/* Growth */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', borderColor: 'var(--accent)', position: 'relative', boxShadow: '0 8px 30px rgba(16, 185, 129, 0.15)' }}>
+            <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'var(--accent)', color: '#fff', padding: '4px 12px', borderRadius: 99, fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              MOST POPULAR
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Growth</h3>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent)', marginBottom: 24, lineHeight: 1 }}>
+              R2,999<span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 500 }}>/mo</span>
+            </div>
+            <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
+              <li>10 users</li>
+              <li>1,000 clients</li>
+            </ul>
+            <Link href="/signup" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Get Started</Link>
+          </div>
+
+          {/* Professional */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Professional</h3>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent)', marginBottom: 24, lineHeight: 1 }}>
+              R7,999<span style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 500 }}>/mo</span>
+            </div>
+            <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
+              <li>Unlimited users</li>
+              <li>AI features</li>
+            </ul>
+            <Link href="/signup" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Get Started</Link>
+          </div>
+
+          {/* Enterprise */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Enterprise</h3>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 24, lineHeight: 1 }}>
+              Custom
+            </div>
+            <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
+              <li>Custom implementation</li>
+              <li>Dedicated support & SLAs</li>
+              <li>Bespoke integrations</li>
+            </ul>
+            <a href="#book-demo" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Contact Us</a>
+          </div>
         </div>
       </section>
 
