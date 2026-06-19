@@ -91,6 +91,7 @@ model Tenant {
   tasks               Task[]
   conversations       Conversation[]
   messages            Message[]
+  complianceItems     ComplianceItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,6 +120,7 @@ model Client {
   documents           Document[]
   tasks               Task[]
   conversations       Conversation[]
+  complianceItems     ComplianceItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -278,3 +280,25 @@ model Message {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model ComplianceItem {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  category    String   // SARS, CIPC, Labour, BEE
+  name        String   // e.g. VAT, PAYE, Income Tax, etc.
+  status      String   @default("compliant") // compliant, action_required, critical, not_applicable
+  dueDate     DateTime?
+  lastChecked DateTime @default(now())
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clientId, category, name])
+}
+

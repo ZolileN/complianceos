@@ -1,0 +1,413 @@
+This is one of the few SaaS opportunities in South Africa that checks several important boxes:
+●​
+●​
+●​
+●​
+●​
+●​
+
+Existing budget already exists.
+Existing pain already exists.
+No behavior change required.
+Regulatory complexity creates a moat.
+AI can reduce labor costs.
+Expansion path into payroll, tax, accounting, and compliance.
+
+I would not call it a CRM.
+I would position it as:
+
+ComplianceOS
+The Operating System for South African Compliance, Accounting & Advisory Firms
+
+Product Requirements Document (PRD)
+Product Name
+ComplianceOS
+Alternative names:
+●​
+●​
+●​
+●​
+●​
+●​
+
+LedgerFlow
+MandateOS
+Praxis Compliance
+FormFlow
+RegistryOS
+FilingHub
+
+Vision
+
+Provide South African compliance, accounting, tax, and advisory firms with a single platform to
+manage clients, documents, workflows, compliance obligations, and communications.
+The platform becomes the operational layer between:
+●​
+●​
+●​
+●​
+●​
+●​
+●​
+
+Clients
+Consultants
+SARS
+CIPC
+Department of Labour
+BEE Agencies
+Payroll Providers
+
+Problem Statement
+South African compliance firms currently operate using:
+●​
+●​
+●​
+●​
+●​
+●​
+
+WhatsApp
+Email
+Excel
+Shared Drives
+Sage
+Manual follow-ups
+
+This results in:
+●​
+●​
+●​
+●​
+●​
+●​
+
+Lost documents
+Missed deadlines
+Compliance failures
+Staff inefficiency
+Poor client visibility
+Revenue leakage
+
+Target Customers
+Tier 1
+
+Small compliance firms
+Employees:
+●​ 2–20
+Services:
+●​
+●​
+●​
+●​
+
+Company registration
+Tax
+Bookkeeping
+BEE
+
+Examples:
+●​ Independent accountants
+●​ Tax practitioners
+●​ Business consultants
+
+Tier 2
+Mid-sized accounting practices
+Employees:
+●​ 20–100
+Services:
+●​
+●​
+●​
+●​
+
+Payroll
+VAT
+Annual financial statements
+Tax compliance
+
+Tier 3
+Enterprise
+●​ Outsourced CFO firms
+●​ Payroll providers
+●​ Business service groups
+
+Core Value Proposition
+Before ComplianceOS:
+WhatsApp
+Email
+Excel
+Google Drive
+Manual reminders
+
+After ComplianceOS:
+Single Client Record
+Single Task Queue
+Single Document Repository
+Single Compliance Timeline
+
+MVP Features
+Module 1
+Client Management
+Store:
+●​
+●​
+●​
+●​
+●​
+●​
+
+Company Name
+Registration Number
+Tax Number
+Directors
+Contact Details
+Assigned Consultant
+
+User Story
+As a consultant
+
+I want a complete client profile
+So I can manage work from one place.
+
+Module 2
+Workflow Engine
+Services become workflows.
+Example:
+Company Registration
+Document Collection
+↓
+Name Reservation
+↓
+Mandate Signature
+↓
+Registration Filing
+↓
+Certificate Delivery
+
+Example:
+VAT Registration
+Collect Documents
+↓
+Verify
+↓
+Submit
+↓
+Follow Up
+↓
+Completed
+
+User Story
+
+As an operations manager
+I want standardized workflows
+So all consultants follow the same process.
+
+Module 3
+Document Management
+Store:
+●​
+●​
+●​
+●​
+●​
+
+IDs
+Tax Certificates
+Bank Statements
+COR Documents
+VAT Certificates
+
+Features:
+●​ Version control
+●​ OCR extraction
+●​ Search
+
+User Story
+As a consultant
+I want all client documents in one place
+So I never request the same file twice.
+
+Module 4
+WhatsApp Client Inbox
+Connect via:
+●​ Twilio
+
+●​ Meta Business API
+Features:
+●​ Incoming documents
+●​ Chat history
+●​ Workflow-linked conversations
+
+User Story
+As a consultant
+I want WhatsApp integrated
+So I can work without switching platforms.
+
+Module 5
+Task Management
+Statuses:
+New
+Waiting on Client
+Processing
+Submitted
+Completed
+Overdue
+
+Features:
+●​ SLA tracking
+●​ Due dates
+●​ Escalations
+
+Phase 2
+
+AI Document Processing
+Client sends:
+Bank Statement.pdf
+
+AI extracts:
+{
+"bank": "FNB",
+"period": "May 2026"
+}
+
+Classification:
+ID Document
+Tax Certificate
+Bank Statement
+COR14.3
+VAT201
+
+AI Compliance Assistant
+Consultant asks:
+How do I process a SARS objection?
+
+Assistant returns:
+Procedure
+Required Documents
+Expected Timeline
+
+AI Workflow Suggestions
+System identifies:
+
+Missing Tax Clearance
+Upcoming VAT Deadline
+Expired BEE Certificate
+
+Phase 3
+Compliance Monitoring Engine
+Track:
+
+SARS
+●​ VAT
+●​ PAYE
+●​ Income Tax
+
+CIPC
+●​ Annual Returns
+●​ Beneficial Ownership
+
+Labour
+●​ UIF
+●​ COIDA
+●​ Employment Equity
+
+BEE
+●​ Certificate Expiry
+●​ Verification Schedule
+
+Dashboard Example
+72 Clients Compliant
+14 Clients Need Action
+5 Critical Deadlines This Week
+
+Phase 4
+Billing & Revenue Management
+Generate:
+●​ Quotes
+●​ Invoices
+●​ Retainers
+Track:
+●​ Payments
+●​ Outstanding balances
+●​ Monthly recurring revenue
+
+Multi-Tenant Architecture
+Every accounting firm becomes a tenant.
+Tenant
+├─ Users
+├─ Clients
+├─ Tasks
+├─ Documents
+└─ Workflows
+
+Strict tenant isolation.
+
+Roles
+
+Consultant
+●​ Manage clients
+●​ Process tasks
+
+Operations Manager
+●​ Monitor workload
+●​ Assign work
+
+Administrator
+●​ Manage users
+●​ Configure workflows
+
+Client
+●​ Upload documents
+●​ View status
+●​ Sign mandates
+
+Success Metrics
+Efficiency
+●​ 50% reduction in admin time
+
+Communication
+●​ 70% reduction in document chase-ups
+
+Revenue
+●​ Increase consultant capacity by 2x
+
+Compliance
+●​ Reduce missed deadlines by 90%
+
+Pricing Strategy
+Starter
+R999/month
+●​ 3 users
+●​ 100 clients
+
+Growth
+R2,999/month
+●​ 10 users
+●​ 1,000 clients
+
+Professional
+R7,999/month
+●​ Unlimited users
+●​ AI features
+
+Enterprise
+Custom pricing
+
+Why This Could Become Large
+The initial market looks like compliance firms.
+But the long-term vision is broader:
+ComplianceOS
+↓
+AccountingOS
+↓
+Business Services OS
+
+↓
+South African SME Operating Layer
+
+The strongest wedge is not accounting software (Sage and Xero already dominate there). The
+wedge is workflow orchestration around regulatory compliance, where firms still rely heavily
+on WhatsApp, email, PDFs, and human follow-ups. That gap remains surprisingly underserved.
+
+

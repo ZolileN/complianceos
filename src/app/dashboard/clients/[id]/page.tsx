@@ -6,10 +6,10 @@ import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Client, Task, Document as Doc } from '@/types';
+import type { Client, Task, Document as Doc, ComplianceItem } from '@/types';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 
-type TabType = 'overview' | 'documents' | 'tasks' | 'workflows';
+type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows';
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -21,17 +21,26 @@ export default function ClientDetailPage() {
   const [tab, setTab] = useState<TabType>('overview');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [documents, setDocuments] = useState<Doc[]>([]);
+  const [complianceItems, setComplianceItems] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeViewDoc, setActiveViewDoc] = useState<Doc | null>(null);
+
+  // Compliance update states
+  const [editingItem, setEditingItem] = useState<ComplianceItem | null>(null);
+  const [editStatus, setEditStatus] = useState<string>('compliant');
+  const [editDueDate, setEditDueDate] = useState<string>('');
+  const [editNotes, setEditNotes] = useState<string>('');
+  const [updatingCompliance, setUpdatingCompliance] = useState(false);
 
   useEffect(() => {
     if (!tenant || !id) return;
     async function load() {
       try {
-        const [clientRes, tasksRes, docsRes] = await Promise.all([
+        const [clientRes, tasksRes, docsRes, complianceRes] = await Promise.all([
           fetch(`/api/clients/${id}`),
-          fetch(`/api/tasks?client_id=${id}`), // The backend might need an update to filter by client_id if requested
-          fetch(`/api/documents?client_id=${id}`) // Assuming the backend supports this
+          fetch(`/api/tasks?client_id=${id}`), 
+          fetch(`/api/documents?client_id=${id}`),
+          fetch(`/api/clients/${id}/compliance`)
         ]);
 
         if (clientRes.ok) {
@@ -51,6 +60,11 @@ export default function ClientDetailPage() {
           const { data } = await docsRes.json();
           setDocuments(data.filter((d: { client?: { id?: string } }) => d.client?.id === id) as Doc[]);
         }
+
+        if (complianceRes.ok) {
+          const { data } = await complianceRes.json();
+          setComplianceItems(data as ComplianceItem[]);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -61,7 +75,21 @@ export default function ClientDetailPage() {
   }, [tenant, id]);
 
   const statusBadge = (s: string) => {
-    const m: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue', new: 'badge-purple', waiting_on_client: 'badge-amber', processing: 'badge-blue', submitted: 'badge-purple', completed: 'badge-green', overdue: 'badge-red' };
+    const m: Record<string, string> = { 
+      active: 'badge-green', 
+      inactive: 'badge-gray', 
+      onboarding: 'badge-blue', 
+      new: 'badge-purple', 
+      waiting_on_client: 'badge-amber', 
+      processing: 'badge-blue', 
+      submitted: 'badge-purple', 
+      completed: 'badge-green', 
+      overdue: 'badge-red',
+      compliant: 'badge-green',
+      action_required: 'badge-amber',
+      critical: 'badge-red',
+      not_applicable: 'badge-gray'
+    };
     return m[s] || 'badge-gray';
   };
 
@@ -82,6 +110,41 @@ export default function ClientDetailPage() {
     } catch (err) {
       console.error(err);
       toast(err instanceof Error ? err.message : 'Failed to archive client', 'error');
+    }
+  };
+
+  const handleEditCompliance = (item: ComplianceItem) => {
+    setEditingItem(item);
+    setEditStatus(item.status);
+    setEditDueDate(item.due_date ? item.due_date.substring(0, 10) : '');
+    setEditNotes(item.notes || '');
+  };
+
+  const handleSaveCompliance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setUpdatingCompliance(true);
+    try {
+      const res = await fetch(`/api/clients/${id}/compliance`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingItem.id,
+          status: editStatus,
+          due_date: editDueDate || null,
+          notes: editNotes
+        })
+      });
+      if (!res.ok) throw new Error('Failed to update compliance item');
+      const { data } = await res.json();
+      setComplianceItems(prev => prev.map(item => item.id === data.id ? (data as ComplianceItem) : item));
+      toast('Compliance status updated successfully');
+      setEditingItem(null);
+    } catch (err) {
+      console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to update compliance item', 'error');
+    } finally {
+      setUpdatingCompliance(false);
     }
   };
 
@@ -118,7 +181,7 @@ export default function ClientDetailPage() {
 
       {/* Tabs */}
       <div className="tabs">
-        {(['overview', 'documents', 'tasks', 'workflows'] as TabType[]).map((t) => (
+        {(['overview', 'documents', 'compliance', 'tasks', 'workflows'] as TabType[]).map((t) => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>{t}</button>
         ))}
       </div>
@@ -200,6 +263,87 @@ export default function ClientDetailPage() {
         </div>
       )}
 
+      {tab === 'compliance' && (
+        <div className="stack animate-in" style={{ gap: 24 }}>
+          {['SARS', 'CIPC', 'Labour', 'BEE'].map(category => {
+            const categoryItems = complianceItems.filter(item => item.category === category);
+            return (
+              <div key={category} className="card">
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: 16, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 8, color: '#5EEAD4' }}>
+                  {category} Requirements
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                  {categoryItems.map(item => (
+                    <div key={item.id} style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid var(--border-primary)' }}>
+                      <div>
+                        <div className="flex-between" style={{ marginBottom: 10, alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
+                          <span className={`badge ${statusBadge(item.status)}`}>
+                            {item.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        {item.due_date && (
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                            <strong>Due/Expiry:</strong> {new Date(item.due_date).toLocaleDateString()}
+                          </p>
+                        )}
+                        {item.notes && (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-primary)', padding: '6px 10px', borderRadius: 4, fontStyle: 'italic', marginBottom: 12 }}>
+                            {item.notes}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                          Checked: {new Date(item.last_checked).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {user?.role !== 'client' && (
+                        <button onClick={() => handleEditCompliance(item)} className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 12 }}>
+                          ⚙️ Update Status
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Editing Modal */}
+          {editingItem && (
+            <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div className="card" style={{ width: 440, maxWidth: '90%', padding: 24, zIndex: 101 }}>
+                <h3 style={{ marginBottom: 16, fontSize: '1.1rem' }}>Update {editingItem.category} — {editingItem.name}</h3>
+                <form onSubmit={handleSaveCompliance} className="stack" style={{ gap: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select value={editStatus} onChange={e => setEditStatus(e.target.value)} className="select">
+                      <option value="compliant">Compliant</option>
+                      <option value="action_required">Action Required</option>
+                      <option value="critical">Critical</option>
+                      <option value="not_applicable">Not Applicable</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Due / Expiry Date</label>
+                    <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} className="input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Notes</label>
+                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className="textarea" placeholder="Enter compliance remarks, instructions, or reference details..." />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                    <button type="button" onClick={() => setEditingItem(null)} className="btn btn-secondary" disabled={updatingCompliance}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={updatingCompliance}>
+                      {updatingCompliance ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === 'tasks' && (
         <div className="animate-in">
           {tasks.length === 0 ? (
@@ -231,6 +375,7 @@ export default function ClientDetailPage() {
           </div>
         </div>
       )}
+      
       {/* Document Viewer Modal */}
       {activeViewDoc && (
         <DocumentViewerModal 

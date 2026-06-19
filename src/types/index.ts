@@ -54,6 +54,7 @@ export interface Client {
   assigned_consultant_id?: string;
   assigned_consultant?: User;
   status: 'active' | 'inactive' | 'onboarding';
+  compliance_items?: ComplianceItem[];
   created_at: string;
   updated_at: string;
 }
@@ -223,3 +224,21 @@ export interface DashboardStats {
   overdue_tasks: number;
   unread_messages: number;
 }
+
+// ── Compliance Engine ──────────────────────────────────────
+export type ComplianceStatus = 'compliant' | 'action_required' | 'critical' | 'not_applicable';
+
+export interface ComplianceItem {
+  id: string;
+  client_id: string;
+  tenant_id: string;
+  category: 'SARS' | 'CIPC' | 'Labour' | 'BEE';
+  name: string;
+  status: ComplianceStatus;
+  due_date?: string | null;
+  last_checked: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
