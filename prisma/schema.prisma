@@ -65,6 +65,8 @@ model User {
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  auditLogs     AuditLog[]
 }
 
 model VerificationToken {
@@ -96,6 +98,8 @@ model Tenant {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
 }
 
 model Client {
@@ -325,5 +329,21 @@ model ComplianceItem {
   updatedAt   DateTime @updatedAt
 
   @@unique([clientId, category, name])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  action      String   // e.g., "CREATE", "UPDATE", "DELETE", "UPLOAD"
+  entityType  String   // e.g., "Client", "Task", "Document", "User", "Workflow"
+  entityId    String   // The ID of the affected record
+  details     String   // JSON string containing metadata (e.g., changes made)
+  
+  createdAt   DateTime @default(now())
 }
 

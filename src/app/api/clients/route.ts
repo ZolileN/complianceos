@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { Prisma } from '@prisma/client';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
@@ -107,6 +108,17 @@ export async function POST(request: NextRequest) {
         tenantId,
       }
     });
+
+    // Log the creation
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'Client',
+      entityId: client.id,
+      details: { companyName: client.companyName },
+    });
+
     return NextResponse.json({ data: client }, { status: 201 });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
