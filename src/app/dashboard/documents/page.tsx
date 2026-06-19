@@ -202,11 +202,13 @@ export default function DocumentsPage() {
                     onClientUploadComplete={async (res) => {
                       try {
                         for (const file of res) {
+                          // UploadThing v7 uses `ufsUrl` (formerly `url`)
+                          const fileUrl = (file as unknown as { ufsUrl?: string; url?: string }).ufsUrl ?? file.url;
                           const uploadRes = await fetch('/api/documents/upload', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              url: file.url,
+                              url: fileUrl,
                               name: file.name,
                               size: file.size,
                               type: file.type,
@@ -230,6 +232,7 @@ export default function DocumentsPage() {
                     }}
                     onUploadError={(error: Error) => {
                       toast(`Upload failed: ${error.message}`, 'error');
+                      setShowUpload(false);
                     }}
                   />
                 )}
