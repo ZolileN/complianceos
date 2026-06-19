@@ -134,6 +134,11 @@ export default function DocumentsPage() {
                       >
                         {d.name}
                       </button>
+                      {d.version > 1 && (
+                        <span className="badge badge-secondary" style={{ marginLeft: 8, fontSize: '0.7rem', padding: '2px 6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', borderRadius: 4 }}>
+                          v{d.version}
+                        </span>
+                      )}
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>{(d.client as unknown as { company_name: string })?.company_name || '—'}</td>
                     <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>

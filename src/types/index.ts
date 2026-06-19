@@ -140,6 +140,22 @@ export interface Document {
   uploaded_by?: string;
   uploader?: User;
   client?: Client;
+  ocr_status?: 'none' | 'pending' | 'processing' | 'completed' | 'failed';
+  ocr_text?: string | null;
+  ocr_metadata?: string | null;
+  versions?: DocumentVersion[];
+  created_at: string;
+}
+
+export interface DocumentVersion {
+  id: string;
+  document_id: string;
+  version: number;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  uploaded_by?: string;
+  uploader?: User;
   created_at: string;
 }
 

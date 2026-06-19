@@ -58,6 +58,7 @@ model User {
   assignedClients        Client[]
   completedStepProgresses WorkflowStepProgress[]
   uploadedDocuments      Document[]
+  uploadedVersions       DocumentVersion[]
   assignedTasks          Task[]
   assignedConversations  Conversation[]
   assignedClientWorkflows ClientWorkflow[]
@@ -214,8 +215,31 @@ model Document {
   uploadedById String?
   uploadedBy   User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
+  // Document Version Control & OCR Fields
+  versions    DocumentVersion[]
+  ocrStatus   String   @default("none") // none, pending, processing, completed, failed
+  ocrText     String?
+  ocrMetadata String?  // JSON string
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DocumentVersion {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  version      Int
+  filePath     String
+  fileType     String?
+  fileSize     BigInt   @default(0)
+  
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Task {

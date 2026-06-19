@@ -3,6 +3,113 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
+  const tenantId = currentUser.tenantId;
+
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id, tenantId },
+      include: {
+        versions: {
+          orderBy: { version: 'desc' },
+          include: {
+            uploadedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        uploadedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        client: {
+          select: {
+            id: true,
+            companyName: true,
+            registrationNumber: true,
+            taxNumber: true,
+            vatNumber: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!document) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    // Client role can only view their own documents
+    if (currentUser.role === 'client') {
+      const client = await prisma.client.findFirst({
+        where: { tenantId, email: currentUser.email }
+      });
+      if (!client || document.clientId !== client.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    const mappedDocument = {
+      id: document.id,
+      client_id: document.clientId,
+      tenant_id: document.tenantId,
+      name: document.name,
+      file_path: document.filePath,
+      file_type: document.fileType,
+      category: document.category,
+      version: document.version,
+      file_size: Number(document.fileSize),
+      ocr_status: document.ocrStatus,
+      ocr_text: document.ocrText,
+      ocr_metadata: document.ocrMetadata,
+      uploaded_by: document.uploadedById,
+      uploader: document.uploadedBy ? {
+        id: document.uploadedBy.id,
+        full_name: document.uploadedBy.name || '',
+        email: document.uploadedBy.email || '',
+        role: 'consultant'
+      } : undefined,
+      client: document.client ? {
+        id: document.client.id,
+        company_name: document.client.companyName,
+        registration_number: document.client.registrationNumber || undefined,
+        tax_number: document.client.taxNumber || undefined,
+        vat_number: document.client.vatNumber || undefined
+      } : undefined,
+      versions: document.versions.map(v => ({
+        id: v.id,
+        document_id: v.documentId,
+        version: v.version,
+        file_path: v.filePath,
+        file_type: v.fileType || '',
+        file_size: Number(v.fileSize),
+        uploaded_by: v.uploadedById,
+        uploader: v.uploadedBy ? {
+          id: v.uploadedBy.id,
+          full_name: v.uploadedBy.name || '',
+          email: v.uploadedBy.email || '',
+          role: 'consultant'
+        } : undefined,
+        created_at: v.createdAt.toISOString()
+      })),
+      created_at: document.createdAt.toISOString()
+    };
+
+    return NextResponse.json({ data: mappedDocument });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
