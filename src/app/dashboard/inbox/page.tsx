@@ -42,8 +42,14 @@ export default function InboxPage() {
         const res = await fetch(`/api/messages?conversation_id=${activeConvo}`);
         const { data } = await res.json();
         if (!cancelled) {
-          setMessages(data || []);
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          setMessages((prev) => {
+            const isInitialLoad = prev.length === 0;
+            const hasNewMessage = data && data.length > prev.length;
+            if (isInitialLoad || hasNewMessage) {
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }
+            return data || [];
+          });
         }
       } catch (err) { console.error(err); }
     })();
@@ -85,6 +91,31 @@ export default function InboxPage() {
   };
 
   const activeConversation = conversations.find((c) => c.id === activeConvo);
+
+  const handleSaveToDocuments = async (url: string, name: string) => {
+    const clientId = (activeConversation?.client as unknown as { id: string })?.id;
+    if (!clientId) {
+      toast('No client associated with this conversation', 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: `/api/whatsapp/media/${url}`,
+          name: name || 'WhatsApp Media',
+          type: 'application/octet-stream',
+          client_id: clientId,
+          category: 'other'
+        })
+      });
+      if (!res.ok) throw new Error('Failed to save to documents');
+      toast('Saved to Documents successfully', 'success');
+    } catch (err) {
+      toast((err as Error).message || 'Failed to save', 'error');
+    }
+  };
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
@@ -168,9 +199,14 @@ export default function InboxPage() {
                               style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 300, objectFit: 'contain', backgroundColor: 'rgba(0,0,0,0.1)' }} 
                             />
                             {m.content && <div style={{ marginTop: 4 }}>{m.content}</div>}
-                            <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.8rem', color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>
-                              ↓ Download Image
-                            </a>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.8rem', opacity: 0.8 }}>
+                              <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                                ↓ Download Image
+                              </a>
+                              <button onClick={() => handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Image')} style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                                💾 Save to Documents
+                              </button>
+                            </div>
                           </div>
                         ) : messageType === 'document' && mediaUrl ? (
                           <div style={{ marginBottom: 4 }}>
@@ -178,9 +214,14 @@ export default function InboxPage() {
                               <span style={{ fontSize: '1.5rem' }}>📄</span>
                               <span>{m.content || 'Document'}</span>
                             </div>
-                            <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.8rem', color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>
-                              ↓ Download Document
-                            </a>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.8rem', opacity: 0.8 }}>
+                              <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                                ↓ Download Document
+                              </a>
+                              <button onClick={() => handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Document')} style={{ background: 'none', border: 'none', color: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                                💾 Save to Documents
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div>{m.content}</div>
