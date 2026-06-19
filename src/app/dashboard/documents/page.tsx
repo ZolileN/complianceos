@@ -197,22 +197,36 @@ export default function DocumentsPage() {
                     Please select a client first
                   </div>
                 ) : (
-                  <UploadDropzone
+                   <UploadDropzone
                     endpoint="documentUploader"
                     onClientUploadComplete={async (res) => {
-                      for (const file of res) {
-                        await fetch('/api/documents/upload', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            url: file.url, name: file.name, size: file.size,
-                            type: file.type, client_id: uploadForm.client_id, category: uploadForm.category
-                          })
-                        });
+                      try {
+                        for (const file of res) {
+                          const uploadRes = await fetch('/api/documents/upload', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              url: file.url,
+                              name: file.name,
+                              size: file.size,
+                              type: file.type,
+                              client_id: uploadForm.client_id,
+                              category: uploadForm.category
+                            })
+                          });
+                          if (!uploadRes.ok) {
+                            const errData = await uploadRes.json().catch(() => ({}));
+                            throw new Error(errData.error || `HTTP ${uploadRes.status} Error`);
+                          }
+                        }
+                        toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
+                        refresh();
+                      } catch (err) {
+                        console.error("Document registration failed:", err);
+                        toast(err instanceof Error ? err.message : 'Failed to register document on server', 'error');
+                      } finally {
+                        setShowUpload(false);
                       }
-                      setShowUpload(false);
-                      toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
-                      refresh();
                     }}
                     onUploadError={(error: Error) => {
                       toast(`Upload failed: ${error.message}`, 'error');
