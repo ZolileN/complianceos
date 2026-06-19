@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { NAV_ITEMS } from '@/lib/constants';
+import Logo from '@/components/Logo';
 
 const icons: Record<string, string> = {
   grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬',
@@ -134,8 +135,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">P</div>
-          <h1>PraxisOne</h1>
+          <Logo size={28} showText={true} />
         </div>
         <nav className="sidebar-nav">
           {getFilteredNavItems().map((item) => {
