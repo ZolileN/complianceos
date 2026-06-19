@@ -22,9 +22,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     if (!document) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    if (!document.ocrMetadata) return NextResponse.json({ error: 'No OCR data to approve' }, { status: 400 });
+    
+    // Cast to unknown and then to custom type to bypass stale IDE cache
+    const docWithOcr = document as unknown as { ocrMetadata: string | null; clientId: string };
+    if (!docWithOcr.ocrMetadata) return NextResponse.json({ error: 'No OCR data to approve' }, { status: 400 });
 
-    const metadata = JSON.parse(document.ocrMetadata);
+    const metadata = JSON.parse(docWithOcr.ocrMetadata);
     const updateData: Record<string, string> = {};
 
     if (metadata.vat_number) {
