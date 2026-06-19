@@ -191,7 +191,7 @@ export default function InboxPage() {
             ))}
           </div>
 
-          <div className="chat-panel">
+          <div className="chat-panel" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
             {!activeConvo ? (
               <div className="flex-center" style={{ flex: 1, color: 'var(--text-muted)' }}>
                 <div style={{ textAlign: 'center' }}>
