@@ -496,6 +496,7 @@ a:hover { color: var(--accent-hover); }
   transform: translateY(-5px);
   box-shadow: 0 12px 40px rgba(94, 234, 212, 0.15);
   border-color: rgba(94, 234, 212, 0.4);
+  z-index: 10;
 }
 
 .mockup-client {
