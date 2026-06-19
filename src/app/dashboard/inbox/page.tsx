@@ -34,6 +34,8 @@ export default function InboxPage() {
     return () => { cancelled = true; };
   }, [tenant, convoRefreshKey]);
 
+  const lastConvoRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!activeConvo) return;
     let cancelled = false;
@@ -43,10 +45,12 @@ export default function InboxPage() {
         const { data } = await res.json();
         if (!cancelled) {
           setMessages((prev) => {
-            const isInitialLoad = prev.length === 0;
+            const isNewConvo = lastConvoRef.current !== activeConvo;
             const hasNewMessage = data && data.length > prev.length;
-            if (isInitialLoad || hasNewMessage) {
+            
+            if (isNewConvo || hasNewMessage) {
               setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+              lastConvoRef.current = activeConvo;
             }
             return data || [];
           });
