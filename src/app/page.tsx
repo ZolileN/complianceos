@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import DemoModal from '@/components/DemoModal';
+import ScrollLink from '@/components/ScrollLink';
 
 export default function Home() {
   return (
@@ -13,11 +14,11 @@ export default function Home() {
             <Logo size={32} showText={true} />
           </Link>
           <nav className="landing-nav-links">
-            <a href="#features" className="landing-nav-link">Features</a>
-            <a href="#solutions" className="landing-nav-link">Solutions</a>
-            <a href="#how-it-works" className="landing-nav-link">How It Works</a>
-            <a href="#dashboard" className="landing-nav-link">Dashboard</a>
-            <a href="#pricing" className="landing-nav-link">Pricing</a>
+            <ScrollLink href="#features" className="landing-nav-link">Features</ScrollLink>
+            <ScrollLink href="#solutions" className="landing-nav-link">Solutions</ScrollLink>
+            <ScrollLink href="#how-it-works" className="landing-nav-link">How It Works</ScrollLink>
+            <ScrollLink href="#dashboard" className="landing-nav-link">Dashboard</ScrollLink>
+            <ScrollLink href="#pricing" className="landing-nav-link">Pricing</ScrollLink>
           </nav>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link href="/login" className="btn btn-ghost" style={{ fontSize: '0.9rem' }}>Sign In</Link>
