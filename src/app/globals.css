@@ -338,8 +338,10 @@ a:hover { color: var(--accent-hover); }
 }
 
 .landing-nav {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
   backdrop-filter: blur(12px);
   background: rgba(6, 8, 15, 0.8);
@@ -381,7 +383,7 @@ a:hover { color: var(--accent-hover); }
 .landing-hero {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 80px 24px 120px;
+  padding: 140px 24px 120px;
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
   gap: 60px;
@@ -392,7 +394,7 @@ a:hover { color: var(--accent-hover); }
   .landing-hero {
     grid-template-columns: 1fr;
     text-align: center;
-    padding: 60px 24px 80px;
+    padding: 120px 24px 80px;
     gap: 40px;
   }
 }
