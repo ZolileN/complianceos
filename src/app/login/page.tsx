@@ -40,8 +40,8 @@ export default function LoginPage() {
     <div className="auth-page">
       <div className="auth-card card card-glass animate-in">
         <div className="auth-logo">
-          <div style={{ width: 42, height: 42, background: 'linear-gradient(135deg, var(--accent), var(--blue))', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: '#fff', fontWeight: 800 }}>C</div>
-          <h1>ComplianceOS</h1>
+          <div style={{ width: 42, height: 42, background: 'linear-gradient(135deg, var(--accent), var(--blue))', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: '#fff', fontWeight: 800 }}>P</div>
+          <h1>PraxisOne</h1>
         </div>
         <p className="auth-title">Welcome back</p>
         <p className="auth-subtitle">Sign in to your compliance workspace</p>

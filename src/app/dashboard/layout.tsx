@@ -134,8 +134,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="logo-icon">C</div>
-          <h1>ComplianceOS</h1>
+          <div className="logo-icon">P</div>
+          <h1>PraxisOne</h1>
         </div>
         <nav className="sidebar-nav">
           {getFilteredNavItems().map((item) => {

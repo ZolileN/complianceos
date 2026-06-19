@@ -1,5 +1,5 @@
 /* ============================================================
-   ComplianceOS — WhatsApp Meta Business API Utilities
+   PraxisOne — WhatsApp Meta Business API Utilities
    ============================================================ */
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v25.0';

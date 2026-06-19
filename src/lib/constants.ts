@@ -1,8 +1,8 @@
 /* ============================================================
-   ComplianceOS — Application Constants
+   PraxisOne — Application Constants
    ============================================================ */
 
-export const APP_NAME = 'ComplianceOS';
+export const APP_NAME = 'PraxisOne';
 export const APP_DESCRIPTION = 'The Operating System for South African Compliance, Accounting & Advisory Firms';
 
 // ── Task Statuses ──────────────────────────────────────────
