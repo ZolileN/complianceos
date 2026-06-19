@@ -41,7 +41,8 @@ export default function DocumentsPage() {
       try {
         const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
         if (filter !== 'all') params.set('category', filter);
-        const res = await fetch(`/api/documents?${params}`);
+        params.set('_t', Date.now().toString());
+        const res = await fetch(`/api/documents?${params}`, { cache: 'no-store' });
         const { data, count } = await res.json();
         if (!cancelled) {
           setDocuments(data || []);
