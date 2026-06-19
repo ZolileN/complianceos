@@ -11,11 +11,66 @@ export async function GET() {
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   try {
-    const [clientsCount, activeTasksCount, documentsCount, overdueTasksCount] = await Promise.all([
+    // ── Auto-initialize compliance items for all active clients who don't have them ──
+    const activeClients = await prisma.client.findMany({
+      where: { tenantId, status: { not: 'inactive' } },
+      select: { id: true }
+    });
+
+    const clientsWithItems = await prisma.complianceItem.groupBy({
+      by: ['clientId'],
+      where: { tenantId },
+    });
+
+    const clientsWithItemsSet = new Set(clientsWithItems.map(c => c.clientId));
+    const uninitializedClients = activeClients.filter(c => !clientsWithItemsSet.has(c.id));
+
+    if (uninitializedClients.length > 0) {
+      const defaultItems = [
+        { category: 'SARS', name: 'VAT' },
+        { category: 'SARS', name: 'PAYE' },
+        { category: 'SARS', name: 'Income Tax' },
+        { category: 'CIPC', name: 'Annual Returns' },
+        { category: 'CIPC', name: 'Beneficial Ownership' },
+        { category: 'Labour', name: 'UIF' },
+        { category: 'Labour', name: 'COIDA' },
+        { category: 'Labour', name: 'Employment Equity' },
+        { category: 'BEE', name: 'Certificate Expiry' },
+        { category: 'BEE', name: 'Verification Schedule' }
+      ];
+
+      const toCreate = [];
+      for (const c of uninitializedClients) {
+        for (const item of defaultItems) {
+          toCreate.push({
+            clientId: c.id,
+            tenantId,
+            category: item.category,
+            name: item.name,
+            status: 'compliant',
+            notes: ''
+          });
+        }
+      }
+      await prisma.complianceItem.createMany({ data: toCreate });
+    }
+
+    const [
+      clientsCount,
+      activeTasksCount,
+      documentsCount,
+      overdueTasksCount,
+      compliantItemsCount,
+      actionRequiredItemsCount,
+      criticalItemsCount
+    ] = await Promise.all([
       prisma.client.count({ where: { tenantId } }),
       prisma.task.count({ where: { tenantId, status: { not: 'completed' } } }),
       prisma.document.count({ where: { tenantId } }),
-      prisma.task.count({ where: { tenantId, status: 'overdue' } })
+      prisma.task.count({ where: { tenantId, status: 'overdue' } }),
+      prisma.complianceItem.count({ where: { tenantId, status: { in: ['compliant', 'not_applicable'] } } }),
+      prisma.complianceItem.count({ where: { tenantId, status: 'action_required' } }),
+      prisma.complianceItem.count({ where: { tenantId, status: 'critical' } })
     ]);
 
     const recentClients = await prisma.client.findMany({
@@ -37,7 +92,12 @@ export async function GET() {
         clients: clientsCount,
         tasks: activeTasksCount,
         documents: documentsCount,
-        overdue: overdueTasksCount
+        overdue: overdueTasksCount,
+        compliance: {
+          compliant: compliantItemsCount,
+          action_required: actionRequiredItemsCount,
+          critical: criticalItemsCount
+        }
       },
       recentClients: recentClients.map(c => ({ ...c, company_name: c.companyName, created_at: c.createdAt })),
       recentTasks: recentTasks.map(t => ({ ...t, due_date: t.dueDate }))

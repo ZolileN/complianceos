@@ -4,7 +4,19 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
-interface Stats { clients: number; tasks: number; documents: number; overdue: number; }
+interface ComplianceStats {
+  compliant: number;
+  action_required: number;
+  critical: number;
+}
+
+interface Stats { 
+  clients: number; 
+  tasks: number; 
+  documents: number; 
+  overdue: number; 
+  compliance?: ComplianceStats;
+}
 
 export default function DashboardPage() {
   const { user, tenant } = useAuth();
@@ -67,6 +79,50 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Compliance Monitoring Engine Overview */}
+      {stats.compliance && (
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            🛡️ Compliance Monitoring Engine
+          </h2>
+          <div className="content-grid grid-3">
+            <div className="card" style={{ borderLeft: '4px solid var(--green)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--green)' }}>
+                  {stats.compliance.compliant}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Requirements Compliant
+                </div>
+              </div>
+              <span style={{ fontSize: '2rem' }}>✅</span>
+            </div>
+            <div className="card" style={{ borderLeft: '4px solid var(--amber)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--amber)' }}>
+                  {stats.compliance.action_required}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Need Action / Pending
+                </div>
+              </div>
+              <span style={{ fontSize: '2rem' }}>⚠️</span>
+            </div>
+            <div className="card" style={{ borderLeft: '4px solid var(--red)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--red)' }}>
+                  {stats.compliance.critical}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  Critical Deadlines / Expiries
+                </div>
+              </div>
+              <span style={{ fontSize: '2rem' }}>🚨</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Activity */}
       <div className="content-grid grid-2">
