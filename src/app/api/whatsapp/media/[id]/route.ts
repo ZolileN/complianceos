@@ -5,7 +5,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Basic auth check
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const mediaId = params.id;
+    const mediaId = (await params).id;
     if (!mediaId) {
       return NextResponse.json({ error: 'Media ID required' }, { status: 400 });
     }
@@ -26,7 +26,7 @@ export async function GET(
     const buffer = await downloadMedia(mediaId);
 
     // Return the file with correct headers
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': mediaInfo.mime_type,
