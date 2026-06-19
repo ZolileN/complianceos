@@ -23,7 +23,7 @@ export default function InboxPage() {
     if (!tenant) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (convoRefreshKey === 0) setLoading(true);
       try {
         const res = await fetch('/api/conversations');
         const { data } = await res.json();
