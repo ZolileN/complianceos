@@ -305,9 +305,9 @@ export default function Home() {
                 ))}
               </div>
               <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--border-primary)', paddingTop: 16 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>Z</div>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: '#fff', fontWeight: 700 }}>B</div>
                 <div>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600 }}>Zolile</p>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600 }}>Bruce Wayne</p>
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Administrator</p>
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function Home() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Dashboard</h2>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Welcome back, Zolile 👋</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Welcome back, Bruce Wayne 👋</p>
                 </div>
                 <button className="btn btn-primary btn-sm">+ New Client</button>
               </div>
@@ -348,10 +348,10 @@ export default function Home() {
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 16 }}>Recent Clients</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {[
-                      { name: 'Njozela Attorneys', status: 'ACTIVE', badge: 'badge-green' },
-                      { name: '18 Museum', status: 'ACTIVE', badge: 'badge-green' },
-                      { name: 'Mandondo Consulting', status: 'INACTIVE', badge: 'badge-gray' },
-                      { name: 'MLK Computer Consulting', status: 'ACTIVE', badge: 'badge-green' }
+                      { name: 'Wayne Enterprises', status: 'ACTIVE', badge: 'badge-green' },
+                      { name: 'Stark Industries', status: 'ACTIVE', badge: 'badge-green' },
+                      { name: 'LexCorp', status: 'INACTIVE', badge: 'badge-gray' },
+                      { name: 'Daily Bugle', status: 'ACTIVE', badge: 'badge-green' }
                     ].map((c) => (
                       <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{c.name}</span>
@@ -366,8 +366,8 @@ export default function Home() {
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 16 }}>Active Tasks</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {[
-                      { name: 'Payroll', due: 'Due: 6/16/2026', label: 'NEW', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
-                      { name: 'Tax clearance certificate', due: 'Due: 6/18/2026', label: 'WAITING_ON_CLIENT', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
+                      { name: 'Arkham Security Audit', due: 'Due: 6/16/2026', label: 'NEW', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' },
+                      { name: 'Iron Man Suit Patents', due: 'Due: 6/18/2026', label: 'WAITING_ON_CLIENT', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
                     ].map((t) => (
                       <div key={t.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)' }}>
                         <div>
