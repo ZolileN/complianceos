@@ -37,17 +37,23 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // --- NEW LOGIC FOR COMPLIANCE AUTOMATION ---
+    const mappedDocument = {
+      ...document,
+      fileSize: Number(document.fileSize)
+    };
+
+    // --- COMPLIANCE AUTOMATION (fire-and-forget — does NOT block response) ---
     const mapping: Record<string, { cat: string; name: string }> = {
       'vat_certificate': { cat: 'SARS', name: 'VAT' },
       'bee_certificate': { cat: 'BEE', name: 'Certificate Expiry' },
       'tax_certificate': { cat: 'SARS', name: 'Income Tax' },
-      'cor_document': { cat: 'CIPC', name: 'Annual Returns' }
+      'cor_document':    { cat: 'CIPC', name: 'Annual Returns' }
     };
 
     if (category && mapping[category]) {
       const match = mapping[category];
-      const itemToUpdate = await prisma.complianceItem.findFirst({
+      // No await — runs in background after response is sent
+      prisma.complianceItem.findFirst({
         where: {
           tenantId,
           clientId: client_id,
@@ -55,25 +61,20 @@ export async function POST(request: NextRequest) {
           name: match.name,
           status: { in: ['action_required', 'critical'] }
         }
-      });
-
-      if (itemToUpdate) {
-        await prisma.complianceItem.update({
+      }).then(itemToUpdate => {
+        if (!itemToUpdate) return;
+        return prisma.complianceItem.update({
           where: { id: itemToUpdate.id },
           data: {
             status: 'compliant',
             lastChecked: new Date(),
-            notes: (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') + `Status automatically updated via document upload: ${document.name}`
+            notes: (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') +
+              `Status automatically updated via document upload: ${document.name}`
           }
         });
-      }
+      }).catch(err => console.error('Compliance auto-update failed (non-critical):', err));
     }
-    // --- END NEW LOGIC ---
-
-    const mappedDocument = {
-      ...document,
-      fileSize: Number(document.fileSize)
-    };
+    // --- END COMPLIANCE AUTOMATION ---
 
     return NextResponse.json({ data: mappedDocument }, { status: 201 });
   } catch (error: unknown) {
@@ -82,3 +83,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

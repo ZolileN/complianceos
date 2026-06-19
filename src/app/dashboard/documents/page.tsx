@@ -199,15 +199,32 @@ export default function DocumentsPage() {
                 ) : (
                    <UploadDropzone
                     endpoint="documentUploader"
-                    headers={{
-                      "x-client-id": uploadForm.client_id,
-                      "x-category": uploadForm.category,
-                    }}
-                    onClientUploadComplete={(res) => {
-                      // DB registration is handled server-side in onUploadComplete
-                      toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
-                      setShowUpload(false);
-                      refresh();
+                    onClientUploadComplete={async (res) => {
+                      try {
+                        for (const file of res) {
+                          // ufsUrl is v7's field; fall back to url for older versions
+                          const fileUrl = (file as unknown as { ufsUrl?: string }).ufsUrl ?? file.url;
+                          await fetch('/api/documents/upload', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              url: fileUrl,
+                              name: file.name,
+                              size: file.size,
+                              type: file.type,
+                              client_id: uploadForm.client_id,
+                              category: uploadForm.category
+                            })
+                          });
+                        }
+                        toast(`${res.length} document${res.length > 1 ? 's' : ''} uploaded successfully`);
+                        refresh();
+                      } catch (err) {
+                        console.error("Document registration failed:", err);
+                        toast(err instanceof Error ? err.message : 'Failed to register document', 'error');
+                      } finally {
+                        setShowUpload(false);
+                      }
                     }}
                     onUploadError={(error: Error) => {
                       toast(`Upload failed: ${error.message}`, 'error');
