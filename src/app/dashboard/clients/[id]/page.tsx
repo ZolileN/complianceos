@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc } from '@/types';
@@ -15,6 +16,7 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const { user, tenant } = useAuth();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<TabType>('overview');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -64,7 +66,14 @@ export default function ClientDetailPage() {
   };
 
   const handleArchive = async () => {
-    if (!confirm('Archive this client? They will be marked inactive and hidden from active lists. You can reactivate them later.')) return;
+    const ok = await confirm({
+      title: 'Archive Client',
+      message: 'Are you sure you want to archive this client? They will be marked inactive and hidden from active lists. You can reactivate them later.',
+      confirmText: 'Archive',
+      cancelText: 'Cancel',
+      type: 'warning'
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to archive client');

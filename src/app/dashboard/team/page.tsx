@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { useRouter } from 'next/navigation';
 
 interface TeamMember {
@@ -16,6 +17,7 @@ interface TeamMember {
 export default function TeamPage() {
   const { user, tenant } = useAuth();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const router = useRouter();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,14 @@ export default function TeamPage() {
   };
 
   const handleDeleteMember = async (memberId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${name} from your team?`)) return;
+    const ok = await confirm({
+      title: 'Remove Team Member',
+      message: `Are you sure you want to remove ${name} from your team? This action will immediately revoke their access.`,
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/users/${memberId}`, {

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/lib/constants';
 import type { Task } from '@/types';
 
@@ -12,6 +13,7 @@ const PAGE_LIMIT = 100;
 export default function TasksPage() {
   const { tenant } = useAuth();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
@@ -88,7 +90,14 @@ export default function TasksPage() {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    const ok = await confirm({
+      title: 'Delete Task',
+      message: 'Are you sure you want to permanently delete this task? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete task');

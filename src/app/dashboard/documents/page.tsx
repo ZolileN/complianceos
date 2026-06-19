@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useConfirm } from '@/contexts/ConfirmContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Document as Doc } from '@/types';
 import { UploadDropzone } from "@/lib/uploadthing";
@@ -14,6 +15,7 @@ const PAGE_LIMIT = 20;
 export default function DocumentsPage() {
   const { tenant } = useAuth();
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const [documents, setDocuments] = useState<Doc[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
@@ -61,7 +63,14 @@ export default function DocumentsPage() {
   }, [tenant]);
 
   const handleDeleteDoc = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    const ok = await confirm({
+      title: 'Delete Document',
+      message: 'Are you sure you want to permanently delete this document? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete document');
