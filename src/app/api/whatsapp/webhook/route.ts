@@ -56,8 +56,19 @@ export async function POST(request: NextRequest) {
 
     if (!conversation) {
       // Try to find a client with this WhatsApp number
+      let localFormat = from;
+      if (from.startsWith('27') && from.length === 11) {
+        localFormat = `0${from.substring(2)}`;
+      }
+      
       const client = await prisma.client.findFirst({
-        where: { whatsappNumber: from }
+        where: { 
+          OR: [
+            { whatsappNumber: from },
+            { whatsappNumber: localFormat },
+            { whatsappNumber: `+${from}` }
+          ]
+        }
       });
 
       let tenantId = client?.tenantId;
