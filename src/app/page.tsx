@@ -455,15 +455,41 @@ export default function Home() {
 
       {/* ── Contact / Book Demo Section ── */}
       <section id="contact" className="landing-section" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-        <div className="cta-banner">
+        <div className="cta-banner" style={{ textAlign: 'center', marginBottom: 40 }}>
           <h2 className="cta-title">Stop Managing Work Across Five Different Systems</h2>
-          <p className="cta-subtitle">
+          <p className="cta-subtitle" style={{ margin: '0 auto 32px' }}>
             Bring your clients, documents, workflows, and communications into a single operating platform.
           </p>
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/signup" className="btn btn-primary btn-lg">Start Free Trial</Link>
-            <a href="mailto:info@praxisone.com" className="btn btn-secondary btn-lg">Book a Demo</a>
-          </div>
+          
+          <form action="https://formsubmit.co/hello@mlkcomputer.com" method="POST" className="card" style={{ maxWidth: 460, margin: '0 auto', textAlign: 'left', padding: '32px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 20 }}>Book a Demo</h3>
+            
+            <input type="hidden" name="_subject" value="New Demo Request from PraxisOne" />
+            <input type="hidden" name="_captcha" value="false" />
+            <input type="hidden" name="_template" value="table" />
+            
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">Full Name</label>
+              <input type="text" name="name" className="input" placeholder="Tony Stark" required />
+            </div>
+            
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">Work Email</label>
+              <input type="email" name="email" className="input" placeholder="tony@starkindustries.com" required />
+            </div>
+            
+            <div className="form-group" style={{ marginBottom: 24 }}>
+              <label className="form-label">Company Name</label>
+              <input type="text" name="company" className="input" placeholder="Stark Industries" required />
+            </div>
+            
+            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
+              Request Demo
+            </button>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: '16px 0 0 0' }}>
+              Or <Link href="/signup" style={{ fontWeight: 600 }}>Start a Free Trial</Link> immediately.
+            </p>
+          </form>
         </div>
       </section>
 
