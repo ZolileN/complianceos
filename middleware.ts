@@ -11,6 +11,6 @@ export const config = {
      * - /api/whatsapp/webhook (Public webhook)
      * - _next/static, _next/image, favicon.ico, etc.
      */
-    '/((?!login|signup|api/auth|api/uploadthing|api/whatsapp/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!$|login|signup|api/auth|api/uploadthing|api/whatsapp/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
