@@ -152,12 +152,43 @@ export default function InboxPage() {
                   </div>
                 </div>
                 <div className="chat-messages">
-                  {messages.map((m) => (
-                    <div key={m.id} className={`message-bubble ${m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'}`}>
-                      {m.content}
-                      <div className="message-time">{formatTime(m.created_at)}</div>
-                    </div>
-                  ))}
+                  {messages.map((m) => {
+                    const mData = m as unknown as { messageType?: string; mediaUrl?: string };
+                    const messageType = mData.messageType || m.message_type;
+                    const mediaUrl = mData.mediaUrl || m.media_url;
+                    
+                    return (
+                      <div key={m.id} className={`message-bubble ${m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'}`}>
+                        {messageType === 'image' && mediaUrl ? (
+                          <div style={{ marginBottom: 4 }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img 
+                              src={`/api/whatsapp/media/${mediaUrl}`} 
+                              alt={m.content || 'Image'} 
+                              style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 300, objectFit: 'contain', backgroundColor: 'rgba(0,0,0,0.1)' }} 
+                            />
+                            {m.content && <div style={{ marginTop: 4 }}>{m.content}</div>}
+                            <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.8rem', color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>
+                              ↓ Download Image
+                            </a>
+                          </div>
+                        ) : messageType === 'document' && mediaUrl ? (
+                          <div style={{ marginBottom: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '1.5rem' }}>📄</span>
+                              <span>{m.content || 'Document'}</span>
+                            </div>
+                            <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: '0.8rem', color: 'inherit', textDecoration: 'underline', opacity: 0.8 }}>
+                              ↓ Download Document
+                            </a>
+                          </div>
+                        ) : (
+                          <div>{m.content}</div>
+                        )}
+                        <div className="message-time">{formatTime(m.created_at)}</div>
+                      </div>
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
                 <form className="chat-composer" onSubmit={sendMessage}>

@@ -112,6 +112,29 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Auto-save documents to platform Documents module
+    if (messageType === 'document' && mediaUrl && conversation.clientId) {
+      try {
+        const { getMediaInfo } = await import('@/lib/whatsapp');
+        const mediaInfo = await getMediaInfo(mediaUrl).catch(() => null);
+        
+        await prisma.document.create({
+          data: {
+            clientId: conversation.clientId,
+            tenantId: conversation.tenantId,
+            name: content || 'WhatsApp Document',
+            filePath: `/api/whatsapp/media/${mediaUrl}`,
+            fileType: mediaInfo?.mime_type || msg.document?.mime_type || 'application/pdf',
+            category: 'other',
+            version: 1,
+            fileSize: BigInt(mediaInfo?.file_size || 0),
+          }
+        });
+      } catch (e) {
+        console.error("Failed to auto-save document", e);
+      }
+    }
+
     // Update conversation lastMessageAt
     await prisma.conversation.update({
       where: { id: conversation.id },
