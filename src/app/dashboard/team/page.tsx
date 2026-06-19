@@ -290,7 +290,7 @@ export default function TeamPage() {
                   required 
                   value={form.name} 
                   onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Pepper Potts"
                 />
               </div>
 
@@ -302,7 +302,7 @@ export default function TeamPage() {
                   required 
                   value={form.email} 
                   onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                  placeholder="e.g. john@company.co.za"
+                  placeholder="e.g. pepper@starkindustries.com"
                 />
               </div>
 

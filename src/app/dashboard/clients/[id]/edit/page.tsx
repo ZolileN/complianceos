@@ -130,7 +130,7 @@ export default function EditClientPage() {
           <div className="stack">
             <div className="form-group">
               <label className="form-label">Company Name *</label>
-              <input className="input" required value={form.company_name} onChange={(e) => updateForm('company_name', e.target.value)} placeholder="Mkhize Holdings (Pty) Ltd" />
+              <input className="input" required value={form.company_name} onChange={(e) => updateForm('company_name', e.target.value)} placeholder="Stark Industries (Pty) Ltd" />
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -155,7 +155,7 @@ export default function EditClientPage() {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Email</label>
-                <input className="input" type="email" value={form.email} onChange={(e) => updateForm('email', e.target.value)} placeholder="info@company.co.za" />
+                <input className="input" type="email" value={form.email} onChange={(e) => updateForm('email', e.target.value)} placeholder="info@starkindustries.com" />
               </div>
               <div className="form-group">
                 <label className="form-label">Phone</label>
@@ -212,11 +212,11 @@ export default function EditClientPage() {
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
                 <div className="form-group">
                   <label className="form-label">Name</label>
-                  <input className="input" value={d.name} onChange={(e) => updateDirector(i, 'name', e.target.value)} placeholder="Full name" />
+                  <input className="input" value={d.name} onChange={(e) => updateDirector(i, 'name', e.target.value)} placeholder="e.g. James Rhodes" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">ID Number</label>
-                  <input className="input" value={d.id_number} onChange={(e) => updateDirector(i, 'id_number', e.target.value)} placeholder="SA ID number" />
+                  <input className="input" value={d.id_number} onChange={(e) => updateDirector(i, 'id_number', e.target.value)} placeholder="ID number" />
                 </div>
                 <button
                   type="button"

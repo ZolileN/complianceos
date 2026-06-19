@@ -207,7 +207,7 @@ export default function TasksPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Title *</label>
-                  <input className="input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. File annual return for Mkhize Holdings" />
+                  <input className="input" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Complete Mark 42 armor diagnostics" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Description</label>

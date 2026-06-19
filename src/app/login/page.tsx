@@ -55,7 +55,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="stack">
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input className="input" type="email" placeholder="you@company.co.za" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input className="input" type="email" placeholder="tony@starkindustries.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>

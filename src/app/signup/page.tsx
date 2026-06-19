@@ -70,15 +70,15 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit} className="stack">
           <div className="form-group">
             <label className="form-label">Firm Name</label>
-            <input className="input" type="text" placeholder="Mkhize & Associates" value={firmName} onChange={(e) => setFirmName(e.target.value)} required />
+            <input className="input" type="text" placeholder="Stark Industries" value={firmName} onChange={(e) => setFirmName(e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Your Full Name</label>
-            <input className="input" type="text" placeholder="Sipho Mkhize" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            <input className="input" type="text" placeholder="Tony Stark" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Email</label>
-            <input className="input" type="email" placeholder="sipho@mkhize.co.za" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input className="input" type="email" placeholder="tony@starkindustries.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Password</label>
