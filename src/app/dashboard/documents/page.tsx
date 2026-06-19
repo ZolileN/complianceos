@@ -143,7 +143,7 @@ export default function DocumentsPage() {
                     <td style={{ color: 'var(--text-secondary)' }}>{(d.client as unknown as { company_name: string })?.company_name || '—'}</td>
                     <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>
                     <td style={{ color: 'var(--text-muted)' }}>{formatSize(d.file_size)}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString()}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString('en-GB')}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setActiveViewDoc(d)}>View</button>

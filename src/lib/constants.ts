@@ -62,11 +62,11 @@ export const CLIENT_STATUSES = [
   { value: 'onboarding', label: 'Onboarding', color: '#3b82f6' },
 ] as const;
 
-// ── Navigation Items ───────────────────────────────────────
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
   { href: '/dashboard/clients', label: 'Clients', icon: 'users' },
   { href: '/dashboard/team', label: 'Team', icon: 'user' },
+  { href: '/dashboard/compliance', label: 'Compliance', icon: 'shield' },
   { href: '/dashboard/tasks', label: 'Tasks', icon: 'check-square' },
   { href: '/dashboard/workflows', label: 'Workflows', icon: 'git-branch' },
   { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },

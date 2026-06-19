@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Real background OCR extraction logic using pdf-parse and regex
-async function triggerOcrSimulation(documentId: string) {
+export async function triggerOcrSimulation(documentId: string) {
   try {
     // 1. Set status to processing
     await db.document.update({
@@ -312,13 +312,13 @@ async function triggerOcrSimulation(documentId: string) {
                          ocrText.match(/\b(4\d{9})\b/);
         const vatNum = vatMatch ? vatMatch[1].trim() : "";
 
-        const compNameMatch = ocrText.match(/Trading\s*Name\s*:?\s*([^\n\r]+)/i) ||
-                              ocrText.match(/Registered\s*Name\s*:?\s*([^\n\r]+)/i) ||
-                              ocrText.match(/Enterprise\s*Name\s*:?\s*([^\n\r]+)/i);
+        const compNameMatch = ocrText.match(/Trading\s*Name\s*:?\s*(.*?)(?=VAT|Registration|Effective|\n|\r|$|:)/i) ||
+                              ocrText.match(/Registered\s*Name\s*:?\s*(.*?)(?=VAT|Registration|Effective|\n|\r|$|:)/i) ||
+                              ocrText.match(/Enterprise\s*Name\s*:?\s*(.*?)(?=VAT|Registration|Effective|\n|\r|$|:)/i);
         const compName = compNameMatch ? compNameMatch[1].trim().replace(/^:\s*/, '') : clientName;
 
-        const dateMatch = ocrText.match(/Effective\s*Date\s*:?\s*([^\n\r]+)/i) ||
-                          ocrText.match(/Registration\s*Date\s*:?\s*([^\n\r]+)/i);
+        const dateMatch = ocrText.match(/Effective\s*Date\s*:?\s*([0-9/.\-]+)/i) ||
+                          ocrText.match(/Registration\s*Date\s*:?\s*([0-9/.\-]+)/i);
 
         metadata = {
           document_type: 'VAT 103 Certificate of Registration',
@@ -329,20 +329,23 @@ async function triggerOcrSimulation(documentId: string) {
         };
 
       } else if (cleanCategory === 'tax_certificate') {
-        const taxMatch = ocrText.match(/Tax\s*Reference\s*Number\s*:?\s*(\d{10})/i) ||
+        const taxMatch = ocrText.match(/Taxpayer\s*Reference\s*Number\(s\)\s*:?\s*(\d{10})/i) ||
+                         ocrText.match(/Tax\s*Reference\s*Number\s*:?\s*(\d{10})/i) ||
                          ocrText.match(/Tax\s*Number\s*:?\s*(\d{10})/i) ||
                          ocrText.match(/\b(9\d{9})\b/);
         const taxNum = taxMatch ? taxMatch[1].trim() : "";
 
-        const pinMatch = ocrText.match(/PIN\s*:?\s*([0-9A-Z]+)/i) ||
-                         ocrText.match(/Status\s*PIN\s*:?\s*([0-9A-Z]+)/i);
+        const pinMatch = ocrText.match(/PIN\s*:?\s*([0-9A-Z]{9,10})/i) ||
+                         ocrText.match(/PIN\s*Issued\s*([0-9A-Z]{9,10})/i) ||
+                         ocrText.match(/Status\s*PIN\s*:?\s*([0-9A-Z]{9,10})/i);
         const pin = pinMatch ? pinMatch[1].trim() : "";
 
-        const compNameMatch = ocrText.match(/Registered\s*Name\s*:?\s*([^\n\r]+)/i) ||
-                              ocrText.match(/Trading\s*Name\s*:?\s*([^\n\r]+)/i);
-        const compName = compNameMatch ? compNameMatch[1].trim().replace(/^:\s*/, '') : clientName;
+        const taxpayerMatch = ocrText.match(/Taxpayer\s*Name\s*:?\s*(.*?)(?=Trading|Taxpayer|\n|\r|$|:)/i);
+        const tradingMatch = ocrText.match(/Trading\s*Name\s*:?\s*(.*?)(?=Taxpayer|\n|\r|$|:)/i);
+        const compName = tradingMatch ? tradingMatch[1].trim() : (taxpayerMatch ? taxpayerMatch[1].trim() : clientName);
 
-        const expiryMatch = ocrText.match(/Expiry\s*Date\s*:?\s*([^\n\r]+)/i);
+        const expiryMatch = ocrText.match(/PIN\s*Expiry\s*Date\s*:?\s*([0-9/.\-]+)/i) ||
+                            ocrText.match(/Expiry\s*Date\s*:?\s*([0-9/.\-]+)/i);
 
         metadata = {
           document_type: 'Tax Clearance Certificate (Pin)',
@@ -354,24 +357,130 @@ async function triggerOcrSimulation(documentId: string) {
         };
 
       } else if (cleanCategory === 'cor_document') {
-        const regMatch = ocrText.match(/Registration\s*Number\s*:?\s*([0-9A-Z/]+)/i) ||
-                         ocrText.match(/Enterprise\s*Number\s*:?\s*([0-9A-Z/]+)/i) ||
-                         ocrText.match(/\b[Kk]?\d{4}\s*\/\s*\d{6}\s*\/\s*\d{2}\b/);
-        const regNum = regMatch ? regMatch[1].trim() : "";
+        // ─── COR14.3 Enterprise Information ─────────────────────────────────────
+        // The PDF text is extracted in two-column order (labels column, then values
+        // column) so we must anchor each pattern precisely to what appears in the stream.
+        //
+        // Actual raw text structure observed:
+        //   Header:  "Registration Number: Enterprise Name:   ZOLILE NONZABA 2023 / 654922 / 07"
+        //   Labels:  "Registration Date Business Start Date Enterprise Type Enterprise Status Financial Year End"
+        //   Values:  "27/03/2023 27/03/2023 Private Company In Business February"
+        //   TAX:     "9139303276 TAX Number"   ← value appears BEFORE the label
+        //   Director:"NONZAPA, ZOLILE JACKSON   Director   27/03/2023  ...  8404145741084"
 
-        const compNameMatch = ocrText.match(/Enterprise\s*Name\s*:?\s*([^\n\r]+)/i) ||
-                              ocrText.match(/Registered\s*Name\s*:?\s*([^\n\r]+)/i);
-        const compName = compNameMatch ? compNameMatch[1].trim().replace(/^:\s*/, '') : clientName;
+        // ── 1. Enterprise Name ────────────────────────────────────────────────────
+        // In the header row the labels appear as "Registration Number: Enterprise Name:"
+        // followed immediately by the two values: "ZOLILE NONZABA 2023/654922/07"
+        // We grab everything before the registration number pattern.
+        const headerMatch =
+          ocrText.match(/Enterprise\s+Name:\s+([\w\s()'.,-]+?)\s+(\d{4}\s*\/\s*\d{6}\s*\/\s*\d{2})/i) ||
+          ocrText.match(/Enterprise\s+Name\s{2,}([\w\s()'.,-]{2,60}?)\s{2,}/i);
+        const compName = headerMatch
+          ? headerMatch[1].trim().replace(/\s+/g, ' ')
+          : clientName;
 
-        const dateMatch = ocrText.match(/Registration\s*Date\s*:?\s*([^\n\r]+)/i);
+        // ── 2. Registration Number ────────────────────────────────────────────────
+        // Appears as "YYYY / NNNNNN / NN" — just match the pattern directly.
+        const regNumMatch = ocrText.match(/(\d{4}\s*\/\s*\d{6}\s*\/\s*\d{2})/);
+        const regNum = regNumMatch
+          ? regNumMatch[1].replace(/\s+/g, ' ').trim()
+          : "";
+
+        // ── 3 & 4. Registration Date + Business Start Date ────────────────────────
+        // All labels appear in one block, then all values follow.
+        // Anchor: "Financial Year End" is the last label — values start immediately after.
+        // Value order:  DD/MM/YYYY  DD/MM/YYYY  [Enterprise Type]  [Status]  [Month]
+        const valBlockMatch = ocrText.match(
+          /Financial\s+Year\s+End\s+(\d{2}[\/\-.]\d{2}[\/\-.]\d{4})\s+(\d{2}[\/\-.]\d{2}[\/\-.]\d{4})\s+([\w\s]+?Company[\w\s]*?)\s+(In\s+Business|Deregistered|Under\s+Liquidation|[\w\s]{2,30}?)\s+(January|February|March|April|May|June|July|August|September|October|November|December)/i
+        );
+        const registrationDate   = valBlockMatch ? parseOcrDate(valBlockMatch[1].trim()) : "";
+        const businessStartDate  = valBlockMatch ? parseOcrDate(valBlockMatch[2].trim()) : "";
+        const enterpriseType     = valBlockMatch ? valBlockMatch[3].trim() : "Private Company";
+        const enterpriseStatus   = valBlockMatch ? valBlockMatch[4].trim() : "In Business";
+        const financialYearEnd   = valBlockMatch ? valBlockMatch[5].trim() : "";
+
+        // ── 5. TAX Number ─────────────────────────────────────────────────────────
+        // In this document the 10-digit value appears BEFORE the label "TAX Number".
+        const taxNumMatch =
+          ocrText.match(/(\d{9,10})\s+TAX\s+Number/i) ||
+          ocrText.match(/TAX\s+Number\s+(\d{9,10})/i);
+        const taxNum = taxNumMatch ? taxNumMatch[1].trim() : "";
+
+        // ── 6. Registered Office Address ─────────────────────────────────────────
+        // The address VALUES appear BEFORE the column labels "POSTAL ADDRESS / ADDRESS OF
+        // REGISTERED OFFICE" in the flattened stream. They follow the "Addresses" label
+        // in the Enterprise Info block, bounded before "Registration Date".
+        // Format: "Addresses  [POSTAL_ADDR 7000]  [REG_OFFICE_ADDR 7000]  Registration Date"
+        const addrBlockMatch = ocrText.match(
+          /\bAddresses\s+(\d[\w\s,]+?\d{4})\s+(\d[\w\s,]+?\d{4})\s+Registration\s+Date/i
+        );
+        const registeredAddress = addrBlockMatch
+          ? addrBlockMatch[2].trim().replace(/\s+/g, ' ')  // second = registered office
+          : "";
+
+        // ── 7. Directors ──────────────────────────────────────────────────────────
+        // Scope to the ACTIVE MEMBERS section to avoid false matches on earlier text.
+        // Within the section, pattern is:  "NAME   Director   DD/MM/YYYY ... 13-digit-ID"
+        // The ID appears after the director's postal/residential address block.
+        const directorLines: string[] = [];
+        const activeMembersSection = ocrText.match(
+          /ACTIVE\s+MEMBERS\s*\/\s*DIRECTORS\s+([\s\S]+?)(?=\s+Page\s+\d|$)/i
+        );
+        if (activeMembersSection) {
+          const dirSection = activeMembersSection[1];
+          const dirRegex = /([\w\s,'.()-]{5,60}?)\s{2,}Director\s+(\d{2}\/\d{2}\/\d{4})[\s\S]*?(\d{13})/gi;
+          let dm: RegExpExecArray | null;
+          // eslint-disable-next-line no-cond-assign
+          while ((dm = dirRegex.exec(dirSection)) !== null) {
+            directorLines.push(`${dm[1].trim()} (ID: ${dm[3]}, Appointed: ${dm[2]})`);
+          }
+        }
+        const directors = directorLines.join('; ');
+
+        // ── Build metadata object ─────────────────────────────────────────────────
+        metadata = {
+          document_type:       'CIPC COR14.3 Registration Certificate',
+          company_name:        compName,
+          registration_number: regNum,
+          registration_date:   registrationDate   || new Date().toISOString().split('T')[0],
+          enterprise_type:     enterpriseType,
+          enterprise_status:   enterpriseStatus
+        };
+        if (businessStartDate)  metadata.business_start_date = businessStartDate;
+        if (financialYearEnd)   metadata.financial_year_end  = financialYearEnd;
+        if (taxNum)             metadata.tax_number           = taxNum;
+        if (registeredAddress)  metadata.registered_address  = registeredAddress;
+        if (directors)          metadata.directors            = directors;
+      } else if (cleanCategory === 'bank_statement') {
+        const bankMatch = ocrText.match(/(Capitec|FNB|First\s*National\s*Bank|Standard\s*Bank|Absa|Nedbank)/i);
+        const bankName = bankMatch ? bankMatch[1].trim() : "Capitec Bank";
+
+        const holderMatch = ocrText.match(/(?:MR|MRS|MS|MISS|DR)\s+([A-Z\s]{5,40})/i) ||
+                            ocrText.match(/Account\s*Holder\s*:?\s*([A-Z\s]{5,40})/i);
+        const holderName = holderMatch ? holderMatch[1].trim() : clientName;
+
+        const accMatch = ocrText.match(/Account\s*Number\s*:?\s*(\d{9,12})/i);
+        const accNum = accMatch ? accMatch[1].trim() : "";
+
+        const dateMatch = ocrText.match(/Print\s*Date\s*:?\s*([0-9/.\-]+)/i) ||
+                          ocrText.match(/Statement\s*Date\s*:?\s*([0-9/.\-]+)/i) ||
+                          ocrText.match(/Date\s*:?\s*([0-9/.\-]+)/i);
+
+        const addressMatch = ocrText.match(/(\d+\s+[A-Za-z\s]+(?:STREET|ROAD|AVE|AVENUE|DRIVE|WAY|ST|RD)[A-Za-z\s,0-9]+?\d{4})/i);
+        const address = addressMatch ? addressMatch[1].trim() : "";
 
         metadata = {
-          document_type: 'CIPC COR14.3 Registration Certificate',
-          company_name: compName,
-          registration_number: regNum,
-          registration_date: dateMatch ? parseOcrDate(dateMatch[1].trim()) : new Date().toISOString().split('T')[0],
-          enterprise_type: 'Private Company'
+          document_type: 'Bank Statement / Proof of Address',
+          bank_name: bankName,
+          account_holder: holderName,
+          account_number: accNum,
+          statement_date: dateMatch ? parseOcrDate(dateMatch[1].trim()) : new Date().toISOString().split('T')[0]
         };
+
+        if (address) {
+          metadata.address = address;
+        }
+
       } else {
         metadata = {
           document_type: 'General Document',
@@ -408,6 +517,14 @@ async function triggerOcrSimulation(documentId: string) {
 function parseOcrDate(dateStr: string): string {
   try {
     const cleanStr = dateStr.trim().replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+    
+    // In South Africa, dates like 03/12/2026 are DD/MM/YYYY. 
+    // JS Date() defaults to US MM/DD/YYYY, so we must intercept it first.
+    const saDateMatch = cleanStr.match(/^(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})$/);
+    if (saDateMatch) {
+      return `${saDateMatch[3]}-${saDateMatch[2]}-${saDateMatch[1]}`;
+    }
+
     const parsed = new Date(cleanStr);
     if (!isNaN(parsed.getTime())) {
       const y = parsed.getFullYear();

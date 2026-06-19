@@ -67,7 +67,7 @@ export async function GET() {
       prisma.client.count({ where: { tenantId } }),
       prisma.task.count({ where: { tenantId, status: { not: 'completed' } } }),
       prisma.document.count({ where: { tenantId } }),
-      prisma.task.count({ where: { tenantId, status: 'overdue' } }),
+      prisma.task.count({ where: { tenantId, status: { not: 'completed' }, dueDate: { lt: new Date() } } }),
       prisma.complianceItem.count({ where: { tenantId, status: { in: ['compliant', 'not_applicable'] } } }),
       prisma.complianceItem.count({ where: { tenantId, status: 'action_required' } }),
       prisma.complianceItem.count({ where: { tenantId, status: 'critical' } })
@@ -107,7 +107,14 @@ export async function GET() {
         }
       },
       recentClients: recentClients.map(c => ({ ...c, company_name: c.companyName, created_at: c.createdAt })),
-      recentTasks: recentTasks.map(t => ({ ...t, due_date: t.dueDate })),
+      recentTasks: recentTasks.map(t => {
+        const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
+        return { 
+          ...t, 
+          due_date: t.dueDate,
+          status: isOverdue ? 'overdue' : t.status 
+        };
+      }),
       complianceIssues: complianceIssues.map(i => ({
         id: i.id,
         client_id: i.clientId,

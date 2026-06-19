@@ -221,7 +221,7 @@ export default function TeamPage() {
                     </span>
                   </td>
                   <td style={{ color: 'var(--text-muted)' }}>
-                    {new Date(m.created_at).toLocaleDateString()}
+                    {new Date(m.created_at).toLocaleDateString('en-GB')}
                   </td>
                   {canManage && (
                     <td style={{ textAlign: 'right' }}>

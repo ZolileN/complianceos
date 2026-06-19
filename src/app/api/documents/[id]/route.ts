@@ -58,6 +58,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    // Auto-trigger OCR if it was never run
+    if (document.ocrStatus === 'none') {
+      await prisma.document.update({
+        where: { id: document.id },
+        data: { ocrStatus: 'pending' }
+      });
+      document.ocrStatus = 'pending';
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      const { triggerOcrSimulation } = require('../upload/route');
+      triggerOcrSimulation(document.id).catch((err: unknown) => {
+        console.error("Auto-triggered OCR failed:", err);
+      });
+    }
+
     const mappedDocument = {
       id: document.id,
       client_id: document.clientId,
@@ -137,12 +152,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     const data: Record<string, unknown> = {};
     if (body.name) data.name = body.name;
-    if (body.category) data.category = body.category;
+
+    let categoryChanged = false;
+    if (body.category) {
+      data.category = body.category;
+      if (body.category !== existingDoc.category) {
+        categoryChanged = true;
+        data.ocrStatus = 'pending';
+        data.ocrText = null;
+        data.ocrMetadata = null;
+      }
+    }
     
     const document = await prisma.document.update({
       where: { id, tenantId },
       data
     });
+
+    if (categoryChanged) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      const { triggerOcrSimulation } = require('../upload/route');
+      triggerOcrSimulation(document.id).catch((err: unknown) => {
+        console.error("Re-triggered OCR failed:", err);
+      });
+    }
     
     const mappedDoc = { ...document, fileSize: Number(document.fileSize) };
     return NextResponse.json({ data: mappedDoc });

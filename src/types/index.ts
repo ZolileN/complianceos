@@ -51,6 +51,7 @@ export interface Client {
   email?: string;
   phone?: string;
   whatsapp_number?: string;
+  address?: string;
   assigned_consultant_id?: string;
   assigned_consultant?: User;
   status: 'active' | 'inactive' | 'onboarding';

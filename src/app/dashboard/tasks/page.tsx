@@ -169,7 +169,7 @@ export default function TasksPage() {
                       )}
                       <div className="kanban-card-meta">
                         <span className={`badge ${priorityBadge(t.priority)}`}>{t.priority}</span>
-                        {t.due_date && <span>📅 {new Date(t.due_date).toLocaleDateString()}</span>}
+                        {t.due_date && <span>📅 {new Date(t.due_date).toLocaleDateString('en-GB')}</span>}
                       </div>
                       {t.description && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 8 }}>{t.description.substring(0, 80)}</p>}
                       <div style={{ marginTop: 10 }}>

@@ -295,6 +295,7 @@ export default function ClientDetailPage() {
                 ['Email', client.email],
                 ['Phone', client.phone],
                 ['WhatsApp', client.whatsapp_number],
+                ['Address', client.address],
                 ['Consultant', client.assigned_consultant?.full_name || 'Unassigned'],
               ].map(([label, val]) => (
                 <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
@@ -343,7 +344,7 @@ export default function ClientDetailPage() {
                       </td>
                       <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>
                       <td style={{ color: 'var(--text-secondary)' }}>{d.file_type || '—'}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString()}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString('en-GB')}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setActiveViewDoc(d)}>View</button>
@@ -380,7 +381,7 @@ export default function ClientDetailPage() {
                         </div>
                         {item.due_date && (
                           <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                            <strong>Due/Expiry:</strong> {new Date(item.due_date).toLocaleDateString()}
+                            <strong>Due/Expiry:</strong> {new Date(item.due_date).toLocaleDateString('en-GB')}
                           </p>
                         )}
                         {item.notes && (
@@ -389,7 +390,7 @@ export default function ClientDetailPage() {
                           </p>
                         )}
                         <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                          Checked: {new Date(item.last_checked).toLocaleDateString()}
+                          Checked: {new Date(item.last_checked).toLocaleDateString('en-GB')}
                         </p>
                       </div>
                       {user?.role !== 'client' && (
@@ -451,7 +452,7 @@ export default function ClientDetailPage() {
                   <div className="flex-between">
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t.title}</div>
-                      {t.due_date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Due: {new Date(t.due_date).toLocaleDateString()}</div>}
+                      {t.due_date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Due: {new Date(t.due_date).toLocaleDateString('en-GB')}</div>}
                     </div>
                     <span className={`badge ${statusBadge(t.status)}`}>{t.status.replace('_', ' ')}</span>
                   </div>

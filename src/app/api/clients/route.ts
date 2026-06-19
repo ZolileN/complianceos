@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
       tax_number: client.taxNumber,
       vat_number: client.vatNumber,
       whatsapp_number: client.whatsappNumber,
+      address: client.address,
       created_at: client.createdAt,
     }));
 
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
         email: body.email,
         phone: body.phone,
         whatsappNumber: body.whatsapp_number,
+        address: body.address,
         directors: body.directors ? JSON.stringify(body.directors) : '[]',
         status: body.status || 'active',
         assignedConsultantId: body.assigned_consultant_id || null,

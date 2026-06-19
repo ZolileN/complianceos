@@ -48,10 +48,10 @@ export default function DashboardPage() {
   }, [tenant]);
 
   const kpis = [
-    { label: 'Total Clients', value: stats.clients, icon: '👥', color: 'var(--accent)', bg: 'var(--accent-muted)' },
-    { label: 'Active Tasks', value: stats.tasks, icon: '☑', color: 'var(--blue)', bg: 'rgba(59,130,246,0.15)' },
-    { label: 'Documents', value: stats.documents, icon: '📁', color: 'var(--purple)', bg: 'rgba(139,92,246,0.15)' },
-    { label: 'Overdue', value: stats.overdue, icon: '⚠', color: 'var(--red)', bg: 'rgba(239,68,68,0.15)' },
+    { label: 'Total Clients', value: stats.clients, icon: '👥', color: 'var(--accent)', bg: 'var(--accent-muted)', href: '/dashboard/clients' },
+    { label: 'Active Tasks', value: stats.tasks, icon: '☑', color: 'var(--blue)', bg: 'rgba(59,130,246,0.15)', href: '/dashboard/tasks' },
+    { label: 'Documents', value: stats.documents, icon: '📁', color: 'var(--purple)', bg: 'rgba(139,92,246,0.15)', href: '/dashboard/documents' },
+    { label: 'Overdue', value: stats.overdue, icon: '⚠', color: 'var(--red)', bg: 'rgba(239,68,68,0.15)', href: '/dashboard/tasks' },
   ];
 
   const statusBadge = (s: string) => {
@@ -74,11 +74,11 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="content-grid grid-4" style={{ marginBottom: 32 }}>
         {kpis.map((kpi, i) => (
-          <div key={kpi.label} className={`card kpi-card animate-in animate-delay-${i + 1}`}>
+          <Link key={kpi.label} href={kpi.href || '#'} className={`card kpi-card animate-in animate-delay-${i + 1}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>{kpi.icon}</div>
             <div className="kpi-value">{kpi.value}</div>
             <div className="kpi-label">{kpi.label}</div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -89,7 +89,7 @@ export default function DashboardPage() {
             🛡️ Compliance Monitoring Engine
           </h2>
           <div className="content-grid grid-3">
-            <div className="card" style={{ borderLeft: '4px solid var(--green)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Link href="/dashboard/compliance?filter=compliant" className="card card-hover" style={{ borderLeft: '4px solid var(--green)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
               <div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--green)' }}>
                   {stats.compliance.compliant}
@@ -99,8 +99,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>✅</span>
-            </div>
-            <div className="card" style={{ borderLeft: '4px solid var(--amber)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            </Link>
+            <Link href="/dashboard/compliance?filter=action_required" className="card card-hover" style={{ borderLeft: '4px solid var(--amber)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
               <div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--amber)' }}>
                   {stats.compliance.action_required}
@@ -110,8 +110,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>⚠️</span>
-            </div>
-            <div className="card" style={{ borderLeft: '4px solid var(--red)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            </Link>
+            <Link href="/dashboard/compliance?filter=critical" className="card card-hover" style={{ borderLeft: '4px solid var(--red)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
               <div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--red)' }}>
                   {stats.compliance.critical}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <span style={{ fontSize: '2rem' }}>🚨</span>
-            </div>
+            </Link>
           </div>
         </div>
       )}
@@ -168,7 +168,7 @@ export default function DashboardPage() {
                 <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)' }}>
                   <div>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{t.title}</div>
-                    {t.due_date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Due: {new Date(t.due_date).toLocaleDateString()}</div>}
+                    {t.due_date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Due: {new Date(t.due_date).toLocaleDateString('en-GB')}</div>}
                   </div>
                   <span className={`badge ${statusBadge(t.status)}`}>{t.status.replace('_', ' ')}</span>
                 </div>
@@ -179,8 +179,11 @@ export default function DashboardPage() {
 
         <div className="card animate-in" style={{ animationDelay: '300ms' }}>
           <div className="flex-between" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Compliance Alerts</h3>
-            <span className="badge badge-amber">{stats.compliance?.action_required || 0} Pending</span>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              Compliance Alerts
+              <span className="badge badge-amber" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{stats.compliance?.action_required || 0} Pending</span>
+            </h3>
+            <Link href="/dashboard/compliance" className="btn btn-ghost btn-sm">View All →</Link>
           </div>
           {complianceIssues.length === 0 ? (
             <div className="empty-state" style={{ padding: '32px 16px' }}>

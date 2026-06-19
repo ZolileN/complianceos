@@ -40,6 +40,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       tax_number: client.taxNumber,
       vat_number: client.vatNumber,
       whatsapp_number: client.whatsappNumber,
+      address: client.address,
       created_at: client.createdAt,
     };
     return NextResponse.json({ data: mappedData });
@@ -96,6 +97,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.email !== undefined) data.email = body.email;
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.whatsapp_number !== undefined) data.whatsappNumber = body.whatsapp_number;
+    if (body.address !== undefined) data.address = body.address;
     if (body.assigned_consultant_id !== undefined) data.assignedConsultantId = body.assigned_consultant_id || null;
     if (body.directors !== undefined) {
       data.directors = typeof body.directors === 'string' ? body.directors : JSON.stringify(body.directors);
@@ -122,6 +124,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       tax_number: client.taxNumber,
       vat_number: client.vatNumber,
       whatsapp_number: client.whatsappNumber,
+      address: client.address,
       created_at: client.createdAt,
     };
     return NextResponse.json({ data: mappedData });

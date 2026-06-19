@@ -14,7 +14,7 @@ export default function NewClientPage() {
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     company_name: '', registration_number: '', tax_number: '', vat_number: '',
-    email: '', phone: '', whatsapp_number: '', status: 'active',
+    email: '', phone: '', whatsapp_number: '', address: '', status: 'active',
   });
   const [directors, setDirectors] = useState<Director[]>([{ name: '', id_number: '', email: '', phone: '' }]);
   const [consultants, setConsultants] = useState<{ id: string; full_name: string }[]>([]);
@@ -126,6 +126,10 @@ export default function NewClientPage() {
             <div className="form-group">
               <label className="form-label">WhatsApp Number</label>
               <input className="input" value={form.whatsapp_number} onChange={(e) => updateForm('whatsapp_number', e.target.value)} placeholder="27821234567" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Address</label>
+              <textarea className="input" style={{ minHeight: '80px', resize: 'vertical' }} value={form.address} onChange={(e) => updateForm('address', e.target.value)} placeholder="Physical or Registered Address" />
             </div>
           </div>
         </div>

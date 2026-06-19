@@ -38,7 +38,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
         console.error(err);
         if (active) {
           setDoc(initialDoc);
-          setPreviewUrl(initialDoc.file_path || (initialDoc as any).filePath);
+          setPreviewUrl(initialDoc.file_path || (initialDoc as unknown as { filePath?: string }).filePath || '');
           setViewingVersionNum(initialDoc.version);
         }
       } finally {
@@ -48,16 +48,16 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
     return () => { active = false; };
   }, [initialDoc]);
 
-  // Polling for OCR processing status if it is processing
+  // Polling for OCR processing status if it is processing or pending
   useEffect(() => {
-    if (!doc || doc.ocr_status !== 'processing') return;
+    if (!doc || (doc.ocr_status !== 'processing' && doc.ocr_status !== 'pending')) return;
 
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/documents/${doc.id}`);
         if (res.ok) {
           const json = await res.json();
-          if (json.data && json.data.ocr_status !== 'processing') {
+          if (json.data && json.data.ocr_status !== 'processing' && json.data.ocr_status !== 'pending') {
             setDoc(json.data);
             clearInterval(interval);
           }
@@ -211,6 +211,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
               />
             ) : isImage ? (
               <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflow: 'auto' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
                   src={previewUrl} 
                   alt={name} 
@@ -391,7 +392,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
                       </div>
 
                       {/* Sync/Approve action if relevant fields exist */}
-                      {(ocrMeta.vat_number || ocrMeta.registration_number || ocrMeta.tax_number) && (
+                      {(ocrMeta.vat_number || ocrMeta.registration_number || ocrMeta.tax_number) && doc.category !== 'bank_statement' && (
                         <div 
                           style={{ 
                             background: 'rgba(59, 130, 246, 0.08)', 
@@ -404,7 +405,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
                           }}
                         >
                           <p style={{ fontSize: '0.8rem', margin: 0, color: 'var(--text-secondary)' }}>
-                            Sync the extracted fields (VAT, registration, or tax numbers) directly to the client's profile in our database.
+                            Sync extracted fields (company name, registration number, VAT, tax number &amp; directors) to the client&apos;s profile.
                           </p>
                           <button
                             onClick={handleApproveOcr}
@@ -452,7 +453,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
                     <h4 style={{ margin: '0 0 8px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Version</h4>
                     <div 
                       onClick={() => {
-                        setPreviewUrl(doc.file_path || (doc as any).filePath);
+                        setPreviewUrl(doc.file_path || (doc as unknown as { filePath?: string }).filePath || '');
                         setViewingVersionNum(doc.version);
                       }}
                       style={{ 
@@ -469,7 +470,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
                     >
                       <div className="stack" style={{ gap: 2 }}>
                         <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Version v{doc.version} (Latest)</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString('en-GB')}</span>
                       </div>
                       <span className="badge badge-green" style={{ fontSize: '0.75rem' }}>Active</span>
                     </div>
@@ -515,7 +516,7 @@ export default function DocumentViewerModal({ document: initialDoc, onClose }: D
                               </a>
                             </div>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {formatSize(ver.file_size)} • {new Date(ver.created_at).toLocaleDateString()}
+                              {formatSize(ver.file_size)} • {new Date(ver.created_at).toLocaleDateString('en-GB')}
                             </span>
                             {ver.uploader && (
                               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>

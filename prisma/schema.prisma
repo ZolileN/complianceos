@@ -111,6 +111,7 @@ model Client {
   email               String?
   phone               String?
   whatsappNumber      String?
+  address             String?
   
   assignedConsultantId String?
   assignedConsultant   User?   @relation(fields: [assignedConsultantId], references: [id], onDelete: SetNull)
