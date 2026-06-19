@@ -6,8 +6,9 @@ import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Client, Task, Document as Doc, ComplianceItem } from '@/types';
+import type { Client, Task, Document as Doc, ComplianceItem, ClientWorkflow, WorkflowTemplate, WorkflowStepProgress } from '@/types';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 
 type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows';
 
@@ -32,15 +33,27 @@ export default function ClientDetailPage() {
   const [editNotes, setEditNotes] = useState<string>('');
   const [updatingCompliance, setUpdatingCompliance] = useState(false);
 
+  // Workflow states
+  const [clientWorkflows, setClientWorkflows] = useState<ClientWorkflow[]>([]);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [assigningWorkflow, setAssigningWorkflow] = useState(false);
+  const [editingStep, setEditingStep] = useState<WorkflowStepProgress | null>(null);
+  const [editStepStatus, setEditStepStatus] = useState<string>('pending');
+  const [editStepNotes, setEditStepNotes] = useState<string>('');
+  const [savingStep, setSavingStep] = useState(false);
+
   useEffect(() => {
     if (!tenant || !id) return;
     async function load() {
       try {
-        const [clientRes, tasksRes, docsRes, complianceRes] = await Promise.all([
+        const [clientRes, tasksRes, docsRes, complianceRes, workflowsRes, templatesRes] = await Promise.all([
           fetch(`/api/clients/${id}`),
           fetch(`/api/tasks?client_id=${id}`), 
           fetch(`/api/documents?client_id=${id}`),
-          fetch(`/api/clients/${id}/compliance`)
+          fetch(`/api/clients/${id}/compliance`),
+          fetch(`/api/clients/${id}/workflows`),
+          fetch('/api/workflows')
         ]);
 
         if (clientRes.ok) {
@@ -64,6 +77,16 @@ export default function ClientDetailPage() {
         if (complianceRes.ok) {
           const { data } = await complianceRes.json();
           setComplianceItems(data as ComplianceItem[]);
+        }
+
+        if (workflowsRes.ok) {
+          const { data } = await workflowsRes.json();
+          setClientWorkflows(data as ClientWorkflow[]);
+        }
+
+        if (templatesRes.ok) {
+          const { data } = await templatesRes.json();
+          setTemplates(data || []);
         }
       } catch (err) {
         console.error(err);
@@ -145,6 +168,79 @@ export default function ClientDetailPage() {
       toast(err instanceof Error ? err.message : 'Failed to update compliance item', 'error');
     } finally {
       setUpdatingCompliance(false);
+    }
+  };
+
+  const handleAssignWorkflow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTemplateId) return;
+    setAssigningWorkflow(true);
+    try {
+      const res = await fetch(`/api/clients/${id}/workflows`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: selectedTemplateId })
+      });
+      if (!res.ok) throw new Error('Failed to assign workflow');
+      const { data } = await res.json();
+      setClientWorkflows(prev => [data, ...prev]);
+      toast('Workflow assigned successfully');
+      setSelectedTemplateId('');
+    } catch (err) {
+      console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to assign workflow', 'error');
+    } finally {
+      setAssigningWorkflow(false);
+    }
+  };
+
+  const handleEditStep = (stepProg: WorkflowStepProgress) => {
+    setEditingStep(stepProg);
+    setEditStepStatus(stepProg.status);
+    setEditStepNotes(stepProg.notes || '');
+  };
+
+  const handleSaveStep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStep) return;
+    setSavingStep(true);
+    try {
+      const res = await fetch(`/api/clients/${id}/workflows`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          progressId: editingStep.id,
+          status: editStepStatus,
+          notes: editStepNotes
+        })
+      });
+      if (!res.ok) throw new Error('Failed to update step progress');
+      const { data } = await res.json();
+      
+      setClientWorkflows(prev => prev.map(w => {
+        if (w.id === data.workflow.id) {
+          const updatedProgress = w.progress?.map(p => 
+            p.id === data.step.id 
+              ? { ...p, status: data.step.status, notes: data.step.notes, completed_by: data.step.completed_by, completed_at: data.step.completed_at }
+              : p
+          );
+          return {
+            ...w,
+            status: data.workflow.status,
+            completed_at: data.workflow.completed_at,
+            progress: updatedProgress
+          };
+        }
+        return w;
+      }));
+
+      toast('Step progress updated successfully');
+      setEditingStep(null);
+    } catch (err) {
+      console.error(err);
+      toast(err instanceof Error ? err.message : 'Failed to update step progress', 'error');
+    } finally {
+      setSavingStep(false);
     }
   };
 
@@ -367,12 +463,157 @@ export default function ClientDetailPage() {
       )}
 
       {tab === 'workflows' && (
-        <div className="card animate-in">
-          <div className="empty-state">
-            <div className="empty-icon">⑂</div>
-            <h3>Workflow Tracking — Coming Soon</h3>
-            <p>Per-client workflow assignment and step tracking is on the roadmap.<br />For now, manage workflow templates from the <Link href="/dashboard/workflows" style={{ color: 'var(--accent)' }}>Workflows</Link> page.</p>
-          </div>
+        <div className="stack animate-in" style={{ gap: 24 }}>
+          {/* Assignment Card */}
+          {user?.role !== 'client' && (
+            <div className="card" style={{ padding: 20 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>Assign New Workflow</h3>
+              <form onSubmit={handleAssignWorkflow} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: 1, minWidth: 250, marginBottom: 0 }}>
+                  <label className="form-label">Workflow Template</label>
+                  <select 
+                    value={selectedTemplateId} 
+                    onChange={e => setSelectedTemplateId(e.target.value)} 
+                    className="select"
+                    required
+                  >
+                    <option value="">Select a template...</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.category.replace('_', ' ')})</option>
+                    ))}
+                  </select>
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={assigningWorkflow || !selectedTemplateId}>
+                  {assigningWorkflow ? 'Assigning...' : '➕ Assign Workflow'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Active Workflows */}
+          {clientWorkflows.length === 0 ? (
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-icon">⑂</div>
+                <h3>No workflows assigned</h3>
+                <p>Assign a compliance or onboarding workflow template to get started.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="stack" style={{ gap: 20 }}>
+              {clientWorkflows.map(w => {
+                const totalSteps = w.progress?.length || 0;
+                const completedSteps = w.progress?.filter(p => p.status === 'completed' || p.status === 'skipped').length || 0;
+                const progressPct = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+                const categoryColor = WORKFLOW_CATEGORIES.find(c => c.value === w.template?.category)?.color || 'var(--accent)';
+                
+                return (
+                  <div key={w.id} className="card" style={{ padding: 24, borderLeft: `4px solid ${categoryColor}` }}>
+                    <div className="flex-between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{w.template?.name}</h3>
+                          <span className={`badge ${statusBadge(w.status)}`}>
+                            {w.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                          {w.template?.description || 'No description provided'}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize: '0.875rem' }}>
+                        <span style={{ fontWeight: 600 }}>{completedSteps} / {totalSteps}</span> steps completed
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div style={{ width: '100%', height: 6, background: 'var(--bg-secondary)', borderRadius: 3, marginBottom: 20, overflow: 'hidden' }}>
+                      <div style={{ width: `${progressPct}%`, height: '100%', background: categoryColor, transition: 'width 0.4s ease' }} />
+                    </div>
+
+                    {/* Steps list */}
+                    <div className="table-container" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '8px 0' }}>
+                      <table className="table" style={{ background: 'transparent' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 60, textAlign: 'center' }}>Step</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Due/SLA</th>
+                            <th>Notes</th>
+                            {user?.role !== 'client' && <th style={{ textAlign: 'right' }}>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {w.progress?.map((p, index) => (
+                            <tr key={p.id} style={{ borderBottom: index === (w.progress?.length || 0) - 1 ? 'none' : '1px solid var(--border-subtle)' }}>
+                              <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                {p.step?.step_order || index + 1}
+                              </td>
+                              <td style={{ fontWeight: 500 }}>{p.step?.name}</td>
+                              <td>
+                                <span className={`badge ${statusBadge(p.status)}`}>
+                                  {p.status.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                {p.step?.sla_days ? `${p.step.sla_days} days SLA` : '—'}
+                              </td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.notes || ''}>
+                                {p.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes</span>}
+                              </td>
+                              {user?.role !== 'client' && (
+                                <td style={{ textAlign: 'right' }}>
+                                  <button onClick={() => handleEditStep(p)} className="btn btn-secondary btn-sm" style={{ padding: '2px 8px' }}>
+                                    ✏️ Edit
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Edit Step Modal */}
+          {editingStep && (
+            <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div className="card" style={{ width: 440, maxWidth: '90%', padding: 24, zIndex: 101 }}>
+                <h3 style={{ marginBottom: 16, fontSize: '1.1rem' }}>Update Step — {editingStep.step?.name}</h3>
+                <form onSubmit={handleSaveStep} className="stack" style={{ gap: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select value={editStepStatus} onChange={e => setEditStepStatus(e.target.value)} className="select">
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="skipped">Skipped</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Notes</label>
+                    <textarea 
+                      value={editStepNotes} 
+                      onChange={e => setEditStepNotes(e.target.value)} 
+                      className="textarea" 
+                      placeholder="Add update notes, links, or issues for this step..." 
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                    <button type="button" onClick={() => setEditingStep(null)} className="btn btn-secondary" disabled={savingStep}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={savingStep}>
+                      {savingStep ? 'Saving...' : 'Save Progress'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
       

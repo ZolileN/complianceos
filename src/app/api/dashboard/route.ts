@@ -47,7 +47,7 @@ export async function GET() {
             tenantId,
             category: item.category,
             name: item.name,
-            status: 'compliant',
+            status: 'action_required',
             notes: ''
           });
         }
