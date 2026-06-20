@@ -47,25 +47,36 @@ export default function LoginPage() {
         <p className="auth-subtitle">Sign in to your compliance workspace</p>
 
         {error && (
-          <div style={{ 
+          <div className="animate-in" style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: 10, 
-            background: 'rgba(239,68,68,0.1)', 
-            border: '1px solid rgba(239,68,68,0.3)', 
-            borderRadius: 'var(--radius-md)', 
+            gap: 12, 
+            background: 'rgba(239, 68, 68, 0.08)', 
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(239, 68, 68, 0.4)', 
+            boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15), inset 0 0 10px rgba(239, 68, 68, 0.05)',
+            borderRadius: '12px', 
             padding: '12px 16px', 
-            marginBottom: 20, 
-            color: '#FCA5A5', 
+            marginBottom: 24, 
+            color: '#F87171', 
             fontSize: '0.875rem',
-            fontWeight: 500
+            fontWeight: 600
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <span>{error}</span>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(239, 68, 68, 0.2)',
+              borderRadius: '50%',
+              width: 28,
+              height: 28,
+              flexShrink: 0
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </div>
+            <span style={{ letterSpacing: '0.3px' }}>{error}</span>
           </div>
         )}
 
