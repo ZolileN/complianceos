@@ -114,9 +114,20 @@ export default function AuditLogsPage() {
                       </td>
                       <td style={{ fontWeight: 500 }}>{log.entityType}</td>
                       <td>
-                        <pre style={{ margin: 0, fontSize: '0.75rem', background: 'var(--bg-primary)', padding: 8, borderRadius: 4, maxWidth: 300, overflowX: 'auto' }}>
-                          {JSON.stringify(detailsParsed, null, 2)}
-                        </pre>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {Object.keys(detailsParsed).length === 0 ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>-</span>
+                          ) : (
+                            Object.entries(detailsParsed).map(([key, value]) => (
+                              <div key={key} style={{ fontSize: '0.75rem' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                                  {key.replace(/([A-Z])/g, ' $1').trim()}:
+                                </span>{' '}
+                                <span>{String(value)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
