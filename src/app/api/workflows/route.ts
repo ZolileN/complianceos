@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -60,6 +61,15 @@ export async function POST(request: NextRequest) {
         }
       },
       include: { steps: true }
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: (currentUser as any).id,
+      action: 'CREATE',
+      entityType: 'WorkflowTemplate',
+      entityId: template.id,
+      details: { name: template.name, category: template.category },
     });
 
     return NextResponse.json({ data: template }, { status: 201 });

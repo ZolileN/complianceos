@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import bcrypt from 'bcryptjs';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +41,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const updatedUser = await prisma.user.update({
       where: { id },
       data
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'User',
+      entityId: id,
+      details: { email: updatedUser.email, role: updatedUser.role, passwordChanged: body.password !== undefined },
     });
 
     return NextResponse.json({
@@ -87,6 +97,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     await prisma.user.delete({
       where: { id }
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'User',
+      entityId: id,
+      details: { email: targetUser.email, role: targetUser.role },
     });
 
     return NextResponse.json({ success: true });

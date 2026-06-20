@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import path from 'path';
+import { logAuditAction } from '@/lib/auditLogger';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -117,6 +118,16 @@ export async function POST(request: NextRequest) {
       ...document,
       fileSize: Number(document.fileSize)
     };
+
+    // Audit Logging
+    await logAuditAction({
+      tenantId,
+      userId: userId as string,
+      action: existingDoc ? 'UPDATE' : 'CREATE',
+      entityType: 'Document',
+      entityId: document.id,
+      details: { title: document.name, category: document.category },
+    });
 
     // --- OCR BACKGROUND WORKER ---
     triggerOcrSimulation(document.id).catch(err => {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -179,6 +180,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         });
       }
     }
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'Document',
+      entityId: id,
+      details: { ocrApproved: true, updatedClientFields: Object.keys(updateData) },
+    });
 
     return NextResponse.json({ success: true, data: updatedClient });
   } catch (error: unknown) {

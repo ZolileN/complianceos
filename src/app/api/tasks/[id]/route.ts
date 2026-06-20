@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -66,6 +67,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       where: { id, tenantId },
       data
     });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'Task',
+      entityId: id,
+      details: { title: task.title, status: task.status },
+    });
+
     return NextResponse.json({ data: task });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -85,9 +96,28 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   try {
+    const taskToDelete = await prisma.task.findUnique({
+      where: { id, tenantId },
+      select: { title: true }
+    });
+
+    if (!taskToDelete) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     await prisma.task.delete({
       where: { id, tenantId }
     });
+
+    await logAuditAction({
+      tenantId,
+      userId: (currentUser as any).id,
+      action: 'DELETE',
+      entityType: 'Task',
+      entityId: id,
+      details: { title: taskToDelete.title },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET(
   request: NextRequest,
@@ -220,6 +221,15 @@ export async function POST(
       })).sort((a, b) => (a.step?.step_order || 0) - (b.step?.step_order || 0))
     };
 
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'ClientWorkflow',
+      entityId: clientWorkflow.id,
+      details: { templateName: template.name, status: clientWorkflow.status },
+    });
+
     return NextResponse.json({ data: mapped }, { status: 201 });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -332,6 +342,15 @@ export async function PUT(
         }
       }
 
+      await logAuditAction({
+        tenantId,
+        userId,
+        action: 'UPDATE',
+        entityType: 'WorkflowStepProgress',
+        entityId: updatedProgress.id,
+        details: { status: updatedProgress.status, workflowStatus: newWorkflowStatus },
+      });
+
       return NextResponse.json({
         data: {
           step: {
@@ -351,7 +370,6 @@ export async function PUT(
         }
       });
     }
-
     // Option B: Update the overall workflow status (e.g. Cancelled)
     if (workflowId && workflowStatus) {
       const clientWorkflow = await prisma.clientWorkflow.findFirst({
@@ -370,6 +388,15 @@ export async function PUT(
         }
       });
 
+      await logAuditAction({
+        tenantId,
+        userId,
+        action: 'UPDATE',
+        entityType: 'ClientWorkflow',
+        entityId: updatedWorkflow.id,
+        details: { status: updatedWorkflow.status },
+      });
+
       return NextResponse.json({
         data: {
           workflow: {
@@ -380,7 +407,6 @@ export async function PUT(
         }
       });
     }
-
     return NextResponse.json({ error: 'Missing parameters. Provide progressId or workflowId.' }, { status: 400 });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
       document.ocrStatus = 'pending';
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { triggerOcrSimulation } = require('../upload/route');
       triggerOcrSimulation(document.id).catch((err: unknown) => {
         console.error("Auto-triggered OCR failed:", err);
@@ -170,7 +171,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (categoryChanged) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { triggerOcrSimulation } = require('../upload/route');
       triggerOcrSimulation(document.id).catch((err: unknown) => {
         console.error("Re-triggered OCR failed:", err);
@@ -178,6 +179,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
     
     const mappedDoc = { ...document, fileSize: Number(document.fileSize) };
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'Document',
+      entityId: id,
+      details: { name: document.name, category: document.category, categoryChanged },
+    });
+
     return NextResponse.json({ data: mappedDoc });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -188,7 +199,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
 
   // Only administrators and operations managers can delete/remove documents
@@ -197,9 +208,28 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   try {
+    const documentToDelete = await prisma.document.findUnique({
+      where: { id, tenantId },
+      select: { name: true }
+    });
+
+    if (!documentToDelete) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
     await prisma.document.delete({
       where: { id, tenantId }
     });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'Document',
+      entityId: id,
+      details: { title: documentToDelete.name },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { Prisma } from '@prisma/client';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -109,6 +110,16 @@ export async function POST(request: NextRequest) {
         tenantId,
       }
     });
+
+    await logAuditAction({
+      tenantId,
+      userId: (currentUser as any).id,
+      action: 'CREATE',
+      entityType: 'Task',
+      entityId: task.id,
+      details: { title: task.title, status: task.status },
+    });
+
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

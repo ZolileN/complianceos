@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -127,6 +128,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       address: client.address,
       created_at: client.createdAt,
     };
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'Client',
+      entityId: id,
+      details: { companyName: client.companyName },
+    });
+
     return NextResponse.json({ data: mappedData });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -146,10 +157,29 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   try {
+    const clientToArchive = await prisma.client.findUnique({
+      where: { id, tenantId },
+      select: { companyName: true }
+    });
+
+    if (!clientToArchive) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     await prisma.client.update({
       where: { id, tenantId },
       data: { status: 'inactive' }
     });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'Client',
+      entityId: id,
+      details: { companyName: clientToArchive.companyName, status: 'inactive' },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

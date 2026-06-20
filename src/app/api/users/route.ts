@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import bcrypt from 'bcryptjs';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -82,6 +83,15 @@ export async function POST(request: NextRequest) {
         role,
         tenantId,
       }
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: (currentUser as any).id,
+      action: 'CREATE',
+      entityType: 'User',
+      entityId: newUser.id,
+      details: { email: newUser.email, role: newUser.role },
     });
 
     return NextResponse.json({

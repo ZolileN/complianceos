@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 const DEFAULT_COMPLIANCE_ITEMS = [
   { category: 'SARS', name: 'VAT' },
@@ -153,6 +154,15 @@ export async function PUT(
       created_at: updated.createdAt.toISOString(),
       updated_at: updated.updatedAt.toISOString()
     };
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'UPDATE',
+      entityType: 'ComplianceItem',
+      entityId: updated.id,
+      details: { category: updated.category, name: updated.name, status: updated.status },
+    });
 
     return NextResponse.json({ data: mapped });
   } catch (error: unknown) {
