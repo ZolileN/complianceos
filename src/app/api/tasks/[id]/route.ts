@@ -87,7 +87,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
 
   // Only administrators and operations managers can delete tasks
@@ -111,7 +111,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
 
     await logAuditAction({
       tenantId,
-      userId: (currentUser as any).id,
+      userId: currentUser.id,
       action: 'DELETE',
       entityType: 'Task',
       entityId: id,

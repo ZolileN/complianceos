@@ -108,7 +108,7 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

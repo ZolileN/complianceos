@@ -8,7 +8,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const currentUser = session.user as { tenantId: string; role: string };
+  const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     await logAuditAction({
       tenantId,
-      userId: (currentUser as any).id,
+      userId: currentUser.id,
       action: 'CREATE',
       entityType: 'WorkflowTemplate',
       entityId: template.id,
