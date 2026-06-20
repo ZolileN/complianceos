@@ -61,6 +61,18 @@ export default function DashboardPage() {
 
   if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
 
+  if (user?.role === 'client') {
+    return (
+      <div className="flex-center" style={{ minHeight: '60vh' }}>
+        <div className="empty-state" style={{ maxWidth: 400, background: 'var(--bg-card)', padding: 40, border: '1px solid var(--border-primary)' }}>
+          <span className="empty-icon" style={{ fontSize: '3rem', marginBottom: 16 }}>🏢</span>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: 8 }}>Welcome to PraxisOne</h3>
+          <p style={{ color: 'var(--text-secondary)' }}>We are preparing your company dashboard. If you don&apos;t see your company details shortly, please contact your consultant.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="page-header">

@@ -59,6 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return [
         { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
         { href: '/dashboard/clients', label: 'Clients', icon: 'users' },
+        { href: '/dashboard/compliance', label: 'Compliance', icon: 'shield' },
         { href: '/dashboard/tasks', label: 'Tasks', icon: 'check-square' },
         { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
         { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },

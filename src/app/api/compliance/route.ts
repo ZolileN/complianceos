@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 
@@ -7,12 +8,21 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const currentUser = session.user as { tenantId: string; role: string; id: string; email: string };
+  const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  const where: Prisma.ComplianceItemWhereInput = { tenantId };
+  
+  if (currentUser.role === 'consultant') {
+    where.client = { assignedConsultantId: currentUser.id };
+  } else if (currentUser.role === 'client') {
+    where.client = { email: currentUser.email };
+  }
 
   try {
     const complianceItems = await prisma.complianceItem.findMany({
-      where: { tenantId },
+      where,
       include: {
         client: {
           select: { id: true, companyName: true, status: true }
