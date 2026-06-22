@@ -5,14 +5,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Client } from '@/types';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function ClientsPage() {
   const { user, tenant } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Redirect client roles
   useEffect(() => {
@@ -20,6 +24,37 @@ export default function ClientsPage() {
       router.push('/dashboard');
     }
   }, [user, router]);
+
+  // Fetch tenant slug once (for the invite link)
+  useEffect(() => {
+    if (!tenant) return;
+    fetch('/api/dashboard')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.tenant?.slug) setTenantSlug(d.tenant.slug);
+      })
+      .catch(() => null);
+  }, [tenant]);
+
+  const handleCopyInviteLink = async () => {
+    if (!tenantSlug) return;
+    const url = `${window.location.origin}/onboard/${tenantSlug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Invite link copied to clipboard! Share it with your clients.', 'success');
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch {
+      // Fallback for browsers without clipboard API
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast('Invite link copied!', 'success');
+    }
+  };
 
   // Debounce the search input by 300ms
   useEffect(() => {
@@ -57,9 +92,22 @@ export default function ClientsPage() {
           <h1 className="page-title">Clients</h1>
           <p className="page-subtitle">{clients.length} total clients</p>
         </div>
-        {(user?.role === 'administrator' || user?.role === 'operations_manager') && (
-          <Link href="/dashboard/clients/new" className="btn btn-primary">+ Add Client</Link>
-        )}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {tenantSlug && (
+            <button
+              id="copy-invite-link-btn"
+              className={`btn ${linkCopied ? 'btn-secondary' : 'btn-ghost'}`}
+              onClick={handleCopyInviteLink}
+              title={`Share: /onboard/${tenantSlug}`}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
+            >
+              {linkCopied ? '✓ Link Copied!' : '🔗 Share Invite Link'}
+            </button>
+          )}
+          {(user?.role === 'administrator' || user?.role === 'operations_manager') && (
+            <Link href="/dashboard/clients/new" className="btn btn-primary">+ Add Client</Link>
+          )}
+        </div>
       </div>
 
       <div style={{ marginBottom: 20 }}>

@@ -106,7 +106,13 @@ export async function GET() {
       include: { client: { select: { id: true, companyName: true } } }
     });
 
+    const tenantRecord = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true, name: true }
+    });
+
     return NextResponse.json({
+      tenant: tenantRecord ? { slug: tenantRecord.slug, name: tenantRecord.name } : null,
       stats: {
         clients: clientsCount,
         tasks: activeTasksCount,
