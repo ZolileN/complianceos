@@ -44,10 +44,11 @@ interface MediaResponse {
  */
 export async function sendTextMessage(
   to: string,
-  body: string
+  body: string,
+  credentials?: { phoneNumberId: string; accessToken: string }
 ): Promise<SendMessageResponse> {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = credentials?.phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = credentials?.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
 
   const payload: WhatsAppTextMessage = {
     messaging_product: 'whatsapp',
@@ -84,10 +85,11 @@ export async function sendTemplateMessage(
   to: string,
   templateName: string,
   languageCode: string = 'en',
-  parameters?: Array<{ type: string; text?: string }>
+  parameters?: Array<{ type: string; text?: string }>,
+  credentials?: { phoneNumberId: string; accessToken: string }
 ): Promise<SendMessageResponse> {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = credentials?.phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = credentials?.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
 
   const payload: WhatsAppTemplateMessage = {
     messaging_product: 'whatsapp',
@@ -131,8 +133,8 @@ export async function sendTemplateMessage(
 /**
  * Download media from WhatsApp (e.g., images, documents sent by clients)
  */
-export async function downloadMedia(mediaId: string): Promise<Buffer> {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+export async function downloadMedia(mediaId: string, customAccessToken?: string): Promise<Buffer> {
+  const accessToken = customAccessToken || process.env.WHATSAPP_ACCESS_TOKEN;
 
   // First, get the media URL
   const metaResponse = await fetch(
@@ -164,9 +166,12 @@ export async function downloadMedia(mediaId: string): Promise<Buffer> {
 /**
  * Mark a message as read
  */
-export async function markAsRead(messageId: string): Promise<void> {
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+export async function markAsRead(
+  messageId: string,
+  credentials?: { phoneNumberId: string; accessToken: string }
+): Promise<void> {
+  const phoneNumberId = credentials?.phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = credentials?.accessToken || process.env.WHATSAPP_ACCESS_TOKEN;
 
   await fetch(`${GRAPH_API_URL}/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -185,8 +190,8 @@ export async function markAsRead(messageId: string): Promise<void> {
 /**
  * Get media metadata
  */
-export async function getMediaInfo(mediaId: string): Promise<MediaResponse> {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+export async function getMediaInfo(mediaId: string, customAccessToken?: string): Promise<MediaResponse> {
+  const accessToken = customAccessToken || process.env.WHATSAPP_ACCESS_TOKEN;
 
   const response = await fetch(`${GRAPH_API_URL}/${mediaId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },

@@ -8,7 +8,7 @@ import { NAV_ITEMS } from '@/lib/constants';
 import Logo from '@/components/Logo';
 
 const icons: Record<string, string> = {
-  grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬', shield: '🛡️', activity: '📊'
+  grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬', shield: '🛡️', activity: '📊', settings: '⚙️'
 };
 
 interface SearchResult {
@@ -70,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return [
         ...NAV_ITEMS,
         { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: 'activity' },
+        { href: '/dashboard/settings/whatsapp', label: 'Settings', icon: 'settings' },
       ];
     }
 

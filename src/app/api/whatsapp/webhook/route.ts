@@ -45,17 +45,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ok' });
   }
 
+  // Find target tenant based on receiving phone number ID
+  const receivingPhoneNumberId = value.metadata?.phone_number_id;
+  let targetTenant = null;
+  if (receivingPhoneNumberId) {
+    targetTenant = await prisma.tenant.findFirst({
+      where: { whatsappPhoneNumberId: receivingPhoneNumberId }
+    });
+  }
+
+  const defaultTenant = await prisma.tenant.findFirst();
+  const tenantId = targetTenant?.id || defaultTenant?.id;
+
+  if (!tenantId) {
+    return NextResponse.json({ error: 'No tenant found' }, { status: 400 });
+  }
+
   for (const msg of value.messages) {
     const from = msg.from; // sender's WhatsApp number
     const waMessageId = msg.id;
 
-    // Find or create conversation
+    // Find or create conversation scoped to this tenant
     let conversation = await prisma.conversation.findFirst({
-      where: { whatsappNumber: from }
+      where: { whatsappNumber: from, tenantId }
     });
 
     if (!conversation) {
-      // Try to find a client with this WhatsApp number
+      // Try to find a client with this WhatsApp number within the same tenant
       let localFormat = from;
       if (from.startsWith('27') && from.length === 11) {
         localFormat = `0${from.substring(2)}`;
@@ -63,6 +79,7 @@ export async function POST(request: NextRequest) {
       
       const client = await prisma.client.findFirst({
         where: { 
+          tenantId,
           OR: [
             { whatsappNumber: from },
             { whatsappNumber: localFormat },
@@ -70,16 +87,6 @@ export async function POST(request: NextRequest) {
           ]
         }
       });
-
-      let tenantId = client?.tenantId;
-      if (!tenantId) {
-        const firstTenant = await prisma.tenant.findFirst();
-        tenantId = firstTenant?.id;
-      }
-
-      if (!tenantId) {
-        return NextResponse.json({ error: 'No tenant found' }, { status: 400 });
-      }
 
       conversation = await prisma.conversation.create({
         data: {
@@ -127,7 +134,10 @@ export async function POST(request: NextRequest) {
     if (messageType === 'document' && mediaUrl && conversation.clientId) {
       try {
         const { getMediaInfo } = await import('@/lib/whatsapp');
-        const mediaInfo = await getMediaInfo(mediaUrl).catch(() => null);
+        const mediaInfo = await getMediaInfo(
+          mediaUrl,
+          targetTenant?.whatsappAccessToken || undefined
+        ).catch(() => null);
         
         await prisma.document.create({
           data: {
@@ -154,7 +164,14 @@ export async function POST(request: NextRequest) {
 
     // Mark as read on WhatsApp
     try {
-      await markAsRead(waMessageId);
+      if (targetTenant?.whatsappPhoneNumberId && targetTenant?.whatsappAccessToken) {
+        await markAsRead(waMessageId, {
+          phoneNumberId: targetTenant.whatsappPhoneNumberId,
+          accessToken: targetTenant.whatsappAccessToken
+        });
+      } else {
+        await markAsRead(waMessageId);
+      }
     } catch {
       // Non-critical, continue
     }

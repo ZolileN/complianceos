@@ -17,7 +17,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await sendTextMessage(to, message);
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { whatsappPhoneNumberId: true, whatsappAccessToken: true }
+    });
+
+    const credentials = tenant?.whatsappPhoneNumberId && tenant?.whatsappAccessToken
+      ? { phoneNumberId: tenant.whatsappPhoneNumberId, accessToken: tenant.whatsappAccessToken }
+      : undefined;
+
+    const result = await sendTextMessage(to, message, credentials);
     const waMessageId = result.messages?.[0]?.id;
 
     if (conversation_id) {

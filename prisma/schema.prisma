@@ -86,6 +86,10 @@ model Tenant {
   plan      String   @default("starter")
   settings  String   @default("{}") // SQLite doesn't support JSON, use String
   
+  whatsappPhoneNumberId  String?
+  whatsappAccessToken    String?
+  whatsappSetupComplete  Boolean   @default(false)
+
   users               User[]
   clients             Client[]
   workflowTemplates   WorkflowTemplate[]

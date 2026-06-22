@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Conversation, Message } from '@/types';
+import Link from 'next/link';
 
 export default function InboxPage() {
   const { tenant } = useAuth();
@@ -17,7 +18,19 @@ export default function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [convoRefreshKey, setConvoRefreshKey] = useState(0);
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
+  const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check WhatsApp connection status
+  useEffect(() => {
+    if (!tenant) return;
+    fetch('/api/settings/whatsapp/status')
+      .then(res => res.json())
+      .then(data => {
+        setWhatsappConnected(data.connected);
+      })
+      .catch(() => setWhatsappConnected(false));
+  }, [tenant]);
 
   // Load conversations — correct effect pattern
   useEffect(() => {
@@ -161,6 +174,21 @@ export default function InboxPage() {
 
       {loading ? (
         <div className="skeleton" style={{ height: 500 }} />
+      ) : whatsappConnected === false ? (
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-icon">🔌</div>
+            <h3>WhatsApp Integration Required</h3>
+            <p style={{ maxWidth: 450, margin: '0 auto 20px' }}>
+              Connect your firm&apos;s WhatsApp Business account to start messaging your clients directly from PraxisOne.
+            </p>
+            <div>
+              <Link href="/dashboard/settings/whatsapp" className="btn btn-primary">
+                ⚙️ Set Up WhatsApp Business
+              </Link>
+            </div>
+          </div>
+        </div>
       ) : conversations.length === 0 ? (
         <div className="card">
           <div className="empty-state">
