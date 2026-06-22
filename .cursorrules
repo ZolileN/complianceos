@@ -1,0 +1,10 @@
+# ComplianceOS AI Coding Guidelines
+
+## Security & Secrets Management
+- **NEVER** hardcode API keys, App IDs, Client Secrets, or any other sensitive credentials in the source code.
+- **NEVER** use hardcoded fallback values for environment variables (e.g., `process.env.MY_SECRET || 'hardcoded_value'`).
+- Always use empty strings (`''`) or safely throw errors if required environment variables are missing.
+- Always assume this repository is public and any hardcoded secret is immediately compromised.
+
+## General
+- Rely on environment variables defined in `.env.local` for all configuration IDs and secrets.

@@ -55,7 +55,7 @@ export default function WhatsAppSettingsPage() {
       return;
     }
 
-    const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '864556693373307';
+    const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
     
     win.FB.login((response: { authResponse?: { code: string } }) => {
       if (response.authResponse?.code) {
@@ -65,7 +65,7 @@ export default function WhatsAppSettingsPage() {
         fetch('/api/settings/whatsapp/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, redirectUri: window.location.origin + window.location.pathname })
+          body: JSON.stringify({ code, redirectUri: '' })
         })
         .then(async (res) => {
           const data = await res.json();
@@ -161,7 +161,7 @@ export default function WhatsAppSettingsPage() {
           const win = window as any;
           win.fbAsyncInit = function() {
             win.FB.init({
-              appId: process.env.NEXT_PUBLIC_META_APP_ID || '864556693373307', // Fallback to config ID or default app
+              appId: process.env.NEXT_PUBLIC_META_APP_ID || '', // Fallback to config ID or default app
               cookie: true,
               xfbml: true,
               version: 'v20.0'

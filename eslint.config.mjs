@@ -13,6 +13,17 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "LogicalExpression[operator='||'][left.type='MemberExpression'][left.object.object.name='process'][left.object.property.name='env'][right.type='Literal'][right.value!='']",
+          message: "Do not use hardcoded string fallbacks for environment variables. Use an empty string '' or rely on the environment variable directly."
+        }
+      ]
+    }
+  }
 ]);
 
 export default eslintConfig;
