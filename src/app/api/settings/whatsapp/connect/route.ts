@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
+import { GRAPH_API_URL } from '@/lib/whatsapp';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate credentials via Meta Graph API
-      const verifyRes = await fetch(`https://graph.facebook.com/v20.0/${manualPhoneNumberId}?access_token=${manualAccessToken}`);
+      const verifyRes = await fetch(`${GRAPH_API_URL}/${manualPhoneNumberId}?access_token=${manualAccessToken}`);
       if (!verifyRes.ok) {
         const err = await verifyRes.json();
         return NextResponse.json({ error: `Verification failed: ${err.error?.message || JSON.stringify(err)}` }, { status: 400 });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Exchange the code for an access token
     // For Facebook JS SDK (FB.login), the redirect_uri must be omitted entirely if it is not provided.
-    let tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+    let tokenUrl = `${GRAPH_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
     if (redirectUri) {
       tokenUrl += `&redirect_uri=${encodeURIComponent(redirectUri)}`;
     }
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
     const userAccessToken = tokenData.access_token;
 
     // 2. Fetch the WhatsApp Business Accounts (WABA)
-    const wabaRes = await fetch(`https://graph.facebook.com/v20.0/me/whatsapp_business_accounts?access_token=${userAccessToken}`);
+    const wabaRes = await fetch(`${GRAPH_API_URL}/me/whatsapp_business_accounts?access_token=${userAccessToken}`);
     if (!wabaRes.ok) {
       const err = await wabaRes.json();
       throw new Error(`Failed to fetch WABA accounts: ${JSON.stringify(err)}`);
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Fetch phone numbers for that WABA
-    const phoneRes = await fetch(`https://graph.facebook.com/v20.0/${wabaId}/phone_numbers?access_token=${userAccessToken}`);
+    const phoneRes = await fetch(`${GRAPH_API_URL}/${wabaId}/phone_numbers?access_token=${userAccessToken}`);
     if (!phoneRes.ok) {
       const err = await phoneRes.json();
       throw new Error(`Failed to fetch phone numbers: ${JSON.stringify(err)}`);
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Subscribe the WABA to receive webhooks
-    const subUrl = `https://graph.facebook.com/v20.0/${wabaId}/subscribed_apps?access_token=${userAccessToken}`;
+    const subUrl = `${GRAPH_API_URL}/${wabaId}/subscribed_apps?access_token=${userAccessToken}`;
     await fetch(subUrl, { method: 'POST' }).catch(err => {
       console.warn('Failed to auto-subscribe app to WABA webhooks:', err);
     });

@@ -2,7 +2,8 @@
    PraxisOne — WhatsApp Meta Business API Utilities
    ============================================================ */
 
-const GRAPH_API_URL = 'https://graph.facebook.com/v25.0';
+export const META_API_VERSION = 'v25.0';
+export const GRAPH_API_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
 interface WhatsAppTextMessage {
   messaging_product: 'whatsapp';
