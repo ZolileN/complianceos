@@ -164,7 +164,7 @@ export default function WhatsAppSettingsPage() {
               appId: process.env.NEXT_PUBLIC_META_APP_ID || '', // Fallback to config ID or default app
               cookie: true,
               xfbml: true,
-              version: 'v20.0'
+              version: 'v25.0'
             });
           };
         }}
