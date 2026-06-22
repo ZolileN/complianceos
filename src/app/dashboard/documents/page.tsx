@@ -12,6 +12,63 @@ import "@uploadthing/react/styles.css";
 
 const PAGE_LIMIT = 20;
 
+// ── File size constants ─────────────────────────────────────────────────────────
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB hard limit
+const IMAGE_MAX_DIMENSION = 2048;              // px — max side length after resize
+const IMAGE_JPEG_QUALITY  = 0.85;             // 85% JPEG quality
+
+/**
+ * Compress an image file client-side using the Canvas API.
+ * - Resizes to at most IMAGE_MAX_DIMENSION x IMAGE_MAX_DIMENSION (preserving AR)
+ * - Re-encodes as JPEG at IMAGE_JPEG_QUALITY
+ * - Returns the original file unchanged if it is not a raster image or
+ *   if the browser Canvas API is unavailable (SSR guard).
+ */
+async function compressImageFile(file: File): Promise<File> {
+  // Only process raster images (skip SVG, PDF, Word, etc.)
+  if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') return file;
+  // SSR guard — Canvas is not available on the server
+  if (typeof window === 'undefined' || typeof document === 'undefined') return file;
+
+  return new Promise<File>((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const { naturalWidth: w, naturalHeight: h } = img;
+
+      // Calculate new dimensions (scale down if either side exceeds the max)
+      let newW = w;
+      let newH = h;
+      if (w > IMAGE_MAX_DIMENSION || h > IMAGE_MAX_DIMENSION) {
+        const ratio = Math.min(IMAGE_MAX_DIMENSION / w, IMAGE_MAX_DIMENSION / h);
+        newW = Math.round(w * ratio);
+        newH = Math.round(h * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(img, 0, 0, newW, newH);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          // Keep the original filename but force .jpg extension for compressed output
+          const newName = file.name.replace(/\.[^.]+$/, '.jpg');
+          resolve(new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() }));
+        },
+        'image/jpeg',
+        IMAGE_JPEG_QUALITY
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 export default function DocumentsPage() {
   const { tenant } = useAuth();
   const { toast } = useToast();
@@ -202,8 +259,59 @@ export default function DocumentsPage() {
                     Please select a client first
                   </div>
                 ) : (
+                  <>
+                    {/* Upload limits hint banner */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 12px',
+                      marginBottom: 12,
+                      background: 'rgba(59, 130, 246, 0.07)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.8rem',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <span style={{ fontSize: '1rem' }}>📎</span>
+                      <span>
+                        Max <strong>15 MB</strong> per file &nbsp;·&nbsp; Images are <strong>auto-compressed</strong> before upload &nbsp;·&nbsp; Up to <strong>5 files</strong>
+                      </span>
+                    </div>
                    <UploadDropzone
                     endpoint="documentUploader"
+                    onBeforeUploadBegin={async (files) => {
+                      // 1. Enforce 15 MB hard limit before anything hits UploadThing
+                      const oversized = files.filter(f => f.size > MAX_FILE_SIZE_BYTES);
+                      if (oversized.length > 0) {
+                        toast(
+                          `File${oversized.length > 1 ? 's' : ''} too large: ${
+                            oversized.map(f => `"${f.name}" (${(f.size / 1024 / 1024).toFixed(1)} MB)`).join(', ')
+                          }. Maximum is 15 MB per file.`,
+                          'error'
+                        );
+                        // Return only the valid files (or empty array to abort)
+                        const valid = files.filter(f => f.size <= MAX_FILE_SIZE_BYTES);
+                        if (valid.length === 0) return [];
+                      }
+                      // 2. Compress images using Canvas API before upload
+                      const processed = await Promise.all(
+                        files
+                          .filter(f => f.size <= MAX_FILE_SIZE_BYTES)
+                          .map(async (f) => {
+                            if (f.type.startsWith('image/') && f.type !== 'image/svg+xml') {
+                              const compressed = await compressImageFile(f);
+                              const savedMB = ((f.size - compressed.size) / 1024 / 1024).toFixed(1);
+                              if (compressed.size < f.size) {
+                                console.log(`[Upload] Compressed "${f.name}": ${(f.size/1024/1024).toFixed(1)} MB → ${(compressed.size/1024/1024).toFixed(1)} MB (saved ${savedMB} MB)`);
+                              }
+                              return compressed;
+                            }
+                            return f;
+                          })
+                      );
+                      return processed;
+                    }}
                     onClientUploadComplete={async (res) => {
                       try {
                         for (const file of res) {
@@ -236,6 +344,7 @@ export default function DocumentsPage() {
                       setShowUpload(false);
                     }}
                   />
+                  </>
                 )}
               </div>
             </div>
