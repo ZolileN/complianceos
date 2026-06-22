@@ -44,6 +44,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing url or client_id' }, { status: 400 });
   }
 
+  // ── File size guard: reject payloads above 15 MB before any DB work ──────────
+  const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+  if (size && Number(size) > MAX_FILE_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: `File too large. Maximum allowed size is 15 MB. Received: ${(Number(size) / 1024 / 1024).toFixed(1)} MB.` },
+      { status: 400 }
+    );
+  }
+
   try {
     // Check if duplicate document exists
     const existingDocRaw = await db.document.findFirst({
@@ -210,6 +219,24 @@ export async function triggerOcrSimulation(documentId: string) {
     let metadata: Record<string, string> = {};
 
     try {
+      // ── OCR stream size guard: avoid pulling large files into Lambda memory ──
+      // Do a HEAD request first to check Content-Length before downloading.
+      const OCR_MAX_FETCH_BYTES = 10 * 1024 * 1024; // 10 MB
+      let skipBinaryParsing = false;
+      try {
+        const headRes = await fetch(fileUrl, { method: 'HEAD' });
+        const contentLength = headRes.headers.get('content-length');
+        if (contentLength && Number(contentLength) > OCR_MAX_FETCH_BYTES) {
+          console.warn(`[OCR Worker] File exceeds 10 MB threshold (${(Number(contentLength) / 1024 / 1024).toFixed(1)} MB). Skipping binary fetch.`);
+          skipBinaryParsing = true;
+        }
+      } catch {
+        // HEAD request not supported by all CDNs — continue with full fetch
+      }
+
+      if (skipBinaryParsing) {
+        ocrText = `[Large File — Binary Parsing Skipped]\nDocument Category: ${cleanCategory}\nClient Name: ${clientName}\nNote: File exceeded the 10 MB OCR processing threshold. Please upload a compressed version for full text extraction.`;
+      } else {
       const response = await fetch(fileUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch file: ${response.statusText}`);
@@ -236,6 +263,7 @@ export async function triggerOcrSimulation(documentId: string) {
         text += pageText + '\n';
       }
       ocrText = text;
+      } // end else (skipBinaryParsing)
     } catch (fetchErr) {
       console.error("[OCR Worker] Failed to fetch or parse PDF. Falling back to simulated text.", fetchErr);
       ocrText = `[Simulated Extraction - PDF unavailable or unreadable]\nDocument Category: ${cleanCategory}\nClient Name: ${clientName}`;

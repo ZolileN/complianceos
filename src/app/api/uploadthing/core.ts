@@ -7,10 +7,13 @@ const f = createUploadthing();
 
 export const ourFileRouter = {
   documentUploader: f({ 
+    // PDFs cannot be canvas-compressed — keep original 16 MB ceiling
     pdf: { maxFileSize: "16MB", maxFileCount: 5 },
-    image: { maxFileSize: "16MB", maxFileCount: 5 },
-    "application/msword": { maxFileSize: "16MB", maxFileCount: 5 },
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "16MB", maxFileCount: 5 }
+    // Images are compressed client-side before upload; 4 MB is a generous backstop
+    image: { maxFileSize: "4MB", maxFileCount: 5 },
+    // Word documents (UploadThing type union only accepts powers of 2 — 8 MB is the nearest valid cap)
+    "application/msword": { maxFileSize: "8MB", maxFileCount: 5 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { maxFileSize: "8MB", maxFileCount: 5 }
   })
     .middleware(async () => {
       const session = await getServerSession(authOptions);

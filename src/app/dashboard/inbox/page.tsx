@@ -166,10 +166,25 @@ export default function InboxPage() {
           <div className="empty-state">
             <div className="empty-icon">💬</div>
             <h3>No conversations yet</h3>
-            <p>WhatsApp messages from clients will appear here. Make sure your webhook is configured.</p>
-            <div style={{ marginTop: 16, padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', color: 'var(--text-secondary)', maxWidth: 400, textAlign: 'left' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Webhook URL:</strong><br />
-              <code style={{ color: 'var(--accent)' }}>{typeof window !== 'undefined' ? window.location.origin : ''}/api/whatsapp/webhook</code>
+            <p>
+              When clients message you on WhatsApp, their conversations will appear here automatically.
+            </p>
+            <div style={{
+              marginTop: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              maxWidth: 380,
+              textAlign: 'left'
+            }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.1rem', marginTop: 1 }}>1️⃣</span>
+                <span>Go to <strong style={{ color: 'var(--text-primary)' }}>Clients</strong> and share your invite link — clients fill in their details and are added to your workspace automatically.</span>
+              </div>
+              <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '1.1rem', marginTop: 1 }}>2️⃣</span>
+                <span>Once a client sends you a WhatsApp message, the conversation will appear here and link to their profile automatically.</span>
+              </div>
             </div>
           </div>
         </div>
