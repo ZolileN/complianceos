@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Exchange the code for an access token
-    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=`;
     const tokenRes = await fetch(tokenUrl);
     
     if (!tokenRes.ok) {
