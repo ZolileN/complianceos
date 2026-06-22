@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { code, isManual, phoneNumberId: manualPhoneNumberId, accessToken: manualAccessToken } = await request.json();
+    const { code, isManual, phoneNumberId: manualPhoneNumberId, accessToken: manualAccessToken, redirectUri } = await request.json();
 
     if (isManual) {
       if (!manualPhoneNumberId || !manualAccessToken) {
@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Exchange the code for an access token
-    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=`;
+    // For Facebook JS SDK (FB.login), the redirect_uri during exchange must exactly match the URL of the page that opened the dialog
+    const validRedirectUri = redirectUri || '';
+    const tokenUrl = `https://graph.facebook.com/v20.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(validRedirectUri)}`;
     const tokenRes = await fetch(tokenUrl);
     
     if (!tokenRes.ok) {

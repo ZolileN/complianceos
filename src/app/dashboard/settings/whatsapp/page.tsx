@@ -65,7 +65,7 @@ export default function WhatsAppSettingsPage() {
         fetch('/api/settings/whatsapp/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
+          body: JSON.stringify({ code, redirectUri: window.location.origin + window.location.pathname })
         })
         .then(async (res) => {
           const data = await res.json();
