@@ -58,9 +58,16 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    console.log('[WA Connect] code length:', code?.length, '| raw code (first/last 6 chars):', code?.slice(0, 6), '...', code?.slice(-6));
+
     // 1. Exchange the code for an access token
     // For Facebook JS SDK (FB.login), the redirect_uri must be omitted entirely.
-    const tokenUrl = `${GRAPH_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`;
+    const tokenParams = new URLSearchParams({
+      client_id: appId,
+      client_secret: appSecret,
+      code: code,
+    });
+    const tokenUrl = `${GRAPH_API_URL}/oauth/access_token?${tokenParams.toString()}`;
     const tokenRes = await fetch(tokenUrl);
     
     if (!tokenRes.ok) {
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
     const userAccessToken = tokenData.access_token;
 
     // 2. Fetch the WhatsApp Business Accounts (WABA)
-    const wabaRes = await fetch(`${GRAPH_API_URL}/me/whatsapp_business_accounts?access_token=${userAccessToken}`);
+    const wabaRes = await fetch(`${GRAPH_API_URL}/me/whatsapp_business_accounts?${new URLSearchParams({ access_token: userAccessToken })}`);
     if (!wabaRes.ok) {
       const err = await wabaRes.json();
       throw new Error(`Failed to fetch WABA accounts: ${JSON.stringify(err)}`);
@@ -86,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Fetch phone numbers for that WABA
-    const phoneRes = await fetch(`${GRAPH_API_URL}/${wabaId}/phone_numbers?access_token=${userAccessToken}`);
+    const phoneRes = await fetch(`${GRAPH_API_URL}/${wabaId}/phone_numbers?${new URLSearchParams({ access_token: userAccessToken })}`);
     if (!phoneRes.ok) {
       const err = await phoneRes.json();
       throw new Error(`Failed to fetch phone numbers: ${JSON.stringify(err)}`);
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Subscribe the WABA to receive webhooks
-    const subUrl = `${GRAPH_API_URL}/${wabaId}/subscribed_apps?access_token=${userAccessToken}`;
+    const subUrl = `${GRAPH_API_URL}/${wabaId}/subscribed_apps?${new URLSearchParams({ access_token: userAccessToken })}`;
     await fetch(subUrl, { method: 'POST' }).catch(err => {
       console.warn('Failed to auto-subscribe app to WABA webhooks:', err);
     });
