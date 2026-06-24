@@ -94,7 +94,13 @@ export default function WhatsAppSettingsPage() {
     }, {
       config_id: configId,
       response_type: 'code',
-      override_default_response_type: true
+      override_default_response_type: true,
+      // extras.setup is REQUIRED by Meta to signal WhatsApp Embedded Signup.
+      // Without it, the SDK issues codes bound to Meta's internal popup redirect_uri,
+      // causing error_subcode 36008 on every token exchange regardless of server-side code.
+      extras: {
+        setup: {},
+      },
     });
   };
 
@@ -156,21 +162,21 @@ export default function WhatsAppSettingsPage() {
 
   return (
     <div style={{ maxWidth: 800 }}>
-      {/* Load FB SDK */}
+      {/* Load FB SDK — FB.init() must be called directly in onLoad, not inside fbAsyncInit,
+          because fbAsyncInit is only invoked by the SDK on first load. When Next.js loads
+          the script lazily, fbAsyncInit has already been missed by the time we set it. */}
       <Script
         src="https://connect.facebook.net/en_US/sdk.js"
         strategy="lazyOnload"
         onLoad={() => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const win = window as any;
-          win.fbAsyncInit = function() {
-            win.FB.init({
-              appId: process.env.NEXT_PUBLIC_META_APP_ID || '', // Fallback to config ID or default app
-              cookie: true,
-              xfbml: true,
-              version: 'v25.0'
-            });
-          };
+          win.FB.init({
+            appId: process.env.NEXT_PUBLIC_META_APP_ID || '',
+            cookie: true,
+            xfbml: true,
+            version: 'v25.0'
+          });
         }}
       />
 
