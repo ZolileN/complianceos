@@ -80,32 +80,15 @@ export async function POST(request: NextRequest) {
     const tokenData = await tokenRes.json();
     const userAccessToken = tokenData.access_token;
 
-    // 2. Fetch the user's Business Portfolios.
-    // NOTE: /me/whatsapp_business_accounts only works for the WhatsApp Embedded Signup flow
-    // (which requires Meta Partner status). For the General OAuth flow we must go through
-    // the user's Business Portfolio: /me/businesses → /{biz_id}/whatsapp_business_accounts
-    const bizRes = await fetch(
-      `${GRAPH_API_URL}/me/businesses?${new URLSearchParams({ access_token: userAccessToken, fields: 'id,name' })}`
-    );
-    if (!bizRes.ok) {
-      const err = await bizRes.json();
-      throw new Error(`Failed to fetch Business Portfolios: ${JSON.stringify(err)}`);
-    }
-    const bizData = await bizRes.json();
-    console.log('[WA Connect] businesses:', JSON.stringify(bizData?.data?.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))));
-
-    const businessId = bizData.data?.[0]?.id;
-    if (!businessId) {
-      throw new Error(
-        'No Meta Business Portfolio found on this account. ' +
-        'Please make sure you are logged in with a Facebook account that has a Meta Business Portfolio, ' +
-        'then try again.'
-      );
-    }
-
-    // 3. Fetch the WhatsApp Business Accounts (WABA) for this Business Portfolio
+    // 2. Fetch the WhatsApp Business Accounts (WABA) associated with the User.
+    // NOTE: We cannot use /me/businesses (which requires business_management permission).
+    // Instead, we use /me/owned_whatsapp_business_accounts, which only requires the
+    // whatsapp_business_management permission (granted during the OAuth flow).
     const wabaRes = await fetch(
-      `${GRAPH_API_URL}/${businessId}/whatsapp_business_accounts?${new URLSearchParams({ access_token: userAccessToken, fields: 'id,name,currency,message_template_namespace' })}`
+      `${GRAPH_API_URL}/me/owned_whatsapp_business_accounts?${new URLSearchParams({ 
+        access_token: userAccessToken,
+        fields: 'id,name,currency,message_template_namespace' 
+      })}`
     );
     if (!wabaRes.ok) {
       const err = await wabaRes.json();
@@ -117,8 +100,8 @@ export async function POST(request: NextRequest) {
     const wabaId = wabaData.data?.[0]?.id;
     if (!wabaId) {
       throw new Error(
-        'No WhatsApp Business Account found under your Meta Business Portfolio. ' +
-        'Please set up a WhatsApp Business Account in Meta Business Suite first.'
+        'No WhatsApp Business Account found on your Meta account. ' +
+        'Please make sure you have created a WhatsApp Business Account first.'
       );
     }
 

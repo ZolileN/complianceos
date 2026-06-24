@@ -103,7 +103,7 @@ export default function WhatsAppSettingsPage() {
       client_id: appId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
+      scope: 'whatsapp_business_management,whatsapp_business_messaging',
       config_id: configId,
     });
 
