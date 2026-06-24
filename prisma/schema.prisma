@@ -47,6 +47,7 @@ model User {
   image         String?
   password      String?   // Added for credentials provider
   role          String    @default("consultant") // administrator, operations_manager, consultant, client
+  contactNumber String?
   
   tenantId      String?
   tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

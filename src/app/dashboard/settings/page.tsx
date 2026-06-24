@@ -20,11 +20,21 @@ interface CompanyData {
   website: string | null;
 }
 
+interface PersonalData {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+  image: string | null;
+  contactNumber: string | null;
+  createdAt: string;
+}
+
 export default function SettingsPage() {
   const { tenant } = useAuth();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp'>(() => {
+  const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>(() => {
     if (typeof window !== 'undefined') {
       return new URLSearchParams(window.location.search).get('code') ? 'whatsapp' : 'profile';
     }
@@ -33,6 +43,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
+  const [personal, setPersonal] = useState<PersonalData | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Profile Form State
@@ -45,35 +56,60 @@ export default function SettingsPage() {
     website: '',
   });
 
+  // Personal Profile Form State
+  const [personalForm, setPersonalForm] = useState({
+    name: '',
+    email: '',
+    contactNumber: '',
+    image: '',
+  });
+
   // Manual WhatsApp Form State
   const [manualForm, setManualForm] = useState({
     phoneNumberId: '',
     accessToken: '',
   });
 
-  // Fetch all company & WhatsApp settings
+  // Fetch all company, WhatsApp, and personal settings
   useEffect(() => {
     if (!tenant) return;
     let isMounted = true;
 
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/settings/company');
-        if (res.ok) {
-          const { data } = await res.json();
+        const [compRes, persRes] = await Promise.all([
+          fetch('/api/settings/company'),
+          fetch('/api/settings/profile')
+        ]);
+
+        if (compRes.ok && persRes.ok) {
+          const compDataObj = await compRes.json();
+          const persDataObj = await persRes.json();
+
           if (isMounted) {
-            setCompany(data);
+            const compData = compDataObj.data;
+            const persData = persDataObj.data;
+
+            setCompany(compData);
             setProfileForm({
-              name: data.name || '',
-              slug: data.slug || '',
-              email: data.email || '',
-              contactNumber: data.contactNumber || '',
-              address: data.address || '',
-              website: data.website || '',
+              name: compData.name || '',
+              slug: compData.slug || '',
+              email: compData.email || '',
+              contactNumber: compData.contactNumber || '',
+              address: compData.address || '',
+              website: compData.website || '',
+            });
+
+            setPersonal(persData);
+            setPersonalForm({
+              name: persData.name || '',
+              email: persData.email || '',
+              contactNumber: persData.contactNumber || '',
+              image: persData.image || '',
             });
           }
         } else {
-          toast('Failed to load company profile settings', 'error');
+          toast('Failed to load settings', 'error');
         }
       } catch (err) {
         console.error('Error fetching settings:', err);
@@ -158,6 +194,44 @@ export default function SettingsPage() {
       setCompany(data.data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update profile';
+      toast(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save Personal Profile Changes
+  const handleSavePersonal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!personalForm.name.trim()) {
+      toast('Name is required', 'error');
+      return;
+    }
+    if (!personalForm.email.trim()) {
+      toast('Email is required', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/settings/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: personalForm.name,
+          email: personalForm.email,
+          contactNumber: personalForm.contactNumber,
+          image: personalForm.image,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update personal profile');
+
+      toast('Personal profile updated successfully!', 'success');
+      setPersonal(data.data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update personal profile';
       toast(msg, 'error');
     } finally {
       setSaving(false);
@@ -284,6 +358,12 @@ export default function SettingsPage() {
           onClick={() => setActiveTab('whatsapp')}
         >
           💬 WhatsApp Integration
+        </button>
+        <button 
+          className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('personal')}
+        >
+          👤 Personal Profile
         </button>
       </div>
 
@@ -545,6 +625,102 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'personal' && personal && (
+        <div className="stack">
+          {/* Personal details editor */}
+          <div className="card">
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 16 }}>👤 Personal Profile</h3>
+            <form onSubmit={handleSavePersonal} className="stack">
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16, background: 'rgba(0,0,0,0.15)', padding: 16, borderRadius: 'var(--radius-md)' }}>
+                <div style={{ position: 'relative' }}>
+                  {personalForm.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img 
+                      src={personalForm.image} 
+                      alt="Avatar" 
+                      style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent)' }} 
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(personalForm.name || 'User')}`;
+                      }}
+                    />
+                  ) : (
+                    <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: 'var(--text-muted)' }}>
+                      👤
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>User ID (Troubleshooting)</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 600 }}>{personal.id}</div>
+                  <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>System Role:</span>
+                    <span className="badge badge-blue" style={{ textTransform: 'capitalize' }}>
+                      {personal.role.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="input" 
+                  value={personalForm.name} 
+                  onChange={(e) => setPersonalForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. John Doe"
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input 
+                    type="email" 
+                    className="input" 
+                    value={personalForm.email} 
+                    onChange={(e) => setPersonalForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="e.g. johndoe@firm.co.za"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Contact Number</label>
+                  <input 
+                    type="tel" 
+                    className="input" 
+                    value={personalForm.contactNumber} 
+                    onChange={(e) => setPersonalForm(prev => ({ ...prev, contactNumber: e.target.value }))}
+                    placeholder="e.g. +27 72 123 4567"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Avatar / Profile Image URL</label>
+                <input 
+                  type="url" 
+                  className="input" 
+                  value={personalForm.image} 
+                  onChange={(e) => setPersonalForm(prev => ({ ...prev, image: e.target.value }))}
+                  placeholder="e.g. https://images.unsplash.com/... or leave blank for initials"
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Provide a link to an image, or leave it blank to automatically generate an initials avatar.
+                </span>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
