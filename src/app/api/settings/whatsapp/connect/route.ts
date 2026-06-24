@@ -80,28 +80,33 @@ export async function POST(request: NextRequest) {
     const tokenData = await tokenRes.json();
     const userAccessToken = tokenData.access_token;
 
-    // 2. Fetch the WhatsApp Business Accounts (WABA) associated with the User.
-    // NOTE: We cannot use /me/businesses (which requires business_management permission).
-    // Instead, we use /me/owned_whatsapp_business_accounts, which only requires the
-    // whatsapp_business_management permission (granted during the OAuth flow).
-    const wabaRes = await fetch(
-      `${GRAPH_API_URL}/me/owned_whatsapp_business_accounts?${new URLSearchParams({ 
-        access_token: userAccessToken,
-        fields: 'id,name,currency,message_template_namespace' 
-      })}`
-    );
-    if (!wabaRes.ok) {
-      const err = await wabaRes.json();
-      throw new Error(`Failed to fetch WABA accounts: ${JSON.stringify(err)}`);
+    // 2. Fetch WABA ID by debugging the user access token.
+    // Since we don't request high-level business_management permissions (which would allow listing businesses),
+    // we query /debug_token to extract the specific WhatsApp Business Account (WABA) ID(s)
+    // that the user granted us access to in granular_scopes.
+    const debugParams = new URLSearchParams({
+      input_token: userAccessToken,
+      access_token: `${appId}|${appSecret}`,
+    });
+    const debugUrl = `${GRAPH_API_URL}/debug_token?${debugParams.toString()}`;
+    const debugRes = await fetch(debugUrl);
+    if (!debugRes.ok) {
+      const err = await debugRes.json();
+      throw new Error(`Failed to debug token: ${JSON.stringify(err)}`);
     }
-    const wabaData = await wabaRes.json();
-    console.log('[WA Connect] WABAs:', JSON.stringify(wabaData?.data?.map((w: { id: string; name: string }) => ({ id: w.id, name: w.name }))));
+    const debugData = await debugRes.json();
+    console.log('[WA Connect] Debug Token Data:', JSON.stringify(debugData));
 
-    const wabaId = wabaData.data?.[0]?.id;
+    const granularScopes = debugData.data?.granular_scopes || [];
+    const waManagementScope = granularScopes.find(
+      (s: { scope: string; target_ids?: string[] }) => s.scope === 'whatsapp_business_management'
+    );
+    const wabaId = waManagementScope?.target_ids?.[0];
+
     if (!wabaId) {
       throw new Error(
-        'No WhatsApp Business Account found on your Meta account. ' +
-        'Please make sure you have created a WhatsApp Business Account first.'
+        'No WhatsApp Business Account found authorized on the token. ' +
+        'Please ensure you completed the Facebook Login and selected a business account.'
       );
     }
 
