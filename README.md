@@ -66,6 +66,29 @@ Ensure you have the following installed:
 ## 🔒 Security & Roles
 
 The platform enforces strict Role-Based Access Control (RBAC):
-*   **Administrator & Operations Manager:** Full platform access and global visibility across the tenant.
+*   **Administrator:** Full platform access, global visibility across the tenant, and complete management of the PraxisAdmin internal control plane.
+*   **Operations Manager:** Full platform access across the tenant.
 *   **Consultant:** Restricted access; can only view and modify clients, tasks, and workflows explicitly assigned to them.
 *   **Client:** Highly restricted; can only access their specific company profile and upload required compliance documentation.
+
+### 👑 Administrator Setup & Access Guide
+
+To log in as a platform administrator and access the PraxisAdmin control plane:
+
+1.  **Register a Workspace:**
+    *   Navigate to the `/signup` screen.
+    *   Enter your Email, Password, Full Name, and Firm Name.
+    *   The platform will automatically provision a new Tenant workspace and register you as the **workspace owner (role: `administrator`)**.
+
+2.  **Access the Control Plane:**
+    *   Go to `/admin` in your web browser.
+    *   This is the entry point for the **PraxisAdmin Internal Platform OS**, featuring:
+        *   **Fleet Registry (`/admin`)**: Suspension controls and Meta credentials resets.
+        *   **FinOps Metering (`/admin/webhooks`)**: Live webhook logs, payload inspection, and token capacity meters.
+        *   **Infrastructure Controls (`/admin/infrastructure`)**: Resource usage monitoring and background PG vacuum triggers.
+        *   **Isolated Debug Console (`/admin/console`)**: Interactive shell diagnostic commands.
+
+3.  **Strict Middleware Protection:**
+    *   All `/admin/*` and `/api/admin/*` paths are guarded at the gateway level.
+    *   Non-administrator roles attempting to access these routes are automatically redirected back to `/dashboard?error=unauthorized` or receive a `403 Forbidden` JSON payload.
+

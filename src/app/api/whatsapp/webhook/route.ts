@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { markAsRead } from '@/lib/whatsapp';
+import { AdminLogger } from '@/lib/admin-logs';
 
 /**
  * GET — Meta webhook verification (challenge-response)
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
+  
+  AdminLogger.log('webhook', 'Meta Webhook (WA_EMBEDDED_SIGNUP or Message Event)', body);
 
   if (!body.entry?.[0]?.changes?.[0]?.value) {
     return NextResponse.json({ status: 'ok' });
