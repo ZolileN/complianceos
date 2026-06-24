@@ -159,11 +159,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
         <div className="sidebar-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="header-avatar">{user?.name?.[0] || 'U'}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role?.replace('_', ' ')}</div>
-            </div>
+            <Link href="/dashboard/settings?tab=personal" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+              <div className="header-avatar" style={{ cursor: 'pointer' }}>{user?.name?.[0] || 'U'}</div>
+              <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role?.replace('_', ' ')}</div>
+              </div>
+            </Link>
             <button className="btn btn-ghost btn-icon" onClick={signOut} title="Sign out" style={{ fontSize: '1rem' }}>⏻</button>
           </div>
         </div>
@@ -225,7 +227,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <div className="header-actions">
           <button className="btn btn-ghost btn-icon" title="Notifications">🔔</button>
-          <div className="header-avatar">{user?.name?.[0] || 'U'}</div>
+          <Link href="/dashboard/settings?tab=personal" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="header-avatar" style={{ cursor: 'pointer' }}>{user?.name?.[0] || 'U'}</div>
+          </Link>
         </div>
       </header>
 

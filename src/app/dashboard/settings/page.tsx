@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -30,10 +31,14 @@ interface PersonalData {
   createdAt: string;
 }
 
-export default function SettingsPage() {
-  const { user, tenant } = useAuth();
+function SettingsPageContent() {
+  const { user, tenant, updateUser } = useAuth();
   const { toast } = useToast();
   
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const codeParam = searchParams.get('code');
+
   const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>('personal');
 
   const isAdminOrOps = user?.role === 'administrator' || user?.role === 'operations_manager';
@@ -44,13 +49,16 @@ export default function SettingsPage() {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTab('personal');
       } else {
-        if (typeof window !== 'undefined') {
-          const hasCode = new URLSearchParams(window.location.search).get('code');
-          setActiveTab(hasCode ? 'whatsapp' : 'profile');
+        if (tabParam === 'personal') {
+          setActiveTab('personal');
+        } else if (tabParam === 'whatsapp' || codeParam) {
+          setActiveTab('whatsapp');
+        } else {
+          setActiveTab('profile');
         }
       }
     }
-  }, [user]);
+  }, [user, tabParam, codeParam]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,6 +255,12 @@ export default function SettingsPage() {
 
       toast('Personal profile updated successfully!', 'success');
       setPersonal(data.data);
+      if (updateUser) {
+        await updateUser({
+          name: data.data.name,
+          email: data.data.email,
+        });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update personal profile';
       toast(msg, 'error');
@@ -838,5 +852,17 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh' }}>
+        <span className="spinner" style={{ width: 40, height: 40 }} />
+      </div>
+    }>
+      <SettingsPageContent />
+    </Suspense>
   );
 }

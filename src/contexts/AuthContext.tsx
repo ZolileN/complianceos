@@ -16,6 +16,7 @@ interface AuthState {
   tenant: { id: string } | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateUser?: (newData: Partial<SessionUser>) => Promise<unknown>;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -26,7 +27,7 @@ const AuthContext = createContext<AuthState>({
 });
 
 function AuthProviderInner({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   
   const user = (session?.user as SessionUser) || null;
   const tenant = user?.tenantId ? { id: user.tenantId } : null;
@@ -35,12 +36,17 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     await nextAuthSignOut({ callbackUrl: '/login' });
   };
 
+  const updateUser = async (newData: Partial<SessionUser>) => {
+    return await update(newData);
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       tenant, 
       loading: status === 'loading', 
-      signOut 
+      signOut,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>
