@@ -80,18 +80,46 @@ export async function POST(request: NextRequest) {
     const tokenData = await tokenRes.json();
     const userAccessToken = tokenData.access_token;
 
-    // 2. Fetch the WhatsApp Business Accounts (WABA)
-    const wabaRes = await fetch(`${GRAPH_API_URL}/me/whatsapp_business_accounts?${new URLSearchParams({ access_token: userAccessToken })}`);
+    // 2. Fetch the user's Business Portfolios.
+    // NOTE: /me/whatsapp_business_accounts only works for the WhatsApp Embedded Signup flow
+    // (which requires Meta Partner status). For the General OAuth flow we must go through
+    // the user's Business Portfolio: /me/businesses → /{biz_id}/whatsapp_business_accounts
+    const bizRes = await fetch(
+      `${GRAPH_API_URL}/me/businesses?${new URLSearchParams({ access_token: userAccessToken, fields: 'id,name' })}`
+    );
+    if (!bizRes.ok) {
+      const err = await bizRes.json();
+      throw new Error(`Failed to fetch Business Portfolios: ${JSON.stringify(err)}`);
+    }
+    const bizData = await bizRes.json();
+    console.log('[WA Connect] businesses:', JSON.stringify(bizData?.data?.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))));
+
+    const businessId = bizData.data?.[0]?.id;
+    if (!businessId) {
+      throw new Error(
+        'No Meta Business Portfolio found on this account. ' +
+        'Please make sure you are logged in with a Facebook account that has a Meta Business Portfolio, ' +
+        'then try again.'
+      );
+    }
+
+    // 3. Fetch the WhatsApp Business Accounts (WABA) for this Business Portfolio
+    const wabaRes = await fetch(
+      `${GRAPH_API_URL}/${businessId}/whatsapp_business_accounts?${new URLSearchParams({ access_token: userAccessToken, fields: 'id,name,currency,message_template_namespace' })}`
+    );
     if (!wabaRes.ok) {
       const err = await wabaRes.json();
       throw new Error(`Failed to fetch WABA accounts: ${JSON.stringify(err)}`);
     }
-    
     const wabaData = await wabaRes.json();
-    const wabaId = wabaData.data?.[0]?.id;
+    console.log('[WA Connect] WABAs:', JSON.stringify(wabaData?.data?.map((w: { id: string; name: string }) => ({ id: w.id, name: w.name }))));
 
+    const wabaId = wabaData.data?.[0]?.id;
     if (!wabaId) {
-      throw new Error('No WhatsApp Business Account found. Make sure your Meta Business Account is correctly configured.');
+      throw new Error(
+        'No WhatsApp Business Account found under your Meta Business Portfolio. ' +
+        'Please set up a WhatsApp Business Account in Meta Business Suite first.'
+      );
     }
 
     // 3. Fetch phone numbers for that WABA
