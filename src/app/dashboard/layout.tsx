@@ -195,9 +195,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.location.href = '/login';
       } else if (!tenant) {
         signOut();
+      } else if (user.tenantSlug === 'praxisone' || user.email?.endsWith('@praxisone.com')) {
+        router.push('/admin');
       }
     }
-  }, [loading, user, tenant, signOut]);
+  }, [loading, user, tenant, signOut, router]);
 
   if (loading) {
     return <div className="flex-center" style={{ minHeight: '100vh' }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;

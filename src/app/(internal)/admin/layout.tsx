@@ -39,6 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/admin', label: 'Fleet Overview', icon: '⚡' },
+    { href: '/admin/team', label: 'Platform Team', icon: '👥' },
     { href: '/admin/webhooks', label: 'Webhook & Metering Logs', icon: '📊' },
     { href: '/admin/infrastructure', label: 'Infrastructure & Tuning', icon: '⚙️' },
     { href: '/admin/console', label: 'Isolated Debug Console', icon: '💻' },

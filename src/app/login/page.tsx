@@ -28,7 +28,15 @@ export default function LoginPage() {
         throw new Error(result.error);
       }
 
-      router.push('/dashboard');
+      const sessionRes = await fetch('/api/auth/session');
+      const session = await sessionRes.json();
+      const user = session?.user;
+
+      if (user?.tenantSlug === 'praxisone' || user?.email?.endsWith('@praxisone.com')) {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');

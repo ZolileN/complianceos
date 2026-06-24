@@ -10,6 +10,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (email.toLowerCase().endsWith('@praxisone.com')) {
+      return NextResponse.json({ error: "Registration is restricted for this email domain. Please contact your platform administrator." }, { status: 400 });
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
