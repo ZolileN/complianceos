@@ -34,7 +34,12 @@ export async function POST(
 
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, name: true },
+    select: { 
+      id: true, 
+      name: true,
+      whatsappPhoneNumberId: true,
+      whatsappAccessToken: true
+    },
   });
 
   if (!tenant) {
@@ -110,7 +115,11 @@ export async function POST(
       `A consultant will be in touch shortly to guide you through the next steps.\n\n` +
       `Thank you for choosing us! 🙏`;
 
-    sendTextMessage(sanitised, welcomeMsg).catch(err => {
+    const credentials = tenant.whatsappPhoneNumberId && tenant.whatsappAccessToken
+      ? { phoneNumberId: tenant.whatsappPhoneNumberId, accessToken: tenant.whatsappAccessToken }
+      : undefined;
+
+    sendTextMessage(sanitised, welcomeMsg, credentials).catch(err => {
       console.warn('[Onboarding] WhatsApp welcome message failed (non-critical):', err?.message);
     });
   }
