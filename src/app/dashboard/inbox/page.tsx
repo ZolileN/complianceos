@@ -183,7 +183,7 @@ export default function InboxPage() {
               Connect your firm&apos;s WhatsApp Business account to start messaging your clients directly from PraxisOne.
             </p>
             <div>
-              <Link href="/dashboard/settings/whatsapp" className="btn btn-primary">
+              <Link href="/dashboard/settings" className="btn btn-primary">
                 ⚙️ Set Up WhatsApp Business
               </Link>
             </div>
