@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface TenantItem {
   id: string;
@@ -204,7 +205,19 @@ export default function FleetOverview() {
               {tenants.map(tenant => (
                 <tr key={tenant.id} style={{ borderBottom: '1px solid #1E293B', background: tenant.isActive ? 'transparent' : 'rgba(245, 158, 11, 0.02)', transition: 'background 0.15s ease' }}>
                   <td style={{ padding: '16px 20px' }}>
-                    <div style={{ fontWeight: 600, color: '#F1F5F9' }}>{tenant.name}</div>
+                    <Link 
+                      href={`/admin/tenants/${tenant.id}`}
+                      style={{ 
+                        fontWeight: 600, 
+                        color: '#5EEAD4', 
+                        textDecoration: 'none', 
+                        cursor: 'pointer' 
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
+                    >
+                      {tenant.name}
+                    </Link>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       <span style={{ fontSize: '0.7rem', color: '#94A3B8', fontFamily: 'monospace' }}>/onboard/{tenant.slug}</span>
                       <button

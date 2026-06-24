@@ -1,0 +1,393 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+
+interface UserItem {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+interface ClientItem {
+  id: string;
+  companyName: string;
+  registrationNumber: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  createdAt: string;
+}
+
+interface TenantDetail {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  isActive: boolean;
+  whatsappSetupComplete: boolean;
+  whatsappPhoneNumber: string | null;
+  email: string | null;
+  contactNumber: string | null;
+  address: string | null;
+  website: string | null;
+  createdAt: string;
+  users: UserItem[];
+  clients: ClientItem[];
+}
+
+export default function TenantProfile() {
+  const { id } = useParams() as { id: string };
+  const [tenant, setTenant] = useState<TenantDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'members' | 'clients'>('members');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTenantDetail = async () => {
+      try {
+        const res = await fetch(`/api/admin/tenants/${id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to retrieve tenant details');
+        setTenant(data.data);
+      } catch (err: any) {
+        setError(err.message || 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTenantDetail();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#94A3B8' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+          <span>Retrieving workspace metadata...</span>
+        </div>
+        <style jsx>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error || !tenant) {
+    return (
+      <div style={{ padding: 24, background: '#0F172A', border: '1px solid #EF4444', borderRadius: 8, color: '#F87171', maxWidth: 600 }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Error Loading Tenant</h2>
+        <p style={{ fontSize: '0.85rem', marginTop: 8 }}>{error || 'Tenant not found.'}</p>
+        <Link href="/admin" style={{ display: 'inline-block', marginTop: 16, color: '#5EEAD4', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>
+          ← Back to Fleet Overview
+        </Link>
+      </div>
+    );
+  }
+
+  const roleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'administrator':
+        return '#F87171';
+      case 'operations_manager':
+        return '#60A5FA';
+      case 'consultant':
+        return '#C084FC';
+      default:
+        return '#94A3B8';
+    }
+  };
+
+  const statusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active':
+      case 'compliant':
+        return '#34D399';
+      case 'onboarding':
+      case 'action_required':
+        return '#60A5FA';
+      default:
+        return '#F87171';
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Top Header Navigation */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <Link href="/admin" style={{ color: '#5EEAD4', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>←</span> Back to Fleet Overview
+          </Link>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F8FAFC', marginTop: 8 }}>
+            Tenant Profile: {tenant.name}
+          </h1>
+          <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: 4 }}>
+            System-level metadata for workspace firm <code>/onboard/{tenant.slug}</code>.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <span style={{
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: tenant.isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            color: tenant.isActive ? '#34D399' : '#F87171',
+            border: `1px solid ${tenant.isActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+          }}>
+            {tenant.isActive ? 'Active' : 'Suspended'}
+          </span>
+          <span style={{
+            padding: '6px 12px',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: 'rgba(59, 130, 246, 0.1)',
+            color: '#60A5FA',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            textTransform: 'uppercase'
+          }}>
+            Tier: {tenant.plan}
+          </span>
+        </div>
+      </div>
+
+      {/* POPIA Privacy Shield Alert Banner */}
+      <div style={{
+        background: 'rgba(59, 130, 246, 0.05)',
+        border: '1px solid rgba(59, 130, 246, 0.2)',
+        borderRadius: 8,
+        padding: '16px 20px',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 16
+      }}>
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.15)',
+          color: '#60A5FA',
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          fontWeight: 700,
+          fontSize: '1rem'
+        }}>
+          🛡️
+        </div>
+        <div>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#F1F5F9' }}>POPIA Privacy Shield Enabled</h4>
+          <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4, lineHeight: 1.4 }}>
+            In compliance with the <strong>Protection of Personal Information Act (POPIA)</strong>, platform administration access is restricted to tenant-level configuration and high-level directory directories. Direct access to client document vaults, secure message histories, tax identification items, and client workflows remains locked to the tenant workspace.
+          </p>
+        </div>
+      </div>
+
+      {/* Tenant Metadata Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registration Metadata</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Workspace URL Slug:</span>
+              <span style={{ color: '#F1F5F9', fontFamily: 'monospace' }}>{tenant.slug}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Creation Date:</span>
+              <span style={{ color: '#F1F5F9' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Internal ID Reference:</span>
+              <span style={{ color: '#94A3B8', fontFamily: 'monospace', fontSize: '0.7rem' }}>{tenant.id}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Integration</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>WhatsApp Linkage:</span>
+              <span style={{ color: tenant.whatsappSetupComplete ? '#34D399' : '#64748B', fontWeight: 600 }}>
+                {tenant.whatsappSetupComplete ? 'Connected' : 'Not Connected'}
+              </span>
+            </div>
+            {tenant.whatsappPhoneNumber && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748B' }}>WhatsApp Phone Number:</span>
+                <span style={{ color: '#F1F5F9', fontFamily: 'monospace' }}>{tenant.whatsappPhoneNumber}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>System Users Active:</span>
+              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>{tenant.users.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Firm Directory Details</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Business Email:</span>
+              <span style={{ color: '#F1F5F9' }}>{tenant.email || 'N/A'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Contact Number:</span>
+              <span style={{ color: '#F1F5F9' }}>{tenant.contactNumber || 'N/A'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748B' }}>Active Client Count:</span>
+              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>{tenant.clients.length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Directory Selector tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #1E293B', gap: 8, marginTop: 8 }}>
+        <button
+          onClick={() => setActiveTab('members')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'members' ? '2px solid #5EEAD4' : '2px solid transparent',
+            color: activeTab === 'members' ? '#F8FAFC' : '#94A3B8',
+            padding: '12px 16px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          Firm Members ({tenant.users.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('clients')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'clients' ? '2px solid #5EEAD4' : '2px solid transparent',
+            color: activeTab === 'clients' ? '#F8FAFC' : '#94A3B8',
+            padding: '12px 16px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          Registered Clients ({tenant.clients.length})
+        </button>
+      </div>
+
+      {/* Active Tab View */}
+      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
+        {activeTab === 'members' ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Name</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>System Permission Role</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Joined Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenant.users.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                      No workspace members registered.
+                    </td>
+                  </tr>
+                ) : (
+                  tenant.users.map(user => (
+                    <tr key={user.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#F1F5F9' }}>{user.name || 'Unnamed'}</td>
+                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{user.email}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          background: 'rgba(255,255,255,0.03)',
+                          color: roleBadgeColor(user.role),
+                          border: `1px solid ${roleBadgeColor(user.role)}33`
+                        }}>
+                          {user.role.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px', color: '#94A3B8' }}>
+                        {new Date(user.createdAt).toLocaleDateString('en-GB')}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Client Name</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Registration Number</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Contact Phone</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Status</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>Onboarded Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenant.clients.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                      No clients registered under this workspace.
+                    </td>
+                  </tr>
+                ) : (
+                  tenant.clients.map(client => (
+                    <tr key={client.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#F1F5F9' }}>{client.companyName}</td>
+                      <td style={{ padding: '16px 20px', color: '#CBD5E1', fontFamily: 'monospace' }}>{client.registrationNumber || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.email || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.phone || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          background: 'rgba(255,255,255,0.03)',
+                          color: statusBadgeColor(client.status),
+                          border: `1px solid ${statusBadgeColor(client.status)}33`
+                        }}>
+                          {client.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px', color: '#94A3B8' }}>
+                        {new Date(client.createdAt).toLocaleDateString('en-GB')}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
