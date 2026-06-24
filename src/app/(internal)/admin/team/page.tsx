@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
@@ -39,7 +39,7 @@ export default function PlatformTeamPage() {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  const fetchTeam = async () => {
+  const fetchTeam = useCallback(async () => {
     try {
       const res = await fetch('/api/users');
       if (!res.ok) throw new Error('Failed to load platform team members');
@@ -50,11 +50,11 @@ export default function PlatformTeamPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchTeam();
-  }, [refreshKey]);
+  }, [fetchTeam, refreshKey]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,7 +346,7 @@ export default function PlatformTeamPage() {
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Platform Role *</label>
                 <select
                   value={form.role}
-                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as any }))}
+                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as 'administrator' | 'operations_manager' | 'consultant' | 'client' }))}
                   style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
                 >
                   <option value="administrator">Platform Administrator (Full Access)</option>
