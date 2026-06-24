@@ -56,6 +56,11 @@ export default function WhatsAppSettingsPage() {
     }
 
     const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
+    console.log('[WA Connect] configId:', configId);
+    if (!configId) {
+      toast('WhatsApp connection is not configured correctly. Missing Config ID.', 'error');
+      return;
+    }
     
     win.FB.login((response: { authResponse?: { code: string } }) => {
       if (response.authResponse?.code) {
@@ -89,8 +94,7 @@ export default function WhatsAppSettingsPage() {
     }, {
       config_id: configId,
       response_type: 'code',
-      override_default_response_type: true,
-      scope: 'whatsapp_business_management,whatsapp_business_messaging'
+      override_default_response_type: true
     });
   };
 
