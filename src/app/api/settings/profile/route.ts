@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import bcrypt from 'bcryptjs';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -52,7 +53,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, email, contactNumber, image } = body;
+    const { name, email, contactNumber, image, currentPassword, newPassword } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -74,14 +75,44 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Email is already in use by another account.' }, { status: 409 });
     }
 
+    const updateData: {
+      name: string;
+      email: string;
+      contactNumber: string | null;
+      image: string | null;
+      password?: string;
+    } = {
+      name: name.trim(),
+      email: email.trim(),
+      contactNumber: contactNumber?.trim() || null,
+      image: image?.trim() || null,
+    };
+
+    if (currentPassword && newPassword) {
+      if (newPassword.trim().length < 6) {
+        return NextResponse.json({ error: 'New password must be at least 6 characters long.' }, { status: 400 });
+      }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true }
+      });
+
+      if (!dbUser || !dbUser.password) {
+        return NextResponse.json({ error: 'User password not found.' }, { status: 404 });
+      }
+
+      const isCurrentValid = await bcrypt.compare(currentPassword, dbUser.password);
+      if (!isCurrentValid) {
+        return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+      }
+
+      updateData.password = await bcrypt.hash(newPassword.trim(), 10);
+    }
+
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: {
-        name: name.trim(),
-        email: email.trim(),
-        contactNumber: contactNumber?.trim() || null,
-        image: image?.trim() || null,
-      },
+      data: updateData,
       select: {
         id: true,
         name: true,

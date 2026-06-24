@@ -58,6 +58,11 @@ export default function SettingsPage() {
   const [personal, setPersonal] = useState<PersonalData | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Change Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
   // Profile Form State
   const [profileForm, setProfileForm] = useState({
     name: '',
@@ -244,6 +249,52 @@ export default function SettingsPage() {
       setPersonal(data.data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update personal profile';
+      toast(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Change Password
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      toast('Current password is required', 'error');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast('New password must be at least 6 characters long', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast('New passwords do not match', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/settings/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: personalForm.name,
+          email: personalForm.email,
+          contactNumber: personalForm.contactNumber,
+          image: personalForm.image,
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to change password');
+
+      toast('Password updated successfully!', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to change password';
       toast(msg, 'error');
     } finally {
       setSaving(false);
@@ -733,6 +784,53 @@ export default function SettingsPage() {
               <div style={{ marginTop: 12 }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving ? 'Saving...' : 'Save Profile Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Change Password Card */}
+          <div className="card" style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 16 }}>🔒 Change Password</h3>
+            <form onSubmit={handleChangePassword} className="stack">
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input 
+                  type="password" 
+                  className="input" 
+                  value={currentPassword} 
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input 
+                    type="password" 
+                    className="input" 
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm New Password</label>
+                  <input 
+                    type="password" 
+                    className="input" 
+                    value={confirmPassword} 
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Updating Password...' : 'Update Password'}
                 </button>
               </div>
             </form>

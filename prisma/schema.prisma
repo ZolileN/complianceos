@@ -48,6 +48,8 @@ model User {
   password      String?   // Added for credentials provider
   role          String    @default("consultant") // administrator, operations_manager, consultant, client
   contactNumber String?
+  resetToken        String?
+  resetTokenExpires DateTime?
   
   tenantId      String?
   tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
