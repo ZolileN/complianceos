@@ -27,6 +27,7 @@ export async function GET() {
         whatsappPhoneNumberId: true,
         whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
+        whatsappAccessToken: true,
       }
     });
 
@@ -34,7 +35,45 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: tenant });
+    // Auto-backfill metadata from Meta's API if it is missing
+    if (tenant.whatsappSetupComplete && tenant.whatsappPhoneNumberId && tenant.whatsappAccessToken && (!tenant.whatsappPhoneNumber || !tenant.whatsappVerifiedName)) {
+      try {
+        const verifyRes = await fetch(`https://graph.facebook.com/v21.0/${tenant.whatsappPhoneNumberId}?access_token=${tenant.whatsappAccessToken}`);
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json();
+          const verifiedName = verifyData.verified_name || 'Connected Account';
+          const displayPhoneNumber = verifyData.display_phone_number || '';
+          
+          await prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+              whatsappVerifiedName: verifiedName,
+              whatsappPhoneNumber: displayPhoneNumber
+            }
+          });
+
+          tenant.whatsappVerifiedName = verifiedName;
+          tenant.whatsappPhoneNumber = displayPhoneNumber;
+        }
+      } catch (err) {
+        console.error('Failed to backfill WhatsApp metadata:', err);
+      }
+    }
+
+    // Omit access token from client response
+    const safeTenant = {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      plan: tenant.plan,
+      createdAt: tenant.createdAt,
+      whatsappSetupComplete: tenant.whatsappSetupComplete,
+      whatsappPhoneNumberId: tenant.whatsappPhoneNumberId,
+      whatsappVerifiedName: tenant.whatsappVerifiedName,
+      whatsappPhoneNumber: tenant.whatsappPhoneNumber,
+    };
+
+    return NextResponse.json({ data: safeTenant });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error fetching company profile';
     return NextResponse.json({ error: msg }, { status: 500 });
