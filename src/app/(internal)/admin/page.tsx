@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 interface TenantItem {
@@ -37,6 +37,10 @@ export default function FleetOverview() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Card filter state
+  const [filterType, setFilterType] = useState<'all' | 'active' | 'suspended' | 'waba'>('all');
+  const stuckRef = useRef<HTMLDivElement>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -127,6 +131,14 @@ export default function FleetOverview() {
   const metaConnected = tenants.filter(t => t.whatsappSetupComplete).length;
   const pendingIntake = onboardingClients.length;
 
+  // Filter tenants array
+  const filteredTenants = tenants.filter(t => {
+    if (filterType === 'active') return t.isActive;
+    if (filterType === 'suspended') return !t.isActive;
+    if (filterType === 'waba') return t.whatsappSetupComplete;
+    return true;
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Toast Notification */}
@@ -157,23 +169,84 @@ export default function FleetOverview() {
 
       {/* Metrics Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+        {/* Card 1: Total Tenants */}
+        <div 
+          onClick={() => setFilterType('all')}
+          style={{ 
+            background: filterType === 'all' ? 'rgba(94, 234, 212, 0.03)' : '#0F172A', 
+            border: filterType === 'all' ? '1px solid #5EEAD4' : '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tenant Workspaces</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F1F5F9', marginTop: 8 }}>{totalTenants}</div>
         </div>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+
+        {/* Card 2: Active Tenants */}
+        <div 
+          onClick={() => setFilterType('active')}
+          style={{ 
+            background: filterType === 'active' ? 'rgba(16, 185, 129, 0.03)' : '#0F172A', 
+            border: filterType === 'active' ? '1px solid #10B981' : '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Workspaces</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10B981', marginTop: 8 }}>{activeTenants}</div>
         </div>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+
+        {/* Card 3: Suspended Tenants */}
+        <div 
+          onClick={() => setFilterType('suspended')}
+          style={{ 
+            background: filterType === 'suspended' ? 'rgba(245, 158, 11, 0.03)' : '#0F172A', 
+            border: filterType === 'suspended' ? '1px solid #F59E0B' : '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Suspended Workspaces</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F59E0B', marginTop: 8 }}>{suspendedTenants}</div>
         </div>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+
+        {/* Card 4: Meta WABA */}
+        <div 
+          onClick={() => setFilterType('waba')}
+          style={{ 
+            background: filterType === 'waba' ? 'rgba(59, 130, 246, 0.03)' : '#0F172A', 
+            border: filterType === 'waba' ? '1px solid #3B82F6' : '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Mapped</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#3B82F6', marginTop: 8 }}>{metaConnected} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: '#94A3B8' }}>/ {totalTenants}</span></div>
         </div>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
+
+        {/* Card 5: Stuck Intake */}
+        <div 
+          onClick={() => stuckRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ 
+            background: '#0F172A', 
+            border: '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = '#EF4444'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1E293B'}
+        >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stuck Intake Lines</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#EF4444', marginTop: 8 }}>{pendingIntake}</div>
         </div>
@@ -183,9 +256,19 @@ export default function FleetOverview() {
       <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: 20, borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>Master Tenant Registry</h2>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>
+              Master Tenant Registry {filterType !== 'all' && <span style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 400 }}>({filterType === 'active' ? 'Active' : filterType === 'suspended' ? 'Suspended' : 'WhatsApp Linked'} Filter Active)</span>}
+            </h2>
             <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>Control status, subscription tiers, and WhatsApp configurations across the active fleet.</p>
           </div>
+          {filterType !== 'all' && (
+            <button 
+              onClick={() => setFilterType('all')}
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #1E293B', color: '#CBD5E1', borderRadius: 4, padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Clear Filter
+            </button>
+          )}
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: 1000, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
@@ -202,94 +285,84 @@ export default function FleetOverview() {
               </tr>
             </thead>
             <tbody>
-              {tenants.map(tenant => (
-                <tr key={tenant.id} style={{ borderBottom: '1px solid #1E293B', background: tenant.isActive ? 'transparent' : 'rgba(245, 158, 11, 0.02)', transition: 'background 0.15s ease' }}>
-                  <td style={{ padding: '16px 20px' }}>
-                    <Link 
-                      href={`/admin/tenants/${tenant.id}`}
-                      style={{ 
-                        fontWeight: 600, 
-                        color: '#5EEAD4', 
-                        textDecoration: 'none', 
-                        cursor: 'pointer' 
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                      onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
-                    >
-                      {tenant.name}
-                    </Link>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <span style={{ fontSize: '0.7rem', color: '#94A3B8', fontFamily: 'monospace' }}>/onboard/{tenant.slug}</span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/onboard/${tenant.slug}`);
-                          showToast('Onboarding URL copied to clipboard');
+              {filteredTenants.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                    No workspaces match the current active filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredTenants.map(tenant => (
+                  <tr key={tenant.id} style={{ borderBottom: '1px solid #1E293B', background: tenant.isActive ? 'transparent' : 'rgba(245, 158, 11, 0.02)', transition: 'background 0.15s ease' }}>
+                    <td style={{ padding: '16px 20px' }}>
+                      <Link 
+                        href={`/admin/tenants/${tenant.id}`}
+                        style={{ 
+                          fontWeight: 600, 
+                          color: '#5EEAD4', 
+                          textDecoration: 'none', 
+                          cursor: 'pointer' 
                         }}
-                        style={{ background: 'none', border: 'none', color: '#5EEAD4', cursor: 'pointer', fontSize: '0.7rem', padding: 0 }}
-                        title="Copy Onboarding URL"
+                        onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                        onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
                       >
-                        [Copy]
-                      </button>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 20px', textTransform: 'capitalize' }}>
-                    <span style={{ padding: '2px 6px', borderRadius: 4, background: tenant.plan === 'enterprise' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: tenant.plan === 'enterprise' ? '#A78BFA' : '#60A5FA', fontSize: '0.7rem', fontWeight: 600 }}>
-                      {tenant.plan}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{tenant._count.users}</td>
-                  <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{tenant._count.clients}</td>
-                  <td style={{ padding: '16px 20px', color: '#94A3B8' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: 9999,
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      background: tenant.isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                      color: tenant.isActive ? '#34D399' : '#F87171'
-                    }}>
-                      {tenant.isActive ? 'Active' : 'Suspended'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    {tenant.whatsappSetupComplete ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: '#34D399', fontWeight: 600, fontSize: '0.7rem' }}>● Linked</span>
-                        {tenant.whatsappPhoneNumberId && (
-                          <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontFamily: 'monospace' }}>WABA: {tenant.whatsappPhoneNumberId}</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span style={{ color: '#64748B', fontSize: '0.7rem' }}>Unlinked</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                      <button
-                        onClick={() => handleToggleActive(tenant.id, tenant.isActive)}
-                        disabled={actionLoading !== null}
-                        style={{
-                          background: tenant.isActive ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                          border: `1px solid ${tenant.isActive ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                          color: tenant.isActive ? '#F59E0B' : '#34D399',
-                          padding: '6px 12px',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: '0.7rem',
-                          fontWeight: 600
-                        }}
-                      >
-                        {actionLoading === tenant.id + '-toggle' ? '...' : tenant.isActive ? 'Suspend' : 'Activate'}
-                      </button>
-                      {tenant.whatsappSetupComplete && (
+                        {tenant.name}
+                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <span style={{ fontSize: '0.7rem', color: '#94A3B8', fontFamily: 'monospace' }}>/onboard/{tenant.slug}</span>
                         <button
-                          onClick={() => handleForceRevoke(tenant.id)}
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/onboard/${tenant.slug}`);
+                            showToast('Onboarding URL copied to clipboard');
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#5EEAD4', cursor: 'pointer', fontSize: '0.7rem', padding: 0 }}
+                          title="Copy Onboarding URL"
+                        >
+                          [Copy]
+                        </button>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 20px', textTransform: 'capitalize' }}>
+                      <span style={{ padding: '2px 6px', borderRadius: 4, background: tenant.plan === 'enterprise' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: tenant.plan === 'enterprise' ? '#A78BFA' : '#60A5FA', fontSize: '0.7rem', fontWeight: 600 }}>
+                        {tenant.plan}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{tenant._count.users}</td>
+                    <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{tenant._count.clients}</td>
+                    <td style={{ padding: '16px 20px', color: '#94A3B8' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '16px 20px' }}>
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: 9999,
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        background: tenant.isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: tenant.isActive ? '#34D399' : '#F87171'
+                      }}>
+                        {tenant.isActive ? 'Active' : 'Suspended'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 20px' }}>
+                      {tenant.whatsappSetupComplete ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ color: '#34D399', fontWeight: 600, fontSize: '0.7rem' }}>● Linked</span>
+                          {tenant.whatsappPhoneNumberId && (
+                            <span style={{ fontSize: '0.65rem', color: '#94A3B8', fontFamily: 'monospace' }}>WABA: {tenant.whatsappPhoneNumberId}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#64748B', fontSize: '0.7rem' }}>Unlinked</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                        <button
+                          onClick={() => handleToggleActive(tenant.id, tenant.isActive)}
                           disabled={actionLoading !== null}
                           style={{
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            color: '#F87171',
+                            background: tenant.isActive ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            border: `1px solid ${tenant.isActive ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                            color: tenant.isActive ? '#F59E0B' : '#34D399',
                             padding: '6px 12px',
                             borderRadius: 4,
                             cursor: 'pointer',
@@ -297,20 +370,38 @@ export default function FleetOverview() {
                             fontWeight: 600
                           }}
                         >
-                          {actionLoading === tenant.id + '-revoke' ? '...' : 'Force Disconnect'}
+                          {actionLoading === tenant.id + '-toggle' ? '...' : tenant.isActive ? 'Suspend' : 'Activate'}
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {tenant.whatsappSetupComplete && (
+                          <button
+                            onClick={() => handleForceRevoke(tenant.id)}
+                            disabled={actionLoading !== null}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                              color: '#F87171',
+                              padding: '6px 12px',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontSize: '0.7rem',
+                              fontWeight: 600
+                            }}
+                          >
+                            {actionLoading === tenant.id + '-revoke' ? '...' : 'Force Disconnect'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Stuck Intake Deep-Dive Section */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
+      <div id="stuck-intake-section" ref={stuckRef} style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ padding: 20, borderBottom: '1px solid #1E293B' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>Client Intake Deep-Dive (Stuck in Onboarding)</h2>
           <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>Review client registrations that have not completed verification or are currently stuck in the `ONBOARDING` state block.</p>
