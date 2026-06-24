@@ -14,6 +14,10 @@ interface CompanyData {
   whatsappPhoneNumberId: string | null;
   whatsappVerifiedName: string | null;
   whatsappPhoneNumber: string | null;
+  email: string | null;
+  contactNumber: string | null;
+  address: string | null;
+  website: string | null;
 }
 
 export default function SettingsPage() {
@@ -35,6 +39,10 @@ export default function SettingsPage() {
   const [profileForm, setProfileForm] = useState({
     name: '',
     slug: '',
+    email: '',
+    contactNumber: '',
+    address: '',
+    website: '',
   });
 
   // Manual WhatsApp Form State
@@ -58,6 +66,10 @@ export default function SettingsPage() {
             setProfileForm({
               name: data.name || '',
               slug: data.slug || '',
+              email: data.email || '',
+              contactNumber: data.contactNumber || '',
+              address: data.address || '',
+              website: data.website || '',
             });
           }
         } else {
@@ -132,6 +144,10 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: profileForm.name,
           slug: profileForm.slug,
+          email: profileForm.email,
+          contactNumber: profileForm.contactNumber,
+          address: profileForm.address,
+          website: profileForm.website,
         }),
       });
 
@@ -306,6 +322,51 @@ export default function SettingsPage() {
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   This slug defines your firm&apos;s unique workspace URL and public client onboarding portal.
                 </span>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Contact Email Address</label>
+                  <input 
+                    type="email" 
+                    className="input" 
+                    value={profileForm.email} 
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="e.g. info@firm.co.za"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Contact Telephone Number</label>
+                  <input 
+                    type="tel" 
+                    className="input" 
+                    value={profileForm.contactNumber} 
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, contactNumber: e.target.value }))}
+                    placeholder="e.g. +27 11 123 4567"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Website URL</label>
+                <input 
+                  type="url" 
+                  className="input" 
+                  value={profileForm.website} 
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="e.g. https://www.firm.co.za"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Physical Address</label>
+                <textarea 
+                  className="textarea" 
+                  value={profileForm.address} 
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="e.g. 123 Main Road, Sandton, Johannesburg, 2196"
+                  rows={3}
+                />
               </div>
 
               <div style={{ marginTop: 12 }}>

@@ -28,6 +28,10 @@ export async function GET() {
         whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
         whatsappAccessToken: true,
+        email: true,
+        contactNumber: true,
+        address: true,
+        website: true,
       }
     });
 
@@ -71,6 +75,10 @@ export async function GET() {
       whatsappPhoneNumberId: tenant.whatsappPhoneNumberId,
       whatsappVerifiedName: tenant.whatsappVerifiedName,
       whatsappPhoneNumber: tenant.whatsappPhoneNumber,
+      email: tenant.email,
+      contactNumber: tenant.contactNumber,
+      address: tenant.address,
+      website: tenant.website,
     };
 
     return NextResponse.json({ data: safeTenant });
@@ -93,7 +101,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, slug } = body;
+    const { name, slug, email, contactNumber, address, website } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Company Name is required' }, { status: 400 });
@@ -122,6 +130,10 @@ export async function PUT(request: NextRequest) {
       data: {
         name: name.trim(),
         slug: targetSlug,
+        email: email !== undefined ? (email?.trim() || null) : undefined,
+        contactNumber: contactNumber !== undefined ? (contactNumber?.trim() || null) : undefined,
+        address: address !== undefined ? (address?.trim() || null) : undefined,
+        website: website !== undefined ? (website?.trim() || null) : undefined,
       },
       select: {
         id: true,
@@ -133,6 +145,10 @@ export async function PUT(request: NextRequest) {
         whatsappPhoneNumberId: true,
         whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
+        email: true,
+        contactNumber: true,
+        address: true,
+        website: true,
       }
     });
 

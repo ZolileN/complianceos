@@ -92,6 +92,11 @@ model Tenant {
   whatsappVerifiedName   String?
   whatsappPhoneNumber    String?
 
+  email                  String?
+  contactNumber          String?
+  address                String?
+  website                String?
+
   users               User[]
   clients             Client[]
   workflowTemplates   WorkflowTemplate[]
