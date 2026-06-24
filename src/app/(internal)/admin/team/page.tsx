@@ -39,22 +39,27 @@ export default function PlatformTeamPage() {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  const fetchTeam = useCallback(async () => {
-    try {
-      const res = await fetch('/api/users');
-      if (!res.ok) throw new Error('Failed to load platform team members');
-      const { data } = await res.json();
-      setMembers(data || []);
-    } catch (err) {
-      toast((err as Error).message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
   useEffect(() => {
+    let active = true;
+    const fetchTeam = async () => {
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to load platform team members');
+        const { data } = await res.json();
+        if (active) setMembers(data || []);
+      } catch (err) {
+        if (active) toast((err as Error).message, 'error');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
     fetchTeam();
-  }, [fetchTeam, refreshKey]);
+
+    return () => {
+      active = false;
+    };
+  }, [refreshKey, toast]);
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
