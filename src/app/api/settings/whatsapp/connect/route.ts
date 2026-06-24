@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { code, isManual, phoneNumberId: manualPhoneNumberId, accessToken: manualAccessToken } = await request.json();
+    const { code, isManual, phoneNumberId: manualPhoneNumberId, accessToken: manualAccessToken, redirectUri } = await request.json();
 
     if (isManual) {
       if (!manualPhoneNumberId || !manualAccessToken) {
@@ -58,14 +58,16 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('[WA Connect] code length:', code?.length, '| raw code (first/last 6 chars):', code?.slice(0, 6), '...', code?.slice(-6));
+    console.log('[WA Connect] code length:', code?.length, '| first/last 6:', code?.slice(0, 6), '...', code?.slice(-6), '| redirectUri:', redirectUri);
 
-    // 1. Exchange the code for an access token
-    // For Facebook JS SDK (FB.login), the redirect_uri must be omitted entirely.
+    // 1. Exchange the code for an access token.
+    // For the standard redirect OAuth flow (General configuration type), the redirect_uri
+    // used in the dialog must be passed here exactly. The frontend sends it in the request body.
     const tokenParams = new URLSearchParams({
       client_id: appId,
       client_secret: appSecret,
       code: code,
+      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
     });
     const tokenUrl = `${GRAPH_API_URL}/oauth/access_token?${tokenParams.toString()}`;
     const tokenRes = await fetch(tokenUrl);

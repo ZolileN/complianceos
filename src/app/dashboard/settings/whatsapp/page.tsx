@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import Script from 'next/script';
 
 export default function WhatsAppSettingsPage() {
   const { tenant } = useAuth();
@@ -22,9 +21,48 @@ export default function WhatsAppSettingsPage() {
     accessToken: ''
   });
 
+  // Exchange an OAuth code returned in the URL query params after the redirect flow
+  const exchangeCode = useCallback(async (code: string, redirectUri: string) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/settings/whatsapp/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirectUri }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to exchange token');
+      toast('WhatsApp Business successfully connected!', 'success');
+      setStatus({ connected: true, phoneNumberId: data.phoneNumberId });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect WhatsApp';
+      toast(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     if (!tenant) return;
     let isCancelled = false;
+
+    // Handle OAuth redirect callback: Facebook returns ?code=... after user authorises
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthCode = urlParams.get('code');
+    const oauthError = urlParams.get('error');
+
+    if (oauthError) {
+      toast('Facebook authorisation cancelled or failed.', 'error');
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (oauthCode) {
+      // Clean up the URL immediately so a page refresh doesn't re-trigger exchange
+      window.history.replaceState({}, '', window.location.pathname);
+      const redirectUri = `${window.location.origin}/dashboard/settings/whatsapp`;
+      // Defer to avoid calling setState synchronously inside the effect body
+      setTimeout(() => exchangeCode(oauthCode, redirectUri), 0);
+    }
+
     const fetchStatus = async () => {
       try {
         const res = await fetch('/api/settings/whatsapp/status');
@@ -44,64 +82,34 @@ export default function WhatsAppSettingsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [tenant]);
+  }, [tenant, exchangeCode, toast]);
 
-  // Handle Meta Embedded Signup Callback
+  // Launch the Facebook OAuth redirect flow.
+  // Uses a standard redirect (not a popup) which is compatible with the "General"
+  // Facebook Login for Business configuration type.
   const handleMetaSignup = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const win = window as any;
-    if (!win.FB) {
-      toast('Facebook SDK still loading. Please try again in a few seconds.', 'error');
+    const appId = process.env.NEXT_PUBLIC_META_APP_ID || '';
+    const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
+    const redirectUri = `${window.location.origin}/dashboard/settings/whatsapp`;
+
+    console.log('[WA Connect] appId:', appId, '| configId:', configId, '| redirectUri:', redirectUri);
+
+    if (!appId || !configId) {
+      toast('WhatsApp connection is not configured correctly. Missing App ID or Config ID.', 'error');
       return;
     }
 
-    const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
-    console.log('[WA Connect] configId:', configId);
-    if (!configId) {
-      toast('WhatsApp connection is not configured correctly. Missing Config ID.', 'error');
-      return;
-    }
-    
-    win.FB.login((response: { authResponse?: { code: string } }) => {
-      if (response.authResponse?.code) {
-        const code = response.authResponse.code;
-        setSaving(true);
-        // Post the code to the token exchange endpoint
-        fetch('/api/settings/whatsapp/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        })
-        .then(async (res) => {
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to exchange token');
-          
-          toast('WhatsApp Business successfully connected!', 'success');
-          setStatus({
-            connected: true,
-            phoneNumberId: data.phoneNumberId
-          });
-        })
-        .catch((err: Error) => {
-          toast(err.message, 'error');
-        })
-        .finally(() => {
-          setSaving(false);
-        });
-      } else {
-        toast('Connection cancelled or failed.', 'error');
-      }
-    }, {
-      config_id: configId,
+    const params = new URLSearchParams({
+      client_id: appId,
+      redirect_uri: redirectUri,
       response_type: 'code',
-      override_default_response_type: true,
-      // extras.setup is REQUIRED by Meta to signal WhatsApp Embedded Signup.
-      // Without it, the SDK issues codes bound to Meta's internal popup redirect_uri,
-      // causing error_subcode 36008 on every token exchange regardless of server-side code.
-      extras: {
-        setup: {},
-      },
+      scope: 'whatsapp_business_management,whatsapp_business_messaging',
+      config_id: configId,
     });
+
+    // Redirect to Facebook's OAuth dialog. On completion, Facebook redirects back
+    // to redirectUri with ?code=... which is handled in the useEffect above.
+    window.location.href = `https://www.facebook.com/dialog/oauth?${params.toString()}`;
   };
 
   // Handle Manual Connection
@@ -162,30 +170,19 @@ export default function WhatsAppSettingsPage() {
 
   return (
     <div style={{ maxWidth: 800 }}>
-      {/* Load FB SDK — FB.init() must be called directly in onLoad, not inside fbAsyncInit,
-          because fbAsyncInit is only invoked by the SDK on first load. When Next.js loads
-          the script lazily, fbAsyncInit has already been missed by the time we set it. */}
-      <Script
-        src="https://connect.facebook.net/en_US/sdk.js"
-        strategy="lazyOnload"
-        onLoad={() => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const win = window as any;
-          win.FB.init({
-            appId: process.env.NEXT_PUBLIC_META_APP_ID || '',
-            cookie: true,
-            xfbml: true,
-            version: 'v25.0'
-          });
-        }}
-      />
-
       <div className="page-header">
         <div>
           <h1 className="page-title">WhatsApp Integration Settings</h1>
           <p className="page-subtitle">Configure your firm&apos;s own WhatsApp Business account for client messaging</p>
         </div>
       </div>
+
+      {saving && (
+        <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}>
+          <span className="spinner" />
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Connecting your WhatsApp Business account…</span>
+        </div>
+      )}
 
       {status.connected ? (
         <div className="card" style={{ border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.02)' }}>
@@ -250,21 +247,21 @@ export default function WhatsAppSettingsPage() {
             <div className="card">
               <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Connect in 60 Seconds</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-                Use Meta&apos;s secure Embedded Signup to link your WhatsApp Business number. You don&apos;t need any technical skills.
+                Use Meta&apos;s secure OAuth flow to link your WhatsApp Business number. You&apos;ll be redirected to Facebook to authorise, then returned here automatically.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
                 <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   <span>1️⃣</span>
-                  <span>Click <strong>Connect WhatsApp</strong> below to open the Facebook login popup.</span>
+                  <span>Click <strong>Connect WhatsApp</strong> below — you&apos;ll be redirected to Facebook.</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   <span>2️⃣</span>
-                  <span>Select or create your Meta Business Profile and WhatsApp Business Account.</span>
+                  <span>Log in and grant permissions to PraxisOne.</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   <span>3️⃣</span>
-                  <span>Grant permissions to PraxisOne and return to this page to complete setup.</span>
+                  <span>You&apos;ll be returned here automatically and your account will be connected.</span>
                 </div>
               </div>
 
