@@ -23,12 +23,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing manual phone number ID or access token' }, { status: 400 });
       }
 
-      // Validate credentials via Meta Graph API
       const verifyRes = await fetch(`${GRAPH_API_URL}/${manualPhoneNumberId}?access_token=${manualAccessToken}`);
       if (!verifyRes.ok) {
         const err = await verifyRes.json();
         return NextResponse.json({ error: `Verification failed: ${err.error?.message || JSON.stringify(err)}` }, { status: 400 });
       }
+      const verifyData = await verifyRes.json();
+      const verifiedName = verifyData.verified_name || 'Manual Setup';
+      const displayPhoneNumber = verifyData.display_phone_number || '';
 
       await prisma.tenant.update({
         where: { id: tenantId },
@@ -36,12 +38,16 @@ export async function POST(request: NextRequest) {
           whatsappPhoneNumberId: manualPhoneNumberId,
           whatsappAccessToken: manualAccessToken,
           whatsappSetupComplete: true,
+          whatsappVerifiedName: verifiedName,
+          whatsappPhoneNumber: displayPhoneNumber,
         }
       });
 
       return NextResponse.json({ 
         success: true, 
-        phoneNumberId: manualPhoneNumberId 
+        phoneNumberId: manualPhoneNumberId,
+        verifiedName,
+        phoneNumber: displayPhoneNumber
       });
     }
 
@@ -125,6 +131,8 @@ export async function POST(request: NextRequest) {
       throw new Error('No WhatsApp phone number found under this account.');
     }
 
+    const displayPhoneNumber = phoneData.data?.[0]?.display_phone_number || '';
+
     // 4. Subscribe the WABA to receive webhooks
     const subUrl = `${GRAPH_API_URL}/${wabaId}/subscribed_apps?${new URLSearchParams({ access_token: userAccessToken })}`;
     await fetch(subUrl, { method: 'POST' }).catch(err => {
@@ -138,13 +146,16 @@ export async function POST(request: NextRequest) {
         whatsappPhoneNumberId: phoneNumberId,
         whatsappAccessToken: userAccessToken,
         whatsappSetupComplete: true,
+        whatsappVerifiedName: verifiedName,
+        whatsappPhoneNumber: displayPhoneNumber,
       }
     });
 
     return NextResponse.json({ 
       success: true, 
       phoneNumberId, 
-      verifiedName 
+      verifiedName,
+      phoneNumber: displayPhoneNumber
     });
 
   } catch (err: unknown) {

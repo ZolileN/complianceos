@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,12 +20,16 @@ export async function GET(request: NextRequest) {
       select: {
         whatsappSetupComplete: true,
         whatsappPhoneNumberId: true,
+        whatsappVerifiedName: true,
+        whatsappPhoneNumber: true,
       }
     });
 
     return NextResponse.json({
       connected: tenant?.whatsappSetupComplete || false,
       phoneNumberId: tenant?.whatsappPhoneNumberId || null,
+      verifiedName: tenant?.whatsappVerifiedName || null,
+      phoneNumber: tenant?.whatsappPhoneNumber || null,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error fetching status';
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -51,6 +55,8 @@ export async function DELETE(request: NextRequest) {
         whatsappPhoneNumberId: null,
         whatsappAccessToken: null,
         whatsappSetupComplete: false,
+        whatsappVerifiedName: null,
+        whatsappPhoneNumber: null,
       }
     });
 

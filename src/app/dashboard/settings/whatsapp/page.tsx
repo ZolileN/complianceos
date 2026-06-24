@@ -9,9 +9,16 @@ export default function WhatsAppSettingsPage() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<{ connected: boolean; phoneNumberId: string | null }>({
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    phoneNumberId: string | null;
+    verifiedName: string | null;
+    phoneNumber: string | null;
+  }>({
     connected: false,
-    phoneNumberId: null
+    phoneNumberId: null,
+    verifiedName: null,
+    phoneNumber: null
   });
   const [activeTab, setActiveTab] = useState<'guided' | 'manual'>('guided');
 
@@ -33,7 +40,12 @@ export default function WhatsAppSettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to exchange token');
       toast('WhatsApp Business successfully connected!', 'success');
-      setStatus({ connected: true, phoneNumberId: data.phoneNumberId });
+      setStatus({ 
+        connected: true, 
+        phoneNumberId: data.phoneNumberId,
+        verifiedName: data.verifiedName,
+        phoneNumber: data.phoneNumber
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to connect WhatsApp';
       toast(msg, 'error');
@@ -138,7 +150,9 @@ export default function WhatsAppSettingsPage() {
       toast('WhatsApp Business credentials saved successfully!', 'success');
       setStatus({
         connected: true,
-        phoneNumberId: manualForm.phoneNumberId
+        phoneNumberId: manualForm.phoneNumberId,
+        verifiedName: data.verifiedName,
+        phoneNumber: data.phoneNumber
       });
       setManualForm({ phoneNumberId: '', accessToken: '' });
     } catch (err: unknown) {
@@ -157,7 +171,12 @@ export default function WhatsAppSettingsPage() {
       const res = await fetch('/api/settings/whatsapp/status', { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to disconnect');
       toast('WhatsApp successfully disconnected');
-      setStatus({ connected: false, phoneNumberId: null });
+      setStatus({ 
+        connected: false, 
+        phoneNumberId: null,
+        verifiedName: null,
+        phoneNumber: null
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to disconnect';
       toast(msg, 'error');
@@ -193,8 +212,30 @@ export default function WhatsAppSettingsPage() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 12 }}>
                 Clients can now message you on your connected number. Your incoming messages will appear automatically in the Inbox.
               </p>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', width: 'fit-content', marginBottom: 16 }}>
-                <strong>Phone Number ID:</strong> <code>{status.phoneNumberId}</code>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 8, 
+                background: 'rgba(0,0,0,0.15)', 
+                padding: '12px 16px', 
+                borderRadius: 'var(--radius-sm)', 
+                width: 'fit-content', 
+                marginBottom: 16,
+                fontSize: '0.85rem'
+              }}>
+                {status.verifiedName && (
+                  <div>
+                    <strong style={{ color: 'var(--text-muted)' }}>Verified Name:</strong> <span style={{ fontWeight: 500 }}>{status.verifiedName}</span>
+                  </div>
+                )}
+                {status.phoneNumber && (
+                  <div>
+                    <strong style={{ color: 'var(--text-muted)' }}>WhatsApp Number:</strong> <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{status.phoneNumber}</span>
+                  </div>
+                )}
+                <div>
+                  <strong style={{ color: 'var(--text-muted)' }}>Phone Number ID:</strong> <code>{status.phoneNumberId}</code>
+                </div>
               </div>
               <button 
                 className="btn btn-secondary" 

@@ -89,6 +89,8 @@ model Tenant {
   whatsappPhoneNumberId  String?
   whatsappAccessToken    String?
   whatsappSetupComplete  Boolean   @default(false)
+  whatsappVerifiedName   String?
+  whatsappPhoneNumber    String?
 
   users               User[]
   clients             Client[]
