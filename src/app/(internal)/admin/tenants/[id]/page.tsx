@@ -39,12 +39,23 @@ interface TenantDetail {
   clients: ClientItem[];
 }
 
+interface InspectorEntity {
+  type: 'User' | 'Client';
+  id: string;
+  name: string;
+  details: Record<string, string | null>;
+}
+
 export default function TenantProfile() {
   const { id } = useParams() as { id: string };
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'members' | 'clients'>('members');
   const [error, setError] = useState<string | null>(null);
+
+  // Inspector Modal State
+  const [inspectionEntity, setInspectionEntity] = useState<InspectorEntity | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   useEffect(() => {
     const fetchTenantDetail = async () => {
@@ -309,7 +320,35 @@ export default function TenantProfile() {
                 ) : (
                   tenant.users.map(user => (
                     <tr key={user.id} style={{ borderBottom: '1px solid #1E293B' }}>
-                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#F1F5F9' }}>{user.name || 'Unnamed'}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <button
+                          onClick={() => setInspectionEntity({
+                            type: 'User',
+                            id: user.id,
+                            name: user.name || 'Unnamed Member',
+                            details: {
+                              'Email Address': user.email,
+                              'System Permission Role': user.role.replace('_', ' ').toUpperCase(),
+                              'Joined Date': new Date(user.createdAt).toLocaleDateString('en-GB')
+                            }
+                          })}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontWeight: 600,
+                            color: '#5EEAD4',
+                            cursor: 'pointer',
+                            padding: 0,
+                            textAlign: 'left',
+                            fontSize: '0.85rem',
+                            fontFamily: 'inherit'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                          onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
+                        >
+                          {user.name || 'Unnamed'}
+                        </button>
+                      </td>
                       <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{user.email}</td>
                       <td style={{ padding: '16px 20px' }}>
                         <span style={{
@@ -358,7 +397,37 @@ export default function TenantProfile() {
                 ) : (
                   tenant.clients.map(client => (
                     <tr key={client.id} style={{ borderBottom: '1px solid #1E293B' }}>
-                      <td style={{ padding: '16px 20px', fontWeight: 600, color: '#F1F5F9' }}>{client.companyName}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <button
+                          onClick={() => setInspectionEntity({
+                            type: 'Client',
+                            id: client.id,
+                            name: client.companyName,
+                            details: {
+                              'Registration Number': client.registrationNumber || 'N/A',
+                              'Contact Email': client.email || 'N/A',
+                              'Contact Phone': client.phone || 'N/A',
+                              'Current Status': client.status.toUpperCase(),
+                              'Onboarded Date': new Date(client.createdAt).toLocaleDateString('en-GB')
+                            }
+                          })}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontWeight: 600,
+                            color: '#5EEAD4',
+                            cursor: 'pointer',
+                            padding: 0,
+                            textAlign: 'left',
+                            fontSize: '0.85rem',
+                            fontFamily: 'inherit'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                          onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
+                        >
+                          {client.companyName}
+                        </button>
+                      </td>
                       <td style={{ padding: '16px 20px', color: '#CBD5E1', fontFamily: 'monospace' }}>{client.registrationNumber || 'N/A'}</td>
                       <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.email || 'N/A'}</td>
                       <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.phone || 'N/A'}</td>
@@ -388,6 +457,79 @@ export default function TenantProfile() {
           </div>
         )}
       </div>
+
+      {/* Troubleshooting Inspector Modal */}
+      {inspectionEntity && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
+            <button
+              onClick={() => {
+                setInspectionEntity(null);
+                setCopiedId(false);
+              }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              ✕
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#5EEAD4', background: 'rgba(94, 234, 212, 0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                {inspectionEntity.type} Entity
+              </span>
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 16 }}>{inspectionEntity.name}</h2>
+            
+            {/* ID copy section */}
+            <div style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '12px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+                <div style={{ fontSize: '0.65rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 600 }}>Database Primary Key ID</div>
+                <div style={{ fontSize: '0.8rem', color: '#E2E8F0', fontFamily: 'monospace', marginTop: 4, wordBreak: 'break-all' }}>{inspectionEntity.id}</div>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(inspectionEntity.id);
+                  setCopiedId(true);
+                  setTimeout(() => setCopiedId(false), 2000);
+                }}
+                style={{
+                  background: copiedId ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${copiedId ? '#34D399' : '#1E293B'}`,
+                  color: copiedId ? '#34D399' : '#CBD5E1',
+                  borderRadius: 4,
+                  padding: '6px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {copiedId ? '✓ Copied' : 'Copy ID'}
+              </button>
+            </div>
+
+            {/* Other Metadata */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {Object.entries(inspectionEntity.details).map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', borderBottom: '1px solid rgba(30, 41, 59, 0.5)', paddingBottom: 8 }}>
+                  <span style={{ color: '#64748B' }}>{label}:</span>
+                  <span style={{ color: '#F1F5F9', fontWeight: 500 }}>{val}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+              <button
+                onClick={() => {
+                  setInspectionEntity(null);
+                  setCopiedId(false);
+                }}
+                style={{ background: 'transparent', border: '1px solid #1E293B', color: '#F1F5F9', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
