@@ -64,8 +64,8 @@ export default function TenantProfile() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to retrieve tenant details');
         setTenant(data.data);
-      } catch (err: any) {
-        setError(err.message || 'An error occurred');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
