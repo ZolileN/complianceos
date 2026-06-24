@@ -70,7 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return [
         ...NAV_ITEMS,
         { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: 'activity' },
-        { href: '/dashboard/settings/whatsapp', label: 'Settings', icon: 'settings' },
+        { href: '/dashboard/settings', label: 'Settings', icon: 'settings' },
       ];
     }
 
