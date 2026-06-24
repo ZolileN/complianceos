@@ -26,6 +26,9 @@ export async function GET() {
       include: {
         client: {
           select: { id: true, companyName: true, status: true }
+        },
+        documents: {
+          select: { id: true, name: true, filePath: true }
         }
       },
       orderBy: [

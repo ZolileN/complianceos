@@ -241,6 +241,9 @@ model Document {
   ocrText     String?
   ocrMetadata String?  // JSON string
 
+  complianceItemId String?
+  complianceItem   ComplianceItem? @relation(fields: [complianceItemId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -339,6 +342,8 @@ model ComplianceItem {
   dueDate     DateTime?
   lastChecked DateTime @default(now())
   notes       String?
+
+  documents   Document[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

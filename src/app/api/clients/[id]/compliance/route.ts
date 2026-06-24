@@ -46,6 +46,18 @@ export async function GET(
   try {
     let items = await prisma.complianceItem.findMany({
       where: { clientId, tenantId },
+      include: {
+        documents: {
+          select: {
+            id: true,
+            name: true,
+            filePath: true,
+            fileType: true,
+            category: true,
+            createdAt: true,
+          }
+        }
+      },
       orderBy: [
         { category: 'asc' },
         { name: 'asc' }
@@ -67,6 +79,18 @@ export async function GET(
 
       items = await prisma.complianceItem.findMany({
         where: { clientId, tenantId },
+        include: {
+          documents: {
+            select: {
+              id: true,
+              name: true,
+              filePath: true,
+              fileType: true,
+              category: true,
+              createdAt: true,
+            }
+          }
+        },
         orderBy: [
           { category: 'asc' },
           { name: 'asc' }
@@ -85,7 +109,8 @@ export async function GET(
       last_checked: item.lastChecked.toISOString(),
       notes: item.notes,
       created_at: item.createdAt.toISOString(),
-      updated_at: item.updatedAt.toISOString()
+      updated_at: item.updatedAt.toISOString(),
+      documents: item.documents || []
     }));
 
     return NextResponse.json({ data: mapped });
@@ -141,6 +166,32 @@ export async function PUT(
       }
     });
 
+    // Handle document linking if documentIds are provided
+    await prisma.document.updateMany({
+      where: { complianceItemId: updated.id, clientId, tenantId },
+      data: { complianceItemId: null }
+    });
+
+    if (body.documentIds && Array.isArray(body.documentIds) && body.documentIds.length > 0) {
+      await prisma.document.updateMany({
+        where: { id: { in: body.documentIds }, clientId, tenantId },
+        data: { complianceItemId: updated.id }
+      });
+    }
+
+    // Fetch the updated documents
+    const updatedDocuments = await prisma.document.findMany({
+      where: { complianceItemId: updated.id },
+      select: {
+        id: true,
+        name: true,
+        filePath: true,
+        fileType: true,
+        category: true,
+        createdAt: true
+      }
+    });
+
     const mapped = {
       id: updated.id,
       client_id: updated.clientId,
@@ -152,8 +203,31 @@ export async function PUT(
       last_checked: updated.lastChecked.toISOString(),
       notes: updated.notes,
       created_at: updated.createdAt.toISOString(),
-      updated_at: updated.updatedAt.toISOString()
+      updated_at: updated.updatedAt.toISOString(),
+      documents: updatedDocuments
     };
+
+    // Send notification if client user exists and status requires action
+    if (client.email && (updated.status === 'action_required' || updated.status === 'critical')) {
+      const clientUser = await prisma.user.findFirst({
+        where: {
+          role: 'client',
+          email: client.email,
+          tenantId: tenantId
+        }
+      });
+      if (clientUser) {
+        await prisma.notification.create({
+          data: {
+            userId: clientUser.id,
+            title: `Compliance Action Needed: ${updated.name}`,
+            message: `Status updated to "${updated.status.replace('_', ' ')}" for ${updated.category} - ${updated.name}. Notes: ${updated.notes || 'None'}`,
+            type: updated.status === 'critical' ? 'error' : 'warning',
+            link: `/dashboard`
+          }
+        });
+      }
+    }
 
     await logAuditAction({
       tenantId,

@@ -255,6 +255,7 @@ export interface ComplianceItem {
   due_date?: string | null;
   last_checked: string;
   notes?: string | null;
+  documents?: Document[];
   created_at: string;
   updated_at: string;
 }

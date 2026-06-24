@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
   interface SessionUser {
     id?: string;
     tenantId?: string;
+    role?: string;
+    email?: string;
   }
   const user = session.user as SessionUser;
   const tenantId = user.tenantId;
@@ -171,10 +173,34 @@ export async function POST(request: NextRequest) {
             status: 'compliant',
             lastChecked: new Date(),
             notes: (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') +
-              `Status automatically updated via document upload: ${document?.name}`
+              `Status automatically updated via document upload: ${document?.name}`,
+            documents: {
+              connect: { id: document?.id }
+            }
           }
         });
-      }).catch(err => console.error('Compliance auto-update failed (non-critical):', err));
+      }).then(() => {
+        // Notify consultant if uploaded by a client
+        if (user.role === 'client') {
+          return db.client.findUnique({
+            where: { id: client_id },
+            select: { companyName: true, assignedConsultantId: true }
+          }).then(clientDataRaw => {
+            const clientData = clientDataRaw as { companyName: string; assignedConsultantId: string | null } | null;
+            if (clientData?.assignedConsultantId) {
+              return db.notification.create({
+                data: {
+                  userId: clientData.assignedConsultantId,
+                  title: 'Document Uploaded (Proof)',
+                  message: `Client "${clientData.companyName}" uploaded a document "${name || 'Uploaded Document'}" for ${match.cat} - ${match.name}.`,
+                  type: 'success',
+                  link: `/dashboard/clients/${client_id}?tab=compliance`
+                }
+              });
+            }
+          });
+        }
+      }).catch(err => console.error('Compliance auto-update or notification failed (non-critical):', err));
     }
     // --- END COMPLIANCE AUTOMATION ---
 

@@ -9,6 +9,19 @@ import Link from 'next/link';
 import type { Client, Task, Document as Doc, ComplianceItem, ClientWorkflow, WorkflowTemplate, WorkflowStepProgress } from '@/types';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
+import { UploadDropzone } from "@/lib/uploadthing";
+import "@uploadthing/react/styles.css";
+
+interface AuditLogHistoryItem {
+  id: string;
+  details: string;
+  createdAt: string;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  } | null;
+}
 
 type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows';
 
@@ -32,6 +45,9 @@ export default function ClientDetailPage() {
   const [editDueDate, setEditDueDate] = useState<string>('');
   const [editNotes, setEditNotes] = useState<string>('');
   const [updatingCompliance, setUpdatingCompliance] = useState(false);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [itemHistory, setItemHistory] = useState<AuditLogHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Workflow states
   const [clientWorkflows, setClientWorkflows] = useState<ClientWorkflow[]>([]);
@@ -136,11 +152,29 @@ export default function ClientDetailPage() {
     }
   };
 
+  const fetchHistory = async (itemId: string) => {
+    setLoadingHistory(true);
+    setItemHistory([]);
+    try {
+      const res = await fetch(`/api/compliance/${itemId}/history`);
+      if (res.ok) {
+        const json = await res.json();
+        setItemHistory(json.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const handleEditCompliance = (item: ComplianceItem) => {
     setEditingItem(item);
     setEditStatus(item.status);
     setEditDueDate(item.due_date ? item.due_date.substring(0, 10) : '');
     setEditNotes(item.notes || '');
+    setSelectedDocIds(item.documents ? item.documents.map(d => d.id) : []);
+    fetchHistory(item.id);
   };
 
   const handleSaveCompliance = async (e: React.FormEvent) => {
@@ -155,7 +189,8 @@ export default function ClientDetailPage() {
           id: editingItem.id,
           status: editStatus,
           due_date: editDueDate || null,
-          notes: editNotes
+          notes: editNotes,
+          documentIds: selectedDocIds
         })
       });
       if (!res.ok) throw new Error('Failed to update compliance item');
@@ -389,6 +424,24 @@ export default function ClientDetailPage() {
                             {item.notes}
                           </p>
                         )}
+                        {item.documents && item.documents.length > 0 && (
+                          <div style={{ marginTop: 8, marginBottom: 12 }}>
+                            <strong style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Proof Documents:</strong>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {item.documents.map(doc => (
+                                <button
+                                  key={doc.id}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setActiveViewDoc(doc); }}
+                                  className="badge badge-blue"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', border: 'none', background: 'rgba(59, 130, 246, 0.15)', color: '#60A5FA', fontSize: '0.75rem', padding: '3px 8px', borderRadius: 4 }}
+                                >
+                                  📄 {doc.name.substring(0, 20)}{doc.name.length > 20 ? '...' : ''}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                           Checked: {new Date(item.last_checked).toLocaleDateString('en-GB')}
                         </p>
@@ -408,7 +461,7 @@ export default function ClientDetailPage() {
           {/* Editing Modal */}
           {editingItem && (
             <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-              <div className="card" style={{ width: 440, maxWidth: '90%', padding: 24, zIndex: 101 }}>
+              <div className="card" style={{ width: 550, maxWidth: '90%', maxHeight: '90vh', overflowY: 'auto', padding: 24, zIndex: 101 }}>
                 <h3 style={{ marginBottom: 16, fontSize: '1.1rem' }}>Update {editingItem.category} — {editingItem.name}</h3>
                 <form onSubmit={handleSaveCompliance} className="stack" style={{ gap: 16 }}>
                   <div className="form-group">
@@ -428,6 +481,128 @@ export default function ClientDetailPage() {
                     <label className="form-label">Notes</label>
                     <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className="textarea" placeholder="Enter compliance remarks, instructions, or reference details..." />
                   </div>
+
+                  {/* Attach Proof Documents */}
+                  <div className="form-group">
+                    <label className="form-label">Attach Proof Documents</label>
+                    <div style={{ maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-md)', padding: 8, background: 'var(--bg-primary)' }}>
+                      {documents.length === 0 ? (
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic', margin: 0 }}>No documents uploaded yet. Upload one below or go to Documents tab.</p>
+                      ) : (
+                        <div className="stack" style={{ gap: 6 }}>
+                          {documents.map(doc => (
+                            <label key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedDocIds.includes(doc.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedDocIds(prev => [...prev, doc.id]);
+                                  } else {
+                                    setSelectedDocIds(prev => prev.filter(id => id !== doc.id));
+                                  }
+                                }}
+                              />
+                              <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {doc.name} ({doc.category.replace('_', ' ')})
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Direct Upload Dropzone */}
+                  <div className="form-group">
+                    <label className="form-label">Or Upload New Document</label>
+                    <UploadDropzone
+                      endpoint="documentUploader"
+                      onBeforeUploadBegin={async (files) => {
+                        const oversized = files.filter(f => f.size > 15 * 1024 * 1024);
+                        if (oversized.length > 0) {
+                          toast(`File too large: maximum is 15 MB.`, 'error');
+                          return files.filter(f => f.size <= 15 * 1024 * 1024);
+                        }
+                        return files;
+                      }}
+                      onClientUploadComplete={async (res) => {
+                        try {
+                          const newDocs: Doc[] = [];
+                          for (const file of res) {
+                            const fileUrl = (file as { url: string; ufsUrl?: string }).ufsUrl ?? file.url;
+                            let category = 'other';
+                            if (editingItem.category === 'SARS' && editingItem.name === 'VAT') category = 'vat_certificate';
+                            else if (editingItem.category === 'SARS' && editingItem.name === 'Income Tax') category = 'tax_certificate';
+                            else if (editingItem.category === 'CIPC' && editingItem.name === 'Annual Returns') category = 'cor_document';
+                            else if (editingItem.category === 'BEE') category = 'bee_certificate';
+
+                            const uploadRes = await fetch('/api/documents/upload', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                url: fileUrl,
+                                name: file.name,
+                                size: file.size,
+                                type: file.type,
+                                client_id: id,
+                                category: category
+                              })
+                            });
+                            const json = await uploadRes.json();
+                            if (json.data) {
+                              newDocs.push(json.data);
+                            }
+                          }
+                          if (newDocs.length > 0) {
+                            setDocuments(prev => [...newDocs, ...prev]);
+                            setSelectedDocIds(prev => [...prev, ...newDocs.map(d => d.id)]);
+                            toast(`${newDocs.length} proof document(s) uploaded successfully!`);
+                          }
+                        } catch (err) {
+                          console.error("Document registration failed:", err);
+                          toast(err instanceof Error ? err.message : 'Failed to register document', 'error');
+                        }
+                      }}
+                      onUploadError={(error: Error) => {
+                        toast(`Upload failed: ${error.message}`, 'error');
+                      }}
+                    />
+                  </div>
+
+                  {/* Audit History Timeline */}
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-primary)' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>Status Update History</h4>
+                    {loadingHistory ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading history...</div>
+                    ) : itemHistory.length === 0 ? (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No history records found.</div>
+                    ) : (
+                      <div style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {itemHistory.map(log => {
+                          let detailsParsed: { status?: string } = {};
+                          try {
+                            detailsParsed = JSON.parse(log.details) as { status?: string };
+                          } catch {
+                            detailsParsed = {};
+                          }
+                          
+                          return (
+                            <div key={log.id} style={{ fontSize: '0.75rem', background: 'var(--bg-primary)', padding: '6px 8px', borderRadius: 4, borderLeft: '2px solid var(--border-subtle)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                <span>{log.user?.name || log.user?.email || 'System'}</span>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{new Date(log.createdAt).toLocaleDateString('en-GB')} {new Date(log.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                              <div style={{ color: 'var(--text-secondary)', marginTop: 2 }}>
+                                Changed status to <span style={{ fontWeight: 600 }}>{detailsParsed.status?.replace('_', ' ') || 'updated'}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
                     <button type="button" onClick={() => setEditingItem(null)} className="btn btn-secondary" disabled={updatingCompliance}>Cancel</button>
                     <button type="submit" className="btn btn-primary" disabled={updatingCompliance}>
