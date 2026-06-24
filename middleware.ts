@@ -8,10 +8,11 @@ export default withAuth(
 
     if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
       const userRole = token?.role;
-      if (userRole !== 'administrator') {
+      const tenantSlug = token?.tenantSlug;
+      if (userRole !== 'administrator' || tenantSlug !== 'praxisone') {
         if (path.startsWith('/api/')) {
           return new NextResponse(
-            JSON.stringify({ error: "Forbidden: Administrator access required" }),
+            JSON.stringify({ error: "Forbidden: Platform Administrator access required" }),
             { status: 403, headers: { 'content-type': 'application/json' } }
           );
         }

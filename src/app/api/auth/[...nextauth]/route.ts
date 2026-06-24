@@ -40,6 +40,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           role: user.role,
           tenantId: user.tenantId,
+          tenantSlug: user.tenant?.slug,
         };
       },
     }),
@@ -52,12 +53,14 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.role = (user as { role?: string }).role;
         token.tenantId = (user as { tenantId?: string }).tenantId;
+        token.tenantSlug = (user as { tenantSlug?: string }).tenantSlug;
         token.id = user.id;
       }
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name;
         if (session.email) token.email = session.email;
         if (session.role) token.role = session.role;
+        if (session.tenantSlug) token.tenantSlug = session.tenantSlug;
       }
       return token;
     },
@@ -65,6 +68,7 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         (session.user as { role?: string }).role = token.role as string | undefined;
         (session.user as { tenantId?: string }).tenantId = token.tenantId as string | undefined;
+        (session.user as { tenantSlug?: string }).tenantSlug = token.tenantSlug as string | undefined;
         (session.user as { id?: string }).id = token.id as string | undefined;
         session.user.name = token.name;
         session.user.email = token.email;

@@ -15,13 +15,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.role !== 'administrator') {
+      } else if (user.role !== 'administrator' || user.tenantSlug !== 'praxisone') {
         router.push('/dashboard?error=unauthorized');
       }
     }
   }, [loading, user, router]);
 
-  if (loading || !user || user.role !== 'administrator') {
+  if (loading || !user || user.role !== 'administrator' || user.tenantSlug !== 'praxisone') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0F172A', color: '#94A3B8' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>

@@ -6,6 +6,7 @@ import { useSession, signOut as nextAuthSignOut, SessionProvider } from 'next-au
 type SessionUser = {
   id?: string;
   tenantId?: string;
+  tenantSlug?: string;
   role?: string;
   name?: string | null;
   email?: string | null;

@@ -9,7 +9,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as { role?: string }).role !== 'administrator') {
+  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
+  if (!session || user?.role !== 'administrator' || user?.tenantSlug !== 'praxisone') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

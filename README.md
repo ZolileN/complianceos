@@ -92,3 +92,16 @@ To log in as a platform administrator and access the PraxisAdmin control plane:
     *   All `/admin/*` and `/api/admin/*` paths are guarded at the gateway level.
     *   Non-administrator roles attempting to access these routes are automatically redirected back to `/dashboard?error=unauthorized` or receive a `403 Forbidden` JSON payload.
 
+### 🔑 Existing Administrator Accounts
+
+Instead of registering a new tenant workspace each time, you can log in directly using one of the existing administrator accounts configured in your database:
+
+*   **Email:** `zolile@mlkcomputer.com` (Tenant: *MLK Computer Consulting*)
+*   **Email:** `zolile@praxisone.com` (Tenant: *PraxisOne*)
+*   **Email:** `kedi@mlkcomputer.com` (Tenant: *MLK Computer Consulting*)
+*   **Email:** `admin@apex.co.za` (Tenant: *Apex Compliance*)
+*   **Email:** `domain@mlkcomputer.com` (Tenant: *ID Banc*)
+
+*(Use the standard login page at `/login` to authenticate with these accounts).*
+
+

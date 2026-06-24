@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { AdminLogger } from '@/lib/admin-logs';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as { role?: string }).role !== 'administrator') {
+  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
+  if (!session || user?.role !== 'administrator' || user?.tenantSlug !== 'praxisone') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
