@@ -31,15 +31,27 @@ interface PersonalData {
 }
 
 export default function SettingsPage() {
-  const { tenant } = useAuth();
+  const { user, tenant } = useAuth();
   const { toast } = useToast();
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('code') ? 'whatsapp' : 'profile';
+  const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>('personal');
+
+  const isAdminOrOps = user?.role === 'administrator' || user?.role === 'operations_manager';
+
+  useEffect(() => {
+    if (user) {
+      if (user.role !== 'administrator' && user.role !== 'operations_manager') {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setActiveTab('personal');
+      } else {
+        if (typeof window !== 'undefined') {
+          const hasCode = new URLSearchParams(window.location.search).get('code');
+          setActiveTab(hasCode ? 'whatsapp' : 'profile');
+        }
+      }
     }
-    return 'profile';
-  });
+  }, [user]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -347,18 +359,22 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="tabs">
-        <button 
-          className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
-          onClick={() => setActiveTab('profile')}
-        >
-          🏢 Company Profile
-        </button>
-        <button 
-          className={`tab ${activeTab === 'whatsapp' ? 'active' : ''}`}
-          onClick={() => setActiveTab('whatsapp')}
-        >
-          💬 WhatsApp Integration
-        </button>
+        {isAdminOrOps && (
+          <>
+            <button 
+              className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              🏢 Company Profile
+            </button>
+            <button 
+              className={`tab ${activeTab === 'whatsapp' ? 'active' : ''}`}
+              onClick={() => setActiveTab('whatsapp')}
+            >
+              💬 WhatsApp Integration
+            </button>
+          </>
+        )}
         <button 
           className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
           onClick={() => setActiveTab('personal')}
@@ -368,7 +384,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab Contents */}
-      {activeTab === 'profile' && company && (
+      {activeTab === 'profile' && company && isAdminOrOps && (
         <div className="stack">
           {/* Company details editor */}
           <div className="card">
@@ -500,7 +516,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {activeTab === 'whatsapp' && company && (
+      {activeTab === 'whatsapp' && company && isAdminOrOps && (
         <div className="stack">
           {company.whatsappSetupComplete ? (
             <div className="card" style={{ border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16, 185, 129, 0.02)' }}>

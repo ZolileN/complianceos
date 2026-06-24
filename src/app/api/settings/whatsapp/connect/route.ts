@@ -11,8 +11,13 @@ export async function POST(request: NextRequest) {
   }
 
   const tenantId = (session.user as { tenantId: string }).tenantId;
+  const userRole = (session.user as { role: string }).role;
   if (!tenantId) {
     return NextResponse.json({ error: 'No profile' }, { status: 403 });
+  }
+
+  if (userRole !== 'administrator' && userRole !== 'operations_manager') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   try {
