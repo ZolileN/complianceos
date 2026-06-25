@@ -3,20 +3,40 @@ import { Redis } from 'ioredis';
 const getRedisUrl = () => {
   if (process.env.KV_URL) return process.env.KV_URL;
   if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  if (process.env.NODE_ENV === 'production') return null;
   // Fallback to localhost for local development
   return 'redis://127.0.0.1:6379';
 };
 
-// Create a single Redis instance to be reused
-export const redis = new Redis(getRedisUrl(), {
-  maxRetriesPerRequest: 1,
-  connectTimeout: 2000,
-  enableOfflineQueue: false
-});
+const redisUrl = getRedisUrl();
 
-redis.on('error', (err) => {
-  console.error('Redis Client Error:', err);
-});
+// Create a single Redis instance to be reused or a mock if missing in production
+export const redis = redisUrl 
+  ? new Redis(redisUrl, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      enableOfflineQueue: false
+    })
+  : ({
+      lpush: async () => 1,
+      ltrim: async () => 'OK',
+      lrange: async () => [],
+      llen: async () => 0,
+      get: async () => null,
+      set: async () => 'OK',
+      brpop: async () => null,
+      on: () => {},
+    } as unknown as Redis);
+
+if (redisUrl) {
+  redis.on('error', (err) => {
+    // Suppress localhost connection errors to avoid spam when running without Redis locally
+    if (redisUrl === 'redis://127.0.0.1:6379' && err.code === 'ECONNREFUSED') {
+      return;
+    }
+    console.error('Redis Client Error:', err);
+  });
+}
 
 export interface RedisTenantLog {
   id: string;
