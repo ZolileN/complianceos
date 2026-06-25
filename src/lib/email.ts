@@ -16,7 +16,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
           <p>We received a request to reset the password for your PraxisOne account.</p>
           <p>Please click the button below to choose a new password:</p>
           <div style="margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
+            <a href="${resetUrl}" style="display: inline-block; background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
           </div>
           <p style="font-size: 0.9em; color: #666;">This link will expire in 1 hour.</p>
           <p style="font-size: 0.9em; color: #666;">If you didn't request this, you can safely ignore this email.</p>
@@ -45,7 +45,7 @@ export async function sendTeamInviteEmail(email: string, name: string, role: str
           <p>You have been invited to join your firm's workspace on PraxisOne as a <strong>${role.replace('_', ' ')}</strong>.</p>
           <p>Please click the button below to accept the invitation and securely set your password:</p>
           <div style="margin: 30px 0;">
-            <a href="${inviteUrl}" style="background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation & Set Password</a>
+            <a href="${inviteUrl}" style="display: inline-block; background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation & Set Password</a>
           </div>
           <p style="font-size: 0.9em; color: #666;">This link will expire in 48 hours.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin-top: 40px;" />
