@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 interface UserItem {
   id: string;
@@ -56,10 +56,16 @@ interface TenantLog {
 
 export default function TenantProfile() {
   const { id } = useParams() as { id: string };
+  const router = useRouter();
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'members' | 'clients' | 'logs'>('members');
   const [error, setError] = useState<string | null>(null);
+  
+  // Danger Zone State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmationSlug, setDeleteConfirmationSlug] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Redis Logs State
   const [logs, setLogs] = useState<TenantLog[]>([]);
@@ -552,6 +558,108 @@ export default function TenantProfile() {
           </div>
         )}
       </div>
+
+      {/* Danger Zone */}
+      <div style={{ marginTop: 24, border: '1px solid #7f1d1d', borderRadius: 8, padding: 24, background: 'rgba(127, 29, 29, 0.05)' }}>
+        <h3 style={{ color: '#f87171', fontSize: '1.1rem', fontWeight: 700, margin: '0 0 8px 0' }}>Danger Zone</h3>
+        <p style={{ color: '#fca5a5', fontSize: '0.85rem', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+          Deleting a tenant will permanently erase all of its data, including users, clients, tasks, and audit logs. This action cannot be undone. Master tenants cannot be deleted.
+        </p>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          style={{
+            background: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid rgba(220, 38, 38, 0.5)',
+            color: '#ef4444',
+            padding: '8px 16px',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            transition: 'all 0.2s ease',
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.2)'; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)'; }}
+        >
+          Delete Tenant
+        </button>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#050505', border: '1px solid #7f1d1d', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
+            <button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeleteConfirmationSlug('');
+              }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              ✕
+            </button>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f87171', marginBottom: 16 }}>Are you absolutely sure?</h2>
+            <p style={{ color: '#e2e8f0', fontSize: '0.85rem', marginBottom: 16, lineHeight: 1.5 }}>
+              This action <strong>cannot</strong> be undone. This will permanently delete the <strong>{tenant.name}</strong> tenant, its users, and all related data.
+            </p>
+            <p style={{ color: '#e2e8f0', fontSize: '0.85rem', marginBottom: 8 }}>
+              Please type <strong>{tenant.slug}</strong> to confirm.
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmationSlug}
+              onChange={(e) => setDeleteConfirmationSlug(e.target.value)}
+              style={{
+                width: '100%',
+                background: '#000000',
+                border: '1px solid #1F1F1F',
+                color: '#FFFFFF',
+                padding: '10px 12px',
+                borderRadius: 6,
+                fontSize: '0.9rem',
+                marginBottom: 20,
+                outline: 'none',
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={async () => {
+                  if (deleteConfirmationSlug !== tenant.slug) return;
+                  setIsDeleting(true);
+                  try {
+                    const res = await fetch(`/api/admin/tenants/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                      router.push('/admin');
+                    } else {
+                      alert(data.error || 'Failed to delete tenant');
+                      setIsDeleting(false);
+                    }
+                  } catch {
+                    alert('An error occurred during deletion.');
+                    setIsDeleting(false);
+                  }
+                }}
+                disabled={deleteConfirmationSlug !== tenant.slug || isDeleting}
+                style={{
+                  flex: 1,
+                  background: (deleteConfirmationSlug !== tenant.slug || isDeleting) ? '#1f1f1f' : '#dc2626',
+                  color: (deleteConfirmationSlug !== tenant.slug || isDeleting) ? '#52525b' : '#ffffff',
+                  border: 'none',
+                  padding: '10px 0',
+                  borderRadius: 6,
+                  cursor: (deleteConfirmationSlug !== tenant.slug || isDeleting) ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'I understand the consequences, delete this tenant'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Troubleshooting Inspector Modal */}
       {inspectionEntity && (

@@ -388,6 +388,7 @@ enum AdminActionType {
   ACTIVATE_TENANT
   DISCONNECT_WABA
   VACUUM_DATABASE
+  DELETE_TENANT
 }
 
 model AdminAuditLog {
