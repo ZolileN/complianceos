@@ -276,21 +276,26 @@ export default function FleetOverview() {
         </div>
 
         {/* Card 6: Webhook Queue Backlog */}
-        <div 
-          style={{ 
-            background: '#0F172A', 
-            border: '1px solid #1E293B', 
-            borderRadius: 8, 
-            padding: 20,
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Queue Backlog</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: queueDepth > 0 ? '#38BDF8' : '#34D399', marginTop: 8 }}>
-            {queueDepth}
-            <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#94A3B8', marginLeft: 8 }}>payloads</span>
+        <Link href="/admin/webhooks" style={{ textDecoration: 'none', display: 'block' }}>
+          <div 
+            style={{ 
+              background: '#0F172A', 
+              border: '1px solid #1E293B', 
+              borderRadius: 8, 
+              padding: 20,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#38BDF8'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1E293B'}
+          >
+            <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Queue Backlog</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: queueDepth > 0 ? '#38BDF8' : '#34D399', marginTop: 8 }}>
+              {queueDepth}
+              <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#94A3B8', marginLeft: 8 }}>payloads</span>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Tenant Registry Section */}
