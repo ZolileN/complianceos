@@ -611,7 +611,41 @@ export default function TenantProfile() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+              {inspectionEntity.type === 'User' ? (
+                <button
+                  onClick={async () => {
+                    if (!confirm("Are you sure you want to force reset this user's password?")) return;
+                    try {
+                      const res = await fetch(`/api/admin/users/${inspectionEntity.id}/reset-password`, {
+                        method: 'POST'
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        prompt('Password reset successfully. Please copy the temporary password securely:', data.temporaryPassword);
+                      } else {
+                        alert(data.error || 'Failed to reset password');
+                      }
+                    } catch {
+                      alert('An error occurred during password reset.');
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    color: '#F87171',
+                    padding: '8px 16px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 600
+                  }}
+                >
+                  Force Reset Password
+                </button>
+              ) : (
+                <div />
+              )}
               <button
                 onClick={() => {
                   setInspectionEntity(null);
