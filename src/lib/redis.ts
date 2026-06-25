@@ -1,7 +1,14 @@
 import { Redis } from 'ioredis';
 
+const getRedisUrl = () => {
+  if (process.env.KV_URL) return process.env.KV_URL;
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  // Fallback to localhost for local development
+  return 'redis://127.0.0.1:6379';
+};
+
 // Create a single Redis instance to be reused
-export const redis = new Redis(process.env.REDIS_URL || '', {
+export const redis = new Redis(getRedisUrl(), {
   maxRetriesPerRequest: 1,
   connectTimeout: 2000,
   enableOfflineQueue: false
