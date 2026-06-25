@@ -16,7 +16,7 @@ export default function WebhooksAndMetering() {
   const [activeLog, setActiveLog] = useState<AdminLog | null>(null);
   const [finops, setFinops] = useState<{
     totalMessages: number;
-    topStarter: { name: string; tokens: number; limit: number };
+    topTenant: { name: string; plan: string; tokens: number; limit: number };
   } | null>(null);
 
   const fetchLogs = useCallback(async () => {
@@ -40,7 +40,7 @@ export default function WebhooksAndMetering() {
       if (data.success) {
         setFinops({
           totalMessages: data.totalMessages,
-          topStarter: data.topStarter
+          topTenant: data.topTenant
         });
       }
     } catch (err) {
@@ -70,30 +70,30 @@ export default function WebhooksAndMetering() {
       {/* FinOps Metering Overview */}
       <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
         <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>FinOps Token & Credit Metering</h2>
-        <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>Real-time usage statistics against starter limits. Hard limits are enforced at 1,000 free tokens / month.</p>
+        <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>Real-time usage statistics across all workspace plans. Limits are enforced based on subscription tier.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 20 }}>
           {/* Progress bar card 1 */}
           <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: '#F1F5F9' }}>Starter Workspace API Credits</span>
+              <span style={{ color: '#F1F5F9' }}>Workspace API Credits Metering</span>
               <span style={{ color: '#5EEAD4' }}>
-                {finops ? `${finops.topStarter.tokens.toLocaleString()} / ${finops.topStarter.limit.toLocaleString()} tokens` : 'Loading...'}
+                {finops ? `${finops.topTenant.tokens.toLocaleString()} / ${finops.topTenant.limit.toLocaleString()} tokens` : 'Loading...'}
               </span>
             </div>
             <div style={{ height: 8, background: '#1E293B', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
               <div style={{ 
-                width: finops ? `${Math.min((finops.topStarter.tokens / finops.topStarter.limit) * 100, 100)}%` : '0%', 
+                width: finops ? `${Math.min((finops.topTenant.tokens / finops.topTenant.limit) * 100, 100)}%` : '0%', 
                 height: '100%', 
-                background: finops && finops.topStarter.tokens > finops.topStarter.limit * 0.9 ? '#EF4444' : '#5EEAD4', 
+                background: finops && finops.topTenant.tokens > finops.topTenant.limit * 0.9 ? '#EF4444' : '#5EEAD4', 
                 borderRadius: 4 
               }} />
             </div>
             <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>
               {finops ? (
                 <>
-                  {((finops.topStarter.tokens / finops.topStarter.limit) * 100).toFixed(1)}% capacity consumed. 
-                  {finops.topStarter.tokens > 0 ? ` Top consumer: ${finops.topStarter.name}.` : ''}
+                  {((finops.topTenant.tokens / finops.topTenant.limit) * 100).toFixed(1)}% capacity consumed. 
+                  {finops.topTenant.tokens > 0 ? ` Top consumer: ${finops.topTenant.name} (${finops.topTenant.plan} plan).` : ''}
                 </>
               ) : 'Calculating capacity...'}
             </div>
