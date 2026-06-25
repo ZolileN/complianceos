@@ -1,7 +1,15 @@
 import { Redis } from 'ioredis';
 
 // Create a single Redis instance to be reused
-export const redis = new Redis(process.env.REDIS_URL || '');
+export const redis = new Redis(process.env.REDIS_URL || '', {
+  maxRetriesPerRequest: 1,
+  connectTimeout: 2000,
+  enableOfflineQueue: false
+});
+
+redis.on('error', (err) => {
+  console.error('Redis Client Error:', err);
+});
 
 export interface RedisTenantLog {
   id: string;

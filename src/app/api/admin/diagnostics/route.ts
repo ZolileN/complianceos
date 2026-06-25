@@ -13,7 +13,13 @@ export async function GET() {
 
   try {
     const queueDepth = await getQueueDepth();
-    const lastVacuumTimestamp = await redis.get('last_vacuum_timestamp');
+    let lastVacuumTimestamp: string | null = null;
+    
+    try {
+      lastVacuumTimestamp = await redis.get('last_vacuum_timestamp');
+    } catch (redisError) {
+      console.error('Failed to retrieve last_vacuum_timestamp from Redis:', redisError);
+    }
 
     return NextResponse.json({
       success: true,

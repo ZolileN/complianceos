@@ -25,7 +25,11 @@ export async function POST() {
     }
 
     // Set the heartbeat token in Redis
-    await redis.set('last_vacuum_timestamp', new Date().toISOString());
+    try {
+      await redis.set('last_vacuum_timestamp', new Date().toISOString());
+    } catch (redisError) {
+      console.error('Failed to set last_vacuum_timestamp in Redis:', redisError);
+    }
 
     // Log the platform admin action to DB
     await logAdminAction('VACUUM_DATABASE', null, { executor: user?.email });
