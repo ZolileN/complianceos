@@ -36,7 +36,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl && process.env.VERCEL_URL) appUrl = `https://${process.env.VERCEL_URL}`;
+    appUrl = appUrl || 'http://localhost:3000';
+    
     const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email || '')}`;
 
     console.log(`[PASSWORD RESET DEV PREVIEW] Reset url for ${user.email}: ${resetUrl}`);

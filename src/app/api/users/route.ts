@@ -94,7 +94,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl && process.env.VERCEL_URL) appUrl = `https://${process.env.VERCEL_URL}`;
+    appUrl = appUrl || 'http://localhost:3000';
+
     const inviteUrl = `${appUrl}/accept-invite?token=${token}&email=${encodeURIComponent(email)}`;
 
     const emailResult = await sendTeamInviteEmail(email, name, role, inviteUrl);
