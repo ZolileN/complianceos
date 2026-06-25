@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { sendPasswordResetEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,14 +37,20 @@ export async function POST(request: NextRequest) {
     });
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
-    const devResetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email || '')}`;
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email || '')}`;
 
-    console.log(`[PASSWORD RESET DEV PREVIEW] Reset url for ${user.email}: ${devResetUrl}`);
+    console.log(`[PASSWORD RESET DEV PREVIEW] Reset url for ${user.email}: ${resetUrl}`);
+    
+    // Send email via Resend
+    const emailResult = await sendPasswordResetEmail(user.email || email.trim(), resetUrl);
+    
+    if (!emailResult.success) {
+      console.error('Email failed to send, but we will not alert the user to prevent enumeration.');
+    }
 
     return NextResponse.json({
       success: true,
       message: 'If the email matches a registered account, a password reset link has been sent.',
-      devResetUrl
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error during forgot password';

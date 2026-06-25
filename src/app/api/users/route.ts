@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
-import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { logAuditAction } from '@/lib/auditLogger';
+import { sendTeamInviteEmail } from '@/lib/email';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -54,9 +55,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { name, email, password, role } = await request.json();
+    const { name, email, role } = await request.json();
 
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !role) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -73,17 +74,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User already exists with this email' }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
-        password: hashedPassword,
         role,
         tenantId,
       }
     });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 48 * 3600000); // 48 hours
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: email,
+        token,
+        expires
+      }
+    });
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+    const inviteUrl = `${appUrl}/accept-invite?token=${token}&email=${encodeURIComponent(email)}`;
+
+    const emailResult = await sendTeamInviteEmail(email, name, role, inviteUrl);
+    
+    if (!emailResult.success) {
+      console.error('Failed to send team invite email for', email);
+    }
 
     await logAuditAction({
       tenantId,

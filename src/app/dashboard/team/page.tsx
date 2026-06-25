@@ -35,7 +35,6 @@ export default function TeamPage() {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    password: '',
     role: 'consultant' as 'administrator' | 'operations_manager' | 'consultant' | 'client',
   });
 
@@ -84,7 +83,7 @@ export default function TeamPage() {
       }
 
       toast('Team member added successfully');
-      setForm({ name: '', email: '', password: '', role: 'consultant' });
+      setForm({ name: '', email: '', role: 'consultant' });
       setShowAddModal(false);
       setRefreshKey(k => k + 1);
     } catch (err) {
@@ -306,17 +305,7 @@ export default function TeamPage() {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Password *</label>
-                <input 
-                  className="input" 
-                  type="password" 
-                  required 
-                  value={form.password} 
-                  onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
+
 
               <div className="form-group">
                 <label className="form-label">Platform Role *</label>
@@ -337,7 +326,7 @@ export default function TeamPage() {
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? <span className="spinner" /> : 'Create Account'}
+                  {submitting ? <span className="spinner" /> : 'Send Invite'}
                 </button>
               </div>
             </form>
