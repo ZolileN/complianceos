@@ -95,8 +95,11 @@ export async function POST(request: NextRequest) {
     });
 
     let appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl && process.env.VERCEL_URL) appUrl = `https://${process.env.VERCEL_URL}`;
-    appUrl = appUrl || 'http://localhost:3000';
+    if (!appUrl && process.env.VERCEL_URL) appUrl = process.env.VERCEL_URL;
+    appUrl = appUrl || 'localhost:3000';
+    if (!appUrl.startsWith('http')) {
+      appUrl = appUrl.includes('localhost') ? `http://${appUrl}` : `https://${appUrl}`;
+    }
 
     const inviteUrl = `${appUrl}/accept-invite?token=${token}&email=${encodeURIComponent(email)}`;
 
