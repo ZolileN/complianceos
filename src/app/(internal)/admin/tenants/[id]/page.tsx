@@ -66,6 +66,7 @@ export default function TenantProfile() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmationSlug, setDeleteConfirmationSlug] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   
   // Redis Logs State
   const [logs, setLogs] = useState<TenantLog[]>([]);
@@ -593,6 +594,7 @@ export default function TenantProfile() {
               onClick={() => {
                 setShowDeleteModal(false);
                 setDeleteConfirmationSlug('');
+                setDeleteError(null);
               }}
               style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
             >
@@ -605,6 +607,11 @@ export default function TenantProfile() {
             <p style={{ color: '#e2e8f0', fontSize: '0.85rem', marginBottom: 8 }}>
               Please type <strong>{tenant.slug}</strong> to confirm.
             </p>
+            {deleteError && (
+              <div style={{ background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.5)', color: '#ef4444', padding: '10px 12px', borderRadius: 6, fontSize: '0.85rem', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '1rem' }}>⚠️</span> {deleteError}
+              </div>
+            )}
             <input
               type="text"
               value={deleteConfirmationSlug}
@@ -627,17 +634,18 @@ export default function TenantProfile() {
                 onClick={async () => {
                   if (deleteConfirmationSlug !== tenant.slug) return;
                   setIsDeleting(true);
+                  setDeleteError(null);
                   try {
                     const res = await fetch(`/api/admin/tenants/${id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
                       router.push('/admin');
                     } else {
-                      alert(data.error || 'Failed to delete tenant');
+                      setDeleteError(data.error || 'Failed to delete tenant');
                       setIsDeleting(false);
                     }
                   } catch {
-                    alert('An error occurred during deletion.');
+                    setDeleteError('An internal server error occurred during deletion.');
                     setIsDeleting(false);
                   }
                 }}
