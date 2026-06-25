@@ -32,7 +32,7 @@ export default function LoginPage() {
       const session = await sessionRes.json();
       const user = session?.user;
 
-      if (user?.tenantSlug === 'praxisone' || user?.email?.endsWith('@praxisone.com')) {
+      if ((['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string) || ['@praxisone.com', '@mlkcomputer.com'].some(d => user?.email?.endsWith(d)))) {
         router.push('/admin');
       } else {
         router.push('/dashboard');

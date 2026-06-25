@@ -8,7 +8,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const session = await getServerSession(authOptions);
   const adminUser = session?.user as { role?: string; tenantSlug?: string } | undefined;
   
-  if (!session || adminUser?.role !== 'administrator' || adminUser?.tenantSlug !== 'praxisone') {
+  if (!session || adminUser?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(adminUser?.tenantSlug as string)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Do not allow resetting another PraxisOne administrator's password to prevent privilege escalation
-    if (userToReset.tenant?.slug === 'praxisone' && userToReset.role === 'administrator') {
+    if (['praxisone', 'mlk-computer-consulting'].includes(userToReset.tenant?.slug as string) && userToReset.role === 'administrator') {
       return NextResponse.json({ error: 'Cannot reset other PraxisAdmin passwords.' }, { status: 403 });
     }
 

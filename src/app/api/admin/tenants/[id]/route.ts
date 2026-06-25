@@ -15,7 +15,7 @@ export async function GET(
   const userRole = (session.user as { role?: string }).role;
   const tenantSlug = (session.user as { tenantSlug?: string }).tenantSlug;
 
-  if (userRole !== 'administrator' || tenantSlug !== 'praxisone') {
+  if (userRole !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(tenantSlug as string)) {
     return NextResponse.json({ error: "Forbidden: Platform Administrator access required" }, { status: 403 });
   }
 

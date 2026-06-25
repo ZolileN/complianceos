@@ -17,7 +17,7 @@ export async function logAdminAction(
     const session = await getServerSession(authOptions);
     const user = session?.user as { id?: string; email?: string; role?: string; tenantSlug?: string } | undefined;
 
-    if (!session || user?.role !== 'administrator' || user?.tenantSlug !== 'praxisone' || !user.id) {
+    if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string) || !user.id) {
       console.warn(`Unauthorized admin audit log attempt: ${action} blocked.`);
       return;
     }

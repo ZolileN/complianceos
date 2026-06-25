@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (email.toLowerCase().endsWith('@praxisone.com')) {
+    if (['@praxisone.com', '@mlkcomputer.com'].some(d => email.toLowerCase().endsWith(d))) {
       return NextResponse.json({ error: "Registration is restricted for this email domain. Please contact your platform administrator." }, { status: 400 });
     }
 

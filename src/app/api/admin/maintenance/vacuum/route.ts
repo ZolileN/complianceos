@@ -9,7 +9,7 @@ import { logAdminAction } from '@/lib/admin-audit';
 export async function POST() {
   const session = await getServerSession(authOptions);
   const user = session?.user as { email?: string; role?: string; tenantSlug?: string } | undefined;
-  if (!session || user?.role !== 'administrator' || user?.tenantSlug !== 'praxisone') {
+  if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

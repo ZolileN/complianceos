@@ -195,7 +195,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         window.location.href = '/login';
       } else if (!tenant) {
         signOut();
-      } else if (user.tenantSlug === 'praxisone' || user.email?.endsWith('@praxisone.com')) {
+      } else if ((['praxisone', 'mlk-computer-consulting'].includes(user.tenantSlug as string) || ['@praxisone.com', '@mlkcomputer.com'].some(d => user.email?.endsWith(d)))) {
         router.push('/admin');
       }
     }
