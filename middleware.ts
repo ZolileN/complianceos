@@ -9,7 +9,8 @@ export default withAuth(
     if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
       const userRole = token?.role;
       const tenantSlug = token?.tenantSlug;
-      if (userRole !== 'administrator' || tenantSlug !== 'praxisone') {
+      
+      if (userRole !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(tenantSlug as string)) {
         if (path.startsWith('/api/')) {
           return new NextResponse(
             JSON.stringify({ error: "Forbidden: Platform Administrator access required" }),
