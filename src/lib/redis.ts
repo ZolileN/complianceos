@@ -31,7 +31,7 @@ export const redis = redisUrl
 if (redisUrl) {
   redis.on('error', (err) => {
     // Suppress localhost connection errors to avoid spam when running without Redis locally
-    if (redisUrl === 'redis://127.0.0.1:6379' && err.code === 'ECONNREFUSED') {
+    if (redisUrl === 'redis://127.0.0.1:6379' && (err as Error & { code?: string }).code === 'ECONNREFUSED') {
       return;
     }
     console.error('Redis Client Error:', err);
