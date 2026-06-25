@@ -10,6 +10,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, signOut, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const [showNotification, setShowNotification] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading) {
@@ -127,7 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Notification Button */}
             <button
-              onClick={() => alert("Platform Status: Operational. Zero warning triggers or failed webhooks in the last 24 hours.")}
+              onClick={() => setShowNotification(!showNotification)}
               style={{
                 background: '#0A0A0A',
                 border: '1px solid #1F1F1F',
@@ -150,6 +151,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               🔔
               <span style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: '50%', background: '#34D399', border: '2px solid #000000' }} />
             </button>
+
+            {/* Custom Notification Dropdown */}
+            {showNotification && (
+              <div style={{
+                position: 'absolute',
+                top: 56,
+                right: 90,
+                background: '#050505',
+                border: '1px solid #1F1F1F',
+                borderRadius: 8,
+                padding: '16px',
+                width: 320,
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+                zIndex: 50,
+                color: '#A3A3A3',
+                fontSize: '0.8rem',
+                lineHeight: 1.5,
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontWeight: 600, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#34D399' }}>●</span> System Status
+                  </span>
+                  <button onClick={() => setShowNotification(false)} style={{ background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
+                </div>
+                Platform Status: Operational. Zero warning triggers or failed webhooks in the last 24 hours.
+              </div>
+            )}
 
             {/* Profile Navigation Button */}
             <Link
