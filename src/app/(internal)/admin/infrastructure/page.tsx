@@ -215,9 +215,9 @@ export default function InfrastructureTuning() {
             <button 
               onClick={() => { setIsTimeOpen(!isTimeOpen); }}
               style={{ 
-                background: '#0F172A', 
-                border: '1px solid #1E293B', 
-                color: '#F1F5F9', 
+                background: '#050505', 
+                border: '1px solid #1F1F1F', 
+                color: '#FFFFFF', 
                 borderRadius: 6, 
                 padding: '6px 12px', 
                 fontSize: '0.75rem', 
@@ -228,7 +228,7 @@ export default function InfrastructureTuning() {
                 gap: 8
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                 <line x1="16" y1="2" x2="16" y2="6"></line>
                 <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -236,18 +236,18 @@ export default function InfrastructureTuning() {
               </svg>
               <span>{selectedTimeRange}</span>
               <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 1L5 5L9 1" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 1L5 5L9 1" stroke="#888888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             {isTimeOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#0F172A', border: '1px solid #1E293B', borderRadius: 6, zIndex: 10, width: 140, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#050505', border: '1px solid #1F1F1F', borderRadius: 6, zIndex: 10, width: 140, boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
                 {['Last 1 hour', 'Last 6 hours', 'Last 24 hours', 'Last 7 days', 'Custom...'].map(range => (
                   <div 
                     key={range} 
                     onClick={() => { handleTimeRangeChange(range); setIsTimeOpen(false); }}
-                    style={{ padding: '8px 12px', fontSize: '0.75rem', color: '#94A3B8', cursor: 'pointer' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#1E293B'; e.currentTarget.style.color = '#F1F5F9'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8'; }}
+                    style={{ padding: '8px 12px', fontSize: '0.75rem', color: '#888888', cursor: 'pointer' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#1F1F1F'; e.currentTarget.style.color = '#FFFFFF'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#888888'; }}
                   >
                     {range}
                   </div>
@@ -258,30 +258,30 @@ export default function InfrastructureTuning() {
 
           {selectedTimeRange === 'Custom...' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.2s ease-out' }}>
-              <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Start:</span>
+              <span style={{ fontSize: '0.75rem', color: '#888888' }}>Start:</span>
               <input 
                 type="datetime-local" 
                 value={customStart}
                 onChange={(e) => handleCustomStartChange(e.target.value)}
                 style={{
-                  background: '#0F172A',
-                  border: '1px solid #1E293B',
-                  color: '#F1F5F9',
+                  background: '#050505',
+                  border: '1px solid #1F1F1F',
+                  color: '#FFFFFF',
                   borderRadius: 6,
                   padding: '4px 8px',
                   fontSize: '0.75rem',
                   outline: 'none'
                 }}
               />
-              <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>End:</span>
+              <span style={{ fontSize: '0.75rem', color: '#888888' }}>End:</span>
               <input 
                 type="datetime-local" 
                 value={customEnd}
                 onChange={(e) => handleCustomEndChange(e.target.value)}
                 style={{
-                  background: '#0F172A',
-                  border: '1px solid #1E293B',
-                  color: '#F1F5F9',
+                  background: '#050505',
+                  border: '1px solid #1F1F1F',
+                  color: '#FFFFFF',
                   borderRadius: 6,
                   padding: '4px 8px',
                   fontSize: '0.75rem',
@@ -329,7 +329,7 @@ export default function InfrastructureTuning() {
               <span>Active CPU: {currentCpu}%</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#475569' }}></span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#333333' }}></span>
               <span>Base Load: {(currentCpu * 0.6).toFixed(1)}%</span>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function InfrastructureTuning() {
               <span>Heap: {currentRam}%</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#475569' }}></span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#333333' }}></span>
               <span>Cache: {((currentRam) * 0.15).toFixed(1)}%</span>
             </div>
           </div>
@@ -433,7 +433,7 @@ export default function InfrastructureTuning() {
               <span>PG Data: {currentStorage}%</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#475569' }}></span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#333333' }}></span>
               <span>WAL Logs: 0.04%</span>
             </div>
           </div>
@@ -485,7 +485,7 @@ export default function InfrastructureTuning() {
               <span>Active: {currentDb}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#475569' }}></span>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#333333' }}></span>
               <span>Idle: {20 - currentDb}</span>
             </div>
           </div>
@@ -524,9 +524,9 @@ export default function InfrastructureTuning() {
       </div>
 
       {/* DB maintenance vacuum trigger */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>Database Maintenance Controls</h2>
-        <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>Database Maintenance Controls</h2>
+        <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4 }}>
           It is recommended to run database tuning and vacuum commands every 5 days. Next-scheduled auto-run is in 3 days.
         </p>
 
@@ -536,7 +536,7 @@ export default function InfrastructureTuning() {
             disabled={runningVacuum}
             style={{
               background: '#5EEAD4',
-              color: '#090D16',
+              color: '#000000',
               border: 'none',
               padding: '10px 20px',
               borderRadius: 6,
@@ -549,17 +549,17 @@ export default function InfrastructureTuning() {
           >
             {runningVacuum ? 'Optimizing Storage...' : 'Trigger Database Vacuum & Tune'}
           </button>
-          <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>
+          <span style={{ fontSize: '0.7rem', color: '#888888' }}>
             Warning: This updates Postgres statistics and reclaims dead storage rows. Runs non-destructively in the background.
           </span>
         </div>
       </div>
 
       {/* Live system logs display */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ padding: 16, borderBottom: '1px solid #1E293B', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F', display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', animation: 'pulse 2s infinite' }} />
-          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Live VM & Docker Container Console Logs</h3>
+          <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Live VM & Docker Container Console Logs</h3>
           <style jsx>{`
             @keyframes pulse {
               0% { opacity: 0.4; }
@@ -568,7 +568,7 @@ export default function InfrastructureTuning() {
             }
           `}</style>
         </div>
-        <div style={{ padding: 16, background: '#090D16', height: 260, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ padding: 16, background: '#000000', height: 260, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {consoleLogs.map((log, idx) => (
             <div key={idx} style={{ color: log.includes('SUCCESS') ? '#34D399' : log.includes('ERROR') ? '#EF4444' : log.includes('INITIATING') ? '#F59E0B' : '#E2E8F0' }}>
               {log}

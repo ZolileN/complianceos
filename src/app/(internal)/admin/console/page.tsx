@@ -169,14 +169,14 @@ export default function IsolatedConsole() {
   };
 
   return (
-    <div style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '70vh' }}>
+    <div style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '70vh' }}>
       {/* Header bar */}
-      <div style={{ background: '#0F172A', padding: '12px 16px', borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: '#050505', padding: '12px 16px', borderBottom: '1px solid #1F1F1F', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#EF4444' }} />
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#F59E0B' }} />
           <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#10B981' }} />
-          <span style={{ marginLeft: 8, fontSize: '0.75rem', fontFamily: 'monospace', color: '#94A3B8', fontWeight: 600 }}>praxis-admin-diagnostics-shell</span>
+          <span style={{ marginLeft: 8, fontSize: '0.75rem', fontFamily: 'monospace', color: '#888888', fontWeight: 600 }}>praxis-admin-diagnostics-shell</span>
         </div>
         <span style={{ fontSize: '0.65rem', background: 'rgba(94, 234, 212, 0.1)', color: '#5EEAD4', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
           SECURE_SSH_CONNECTED
@@ -186,11 +186,11 @@ export default function IsolatedConsole() {
       {/* Terminal lines buffer */}
       <div style={{ flex: 1, padding: 16, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: 6, color: '#E2E8F0', lineHeight: '1.2' }}>
         {history.map((line, idx) => {
-          let color = '#F1F5F9';
+          let color = '#FFFFFF';
           if (line.type === 'input') color = '#38BDF8';
           else if (line.type === 'error') color = '#F87171';
           else if (line.type === 'success') color = '#34D399';
-          else if (line.type === 'output') color = '#94A3B8';
+          else if (line.type === 'output') color = '#888888';
 
           return (
             <div key={idx} style={{ color, whiteSpace: 'pre-wrap' }}>
@@ -202,7 +202,7 @@ export default function IsolatedConsole() {
       </div>
 
       {/* Terminal Input prompt */}
-      <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #1E293B', background: '#0F172A', padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #1F1F1F', background: '#050505', padding: 12 }}>
         <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#38BDF8', marginRight: 8, fontWeight: 700 }}>
           praxis-admin-os $
         </span>

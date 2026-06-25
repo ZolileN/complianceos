@@ -68,20 +68,20 @@ export default function WebhooksAndMetering() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* FinOps Metering Overview */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC' }}>FinOps Token & Credit Metering</h2>
-        <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4 }}>Real-time usage statistics across all workspace plans. Limits are enforced based on subscription tier.</p>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>FinOps Token & Credit Metering</h2>
+        <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4 }}>Real-time usage statistics across all workspace plans. Limits are enforced based on subscription tier.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 20 }}>
           {/* Progress bar card 1 */}
           <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: '#F1F5F9' }}>Workspace API Credits Metering</span>
+              <span style={{ color: '#FFFFFF' }}>Workspace API Credits Metering</span>
               <span style={{ color: '#5EEAD4' }}>
                 {finops ? `${finops.topTenant.tokens.toLocaleString()} / ${finops.topTenant.limit.toLocaleString()} tokens` : 'Loading...'}
               </span>
             </div>
-            <div style={{ height: 8, background: '#1E293B', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
+            <div style={{ height: 8, background: '#1F1F1F', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
               <div style={{ 
                 width: finops ? `${Math.min((finops.topTenant.tokens / finops.topTenant.limit) * 100, 100)}%` : '0%', 
                 height: '100%', 
@@ -89,7 +89,7 @@ export default function WebhooksAndMetering() {
                 borderRadius: 4 
               }} />
             </div>
-            <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>
+            <div style={{ fontSize: '0.65rem', color: '#888888', marginTop: 8 }}>
               {finops ? (
                 <>
                   {((finops.topTenant.tokens / finops.topTenant.limit) * 100).toFixed(1)}% capacity consumed. 
@@ -102,15 +102,15 @@ export default function WebhooksAndMetering() {
           {/* Progress bar card 2 */}
           <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: '#F1F5F9' }}>Total WhatsApp Messages Metered</span>
+              <span style={{ color: '#FFFFFF' }}>Total WhatsApp Messages Metered</span>
               <span style={{ color: '#60A5FA' }}>
                 {finops ? `${finops.totalMessages.toLocaleString()} messages` : 'Loading...'}
               </span>
             </div>
-            <div style={{ height: 8, background: '#1E293B', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
+            <div style={{ height: 8, background: '#1F1F1F', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
               <div style={{ width: finops ? `${Math.min((finops.totalMessages / 15000) * 100, 100)}%` : '0%', height: '100%', background: '#3B82F6', borderRadius: 4 }} />
             </div>
-            <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>Rate limit ceiling: 15,000 / day. Current queue handling: Healthy.</div>
+            <div style={{ fontSize: '0.65rem', color: '#888888', marginTop: 8 }}>Rate limit ceiling: 15,000 / day. Current queue handling: Healthy.</div>
           </div>
         </div>
       </div>
@@ -118,11 +118,11 @@ export default function WebhooksAndMetering() {
       {/* Webhook log list */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Left Side: Logs List */}
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
-          <div style={{ padding: 16, borderBottom: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
+          <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC' }}>Live Event & Webhook Stream</h3>
-              <p style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: 2 }}>Click any event log to inspect payloads.</p>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>Live Event & Webhook Stream</h3>
+              <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Click any event log to inspect payloads.</p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(94, 234, 212, 0.1)', color: '#5EEAD4' }}>{totalWebhooks} Webhooks</span>
@@ -132,9 +132,9 @@ export default function WebhooksAndMetering() {
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: '0.8rem' }}>Loading log stream...</div>
+              <div style={{ textAlign: 'center', padding: 40, color: '#888888', fontSize: '0.8rem' }}>Loading log stream...</div>
             ) : logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#94A3B8', fontSize: '0.8rem', fontStyle: 'italic' }}>No logs recorded yet.</div>
+              <div style={{ textAlign: 'center', padding: 40, color: '#888888', fontSize: '0.8rem', fontStyle: 'italic' }}>No logs recorded yet.</div>
             ) : (
               logs.map(log => {
                 const isSelected = activeLog?.id === log.id;
@@ -172,17 +172,17 @@ export default function WebhooksAndMetering() {
         </div>
 
         {/* Right Side: Payload Inspector */}
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
-          <div style={{ padding: 16, borderBottom: '1px solid #1E293B' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC' }}>Webhook Payload Inspector</h3>
-            <p style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: 2 }}>Inspect JSON bodies of incoming Meta event loops.</p>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
+          <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F' }}>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>Webhook Payload Inspector</h3>
+            <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Inspect JSON bodies of incoming Meta event loops.</p>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#090D16', fontFamily: 'monospace', fontSize: '0.7rem' }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#000000', fontFamily: 'monospace', fontSize: '0.7rem' }}>
             {activeLog ? (
               <div>
-                <div style={{ borderBottom: '1px solid #1E293B', paddingBottom: 12, marginBottom: 12 }}>
-                  <div style={{ color: '#F1F5F9', fontWeight: 600 }}>Event: {activeLog.message}</div>
-                  <div style={{ color: '#94A3B8', fontSize: '0.65rem', marginTop: 4 }}>Timestamp: {new Date(activeLog.timestamp).toISOString()}</div>
+                <div style={{ borderBottom: '1px solid #1F1F1F', paddingBottom: 12, marginBottom: 12 }}>
+                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Event: {activeLog.message}</div>
+                  <div style={{ color: '#888888', fontSize: '0.65rem', marginTop: 4 }}>Timestamp: {new Date(activeLog.timestamp).toISOString()}</div>
                 </div>
                 {activeLog.payload ? (
                   <pre style={{ color: '#34D399', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

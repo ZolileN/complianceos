@@ -110,7 +110,7 @@ export default function TenantProfile() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#94A3B8' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
           <span>Retrieving workspace metadata...</span>
@@ -124,7 +124,7 @@ export default function TenantProfile() {
 
   if (error || !tenant) {
     return (
-      <div style={{ padding: 24, background: '#0F172A', border: '1px solid #EF4444', borderRadius: 8, color: '#F87171', maxWidth: 600 }}>
+      <div style={{ padding: 24, background: '#050505', border: '1px solid #EF4444', borderRadius: 8, color: '#F87171', maxWidth: 600 }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Error Loading Tenant</h2>
         <p style={{ fontSize: '0.85rem', marginTop: 8 }}>{error || 'Tenant not found.'}</p>
         <Link href="/admin" style={{ display: 'inline-block', marginTop: 16, color: '#5EEAD4', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -143,7 +143,7 @@ export default function TenantProfile() {
       case 'consultant':
         return '#C084FC';
       default:
-        return '#94A3B8';
+        return '#888888';
     }
   };
 
@@ -168,10 +168,10 @@ export default function TenantProfile() {
           <Link href="/admin" style={{ color: '#5EEAD4', textDecoration: 'none', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>←</span> Back to Fleet Overview
           </Link>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F8FAFC', marginTop: 8 }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF', marginTop: 8 }}>
             Tenant Profile: {tenant.name}
           </h1>
-          <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: 4 }}>
+          <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 4 }}>
             System-level metadata for workspace firm <code>/onboard/{tenant.slug}</code>.
           </p>
         </div>
@@ -228,8 +228,8 @@ export default function TenantProfile() {
           🛡️
         </div>
         <div>
-          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#F1F5F9' }}>POPIA Privacy Shield Enabled</h4>
-          <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 4, lineHeight: 1.4 }}>
+          <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#FFFFFF' }}>POPIA Privacy Shield Enabled</h4>
+          <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4, lineHeight: 1.4 }}>
             In compliance with the <strong>Protection of Personal Information Act (POPIA)</strong>, platform administration access is restricted to tenant-level configuration and high-level directory directories. Direct access to client document vaults, secure message histories, tax identification items, and client workflows remains locked to the tenant workspace.
           </p>
         </div>
@@ -237,26 +237,26 @@ export default function TenantProfile() {
 
       {/* Tenant Metadata Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registration Metadata</h3>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Registration Metadata</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Workspace URL Slug:</span>
-              <span style={{ color: '#F1F5F9', fontFamily: 'monospace' }}>{tenant.slug}</span>
+              <span style={{ color: '#FFFFFF', fontFamily: 'monospace' }}>{tenant.slug}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Creation Date:</span>
-              <span style={{ color: '#F1F5F9' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</span>
+              <span style={{ color: '#FFFFFF' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Internal ID Reference:</span>
-              <span style={{ color: '#94A3B8', fontFamily: 'monospace', fontSize: '0.7rem' }}>{tenant.id}</span>
+              <span style={{ color: '#888888', fontFamily: 'monospace', fontSize: '0.7rem' }}>{tenant.id}</span>
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Integration</h3>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Integration</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>WhatsApp Linkage:</span>
@@ -267,44 +267,44 @@ export default function TenantProfile() {
             {tenant.whatsappPhoneNumber && (
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#64748B' }}>WhatsApp Phone Number:</span>
-                <span style={{ color: '#F1F5F9', fontFamily: 'monospace' }}>{tenant.whatsappPhoneNumber}</span>
+                <span style={{ color: '#FFFFFF', fontFamily: 'monospace' }}>{tenant.whatsappPhoneNumber}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>System Users Active:</span>
-              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>{tenant.users.length}</span>
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{tenant.users.length}</span>
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Firm Directory Details</h3>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Firm Directory Details</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Business Email:</span>
-              <span style={{ color: '#F1F5F9' }}>{tenant.email || 'N/A'}</span>
+              <span style={{ color: '#FFFFFF' }}>{tenant.email || 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Contact Number:</span>
-              <span style={{ color: '#F1F5F9' }}>{tenant.contactNumber || 'N/A'}</span>
+              <span style={{ color: '#FFFFFF' }}>{tenant.contactNumber || 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>Active Client Count:</span>
-              <span style={{ color: '#F1F5F9', fontWeight: 600 }}>{tenant.clients.length}</span>
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{tenant.clients.length}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Directory Selector tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #1E293B', gap: 8, marginTop: 8 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #1F1F1F', gap: 8, marginTop: 8 }}>
         <button
           onClick={() => setActiveTab('members')}
           style={{
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'members' ? '2px solid #5EEAD4' : '2px solid transparent',
-            color: activeTab === 'members' ? '#F8FAFC' : '#94A3B8',
+            color: activeTab === 'members' ? '#FFFFFF' : '#888888',
             padding: '12px 16px',
             fontSize: '0.85rem',
             fontWeight: 600,
@@ -320,7 +320,7 @@ export default function TenantProfile() {
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'clients' ? '2px solid #5EEAD4' : '2px solid transparent',
-            color: activeTab === 'clients' ? '#F8FAFC' : '#94A3B8',
+            color: activeTab === 'clients' ? '#FFFFFF' : '#888888',
             padding: '12px 16px',
             fontSize: '0.85rem',
             fontWeight: 600,
@@ -336,7 +336,7 @@ export default function TenantProfile() {
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'logs' ? '2px solid #5EEAD4' : '2px solid transparent',
-            color: activeTab === 'logs' ? '#F8FAFC' : '#94A3B8',
+            color: activeTab === 'logs' ? '#FFFFFF' : '#888888',
             padding: '12px 16px',
             fontSize: '0.85rem',
             fontWeight: 600,
@@ -349,12 +349,12 @@ export default function TenantProfile() {
       </div>
 
       {/* Active Tab View */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
         {activeTab === 'members' ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+                <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>Name</th>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>System Permission Role</th>
@@ -364,13 +364,13 @@ export default function TenantProfile() {
               <tbody>
                 {tenant.users.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                    <td colSpan={4} style={{ textAlign: 'center', padding: '32px 0', color: '#888888', fontStyle: 'italic' }}>
                       No workspace members registered.
                     </td>
                   </tr>
                 ) : (
                   tenant.users.map(user => (
-                    <tr key={user.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                    <tr key={user.id} style={{ borderBottom: '1px solid #1F1F1F' }}>
                       <td style={{ padding: '16px 20px' }}>
                         <button
                           onClick={() => setInspectionEntity({
@@ -400,7 +400,7 @@ export default function TenantProfile() {
                           {user.name || 'Unnamed'}
                         </button>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{user.email}</td>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{user.email}</td>
                       <td style={{ padding: '16px 20px' }}>
                         <span style={{
                           display: 'inline-block',
@@ -416,7 +416,7 @@ export default function TenantProfile() {
                           {user.role.replace('_', ' ')}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#94A3B8' }}>
+                      <td style={{ padding: '16px 20px', color: '#888888' }}>
                         {new Date(user.createdAt).toLocaleDateString('en-GB')}
                       </td>
                     </tr>
@@ -429,7 +429,7 @@ export default function TenantProfile() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+                <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>Client Name</th>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>Registration Number</th>
                   <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
@@ -441,13 +441,13 @@ export default function TenantProfile() {
               <tbody>
                 {tenant.clients.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 0', color: '#888888', fontStyle: 'italic' }}>
                       No clients registered under this workspace.
                     </td>
                   </tr>
                 ) : (
                   tenant.clients.map(client => (
-                    <tr key={client.id} style={{ borderBottom: '1px solid #1E293B' }}>
+                    <tr key={client.id} style={{ borderBottom: '1px solid #1F1F1F' }}>
                       <td style={{ padding: '16px 20px' }}>
                         <button
                           onClick={() => setInspectionEntity({
@@ -479,9 +479,9 @@ export default function TenantProfile() {
                           {client.companyName}
                         </button>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1', fontFamily: 'monospace' }}>{client.registrationNumber || 'N/A'}</td>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.email || 'N/A'}</td>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{client.phone || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3', fontFamily: 'monospace' }}>{client.registrationNumber || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{client.email || 'N/A'}</td>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{client.phone || 'N/A'}</td>
                       <td style={{ padding: '16px 20px' }}>
                         <span style={{
                           display: 'inline-block',
@@ -497,7 +497,7 @@ export default function TenantProfile() {
                           {client.status}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#94A3B8' }}>
+                      <td style={{ padding: '16px 20px', color: '#888888' }}>
                         {new Date(client.createdAt).toLocaleDateString('en-GB')}
                       </td>
                     </tr>
@@ -509,33 +509,33 @@ export default function TenantProfile() {
         ) : (
           <div style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Redis Live Capped Message & Status Logs</h3>
-              <span style={{ fontSize: '0.7rem', color: '#5EEAD4', background: 'rgba(94, 234, 212, 0.08)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>Redis Live Capped Message & Status Logs</h3>
+              <span style={{ fontSize: '0.7rem', color: '#5EEAD4', background: '#141414', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
                 ● Auto-polling (5s)
               </span>
             </div>
             
             {logsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: '#94A3B8' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: '#888888' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
                   <span style={{ fontSize: '0.8rem' }}>Loading log stream...</span>
                 </div>
               </div>
             ) : logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: '0.85rem', fontStyle: 'italic' }}>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#888888', fontSize: '0.85rem', fontStyle: 'italic' }}>
                 No telemetry logs found for this tenant. Logs appear as system events occur (suspension, WABA disconnections, WhatsApp webhooks).
               </div>
             ) : (
-              <div style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', padding: 12 }}>
+              <div style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', padding: 12 }}>
                 {logs.map((log) => {
-                  let badgeColor = '#94A3B8';
+                  let badgeColor = '#888888';
                   if (log.type === 'webhook') badgeColor = '#38BDF8';
                   if (log.type === 'system') badgeColor = '#F59E0B';
                   if (log.type === 'error') badgeColor = '#EF4444';
                   
                   return (
-                    <div key={log.id} style={{ display: 'flex', gap: 12, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                    <div key={log.id} style={{ display: 'flex', gap: 12, padding: '6px 0', borderBottom: '1px solid #0A0A0A' }}>
                       <span style={{ color: '#64748B', flexShrink: 0 }}>[{new Date(log.timestamp).toLocaleTimeString()}]</span>
                       <span style={{ color: badgeColor, fontWeight: 700, textTransform: 'uppercase', width: 70, flexShrink: 0 }}>[{log.type}]</span>
                       <span style={{ color: '#E2E8F0', flex: 1, wordBreak: 'break-all' }}>{log.message}</span>
@@ -556,13 +556,13 @@ export default function TenantProfile() {
       {/* Troubleshooting Inspector Modal */}
       {inspectionEntity && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
+          <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
             <button
               onClick={() => {
                 setInspectionEntity(null);
                 setCopiedId(false);
               }}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.2rem' }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
             >
               ✕
             </button>
@@ -571,10 +571,10 @@ export default function TenantProfile() {
                 {inspectionEntity.type} Entity
               </span>
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 16 }}>{inspectionEntity.name}</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 16 }}>{inspectionEntity.name}</h2>
             
             {/* ID copy section */}
-            <div style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '12px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '12px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                 <div style={{ fontSize: '0.65rem', color: '#64748B', textTransform: 'uppercase', fontWeight: 600 }}>Database Primary Key ID</div>
                 <div style={{ fontSize: '0.8rem', color: '#E2E8F0', fontFamily: 'monospace', marginTop: 4, wordBreak: 'break-all' }}>{inspectionEntity.id}</div>
@@ -587,8 +587,8 @@ export default function TenantProfile() {
                 }}
                 style={{
                   background: copiedId ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${copiedId ? '#34D399' : '#1E293B'}`,
-                  color: copiedId ? '#34D399' : '#CBD5E1',
+                  border: `1px solid ${copiedId ? '#34D399' : '#1F1F1F'}`,
+                  color: copiedId ? '#34D399' : '#A3A3A3',
                   borderRadius: 4,
                   padding: '6px 12px',
                   fontSize: '0.75rem',
@@ -606,7 +606,7 @@ export default function TenantProfile() {
               {Object.entries(inspectionEntity.details).map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', borderBottom: '1px solid rgba(30, 41, 59, 0.5)', paddingBottom: 8 }}>
                   <span style={{ color: '#64748B' }}>{label}:</span>
-                  <span style={{ color: '#F1F5F9', fontWeight: 500 }}>{val}</span>
+                  <span style={{ color: '#FFFFFF', fontWeight: 500 }}>{val}</span>
                 </div>
               ))}
             </div>
@@ -617,7 +617,7 @@ export default function TenantProfile() {
                   setInspectionEntity(null);
                   setCopiedId(false);
                 }}
-                style={{ background: 'transparent', border: '1px solid #1E293B', color: '#F1F5F9', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
+                style={{ background: 'transparent', border: '1px solid #1F1F1F', color: '#FFFFFF', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
               >
                 Close Inspector
               </button>

@@ -152,13 +152,13 @@ export default function PlatformTeamPage() {
       case 'consultant':
         return '#C084FC'; // light purple
       default:
-        return '#94A3B8';
+        return '#888888';
     }
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#94A3B8' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
           <span>Loading platform team registry...</span>
@@ -175,15 +175,15 @@ export default function PlatformTeamPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#F8FAFC' }}>Platform Team Management</h1>
-          <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: 4 }}>Manage internal staff accounts and access levels for the PraxisOne master tenant.</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF' }}>Platform Team Management</h1>
+          <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 4 }}>Manage internal staff accounts and access levels for the PraxisOne master tenant.</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
           style={{
             background: '#5EEAD4',
             border: 'none',
-            color: '#090D16',
+            color: '#000000',
             padding: '10px 20px',
             borderRadius: 6,
             fontWeight: 600,
@@ -199,11 +199,11 @@ export default function PlatformTeamPage() {
       </div>
 
       {/* Team Registry Card */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+              <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Full Name</th>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Role</th>
@@ -214,15 +214,15 @@ export default function PlatformTeamPage() {
             <tbody>
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px 0', color: '#888888', fontStyle: 'italic' }}>
                     No platform team members found.
                   </td>
                 </tr>
               ) : (
                 members.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid #1E293B', transition: 'background 0.15s ease' }}>
-                    <td style={{ padding: '16px 20px', fontWeight: 600, color: '#F1F5F9' }}>{m.full_name}</td>
-                    <td style={{ padding: '16px 20px', color: '#CBD5E1' }}>{m.email}</td>
+                  <tr key={m.id} style={{ borderBottom: '1px solid #1F1F1F', transition: 'background 0.15s ease' }}>
+                    <td style={{ padding: '16px 20px', fontWeight: 600, color: '#FFFFFF' }}>{m.full_name}</td>
+                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{m.email}</td>
                     <td style={{ padding: '16px 20px' }}>
                       <span
                         style={{
@@ -240,7 +240,7 @@ export default function PlatformTeamPage() {
                         {m.role.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', color: '#94A3B8' }}>
+                    <td style={{ padding: '16px 20px', color: '#888888' }}>
                       {new Date(m.created_at).toLocaleDateString('en-GB')}
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'right' }}>
@@ -295,15 +295,15 @@ export default function PlatformTeamPage() {
       {/* Add Member Modal */}
       {showAddModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
+          <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
             <button
               onClick={() => setShowAddModal(false)}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.2rem' }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
             >
               ✕
             </button>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 8 }}>Add Platform Team Member</h2>
-            <p style={{ color: '#94A3B8', fontSize: '0.8rem', marginBottom: 20 }}>Provision a new administrative or staff account linked to the PraxisOne master tenant.</p>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>Add Platform Team Member</h2>
+            <p style={{ color: '#888888', fontSize: '0.8rem', marginBottom: 20 }}>Provision a new administrative or staff account linked to the PraxisOne master tenant.</p>
 
             {error && (
               <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, color: '#F87171', fontSize: '0.8rem' }}>
@@ -313,46 +313,46 @@ export default function PlatformTeamPage() {
 
             <form onSubmit={handleAddMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Full Name *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Full Name *</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="e.g. Pepper Potts"
-                  style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Email Address *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Email Address *</label>
                 <input
                   type="email"
                   required
                   value={form.email}
                   onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
                   placeholder="e.g. pepper@praxisone.com"
-                  style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Password *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Password *</label>
                 <input
                   type="password"
                   required
                   value={form.password}
                   onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
                   placeholder="Minimum 6 characters"
-                  style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Platform Role *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Platform Role *</label>
                 <select
                   value={form.role}
                   onChange={(e) => setForm(p => ({ ...p, role: e.target.value as 'administrator' | 'operations_manager' | 'consultant' | 'client' }))}
-                  style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 >
                   <option value="administrator">Platform Administrator (Full Access)</option>
                   <option value="operations_manager">Operations Manager</option>
@@ -364,14 +364,14 @@ export default function PlatformTeamPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  style={{ background: 'transparent', border: '1px solid #1E293B', color: '#F1F5F9', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
+                  style={{ background: 'transparent', border: '1px solid #1F1F1F', color: '#FFFFFF', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: '#5EEAD4', border: 'none', color: '#090D16', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                  style={{ background: '#5EEAD4', border: 'none', color: '#000000', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
                 >
                   {submitting ? 'Creating...' : 'Create Account'}
                 </button>
@@ -384,18 +384,18 @@ export default function PlatformTeamPage() {
       {/* Reset Password Modal */}
       {showResetModal && selectedMember && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
+          <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
             <button
               onClick={() => {
                 setShowResetModal(false);
                 setSelectedMember(null);
               }}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', fontSize: '1.2rem' }}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
             >
               ✕
             </button>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 8 }}>Reset Password</h2>
-            <p style={{ color: '#94A3B8', fontSize: '0.8rem', marginBottom: 20 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>Reset Password</h2>
+            <p style={{ color: '#888888', fontSize: '0.8rem', marginBottom: 20 }}>
               Enter a new password for platform team member <strong>{selectedMember.full_name}</strong> ({selectedMember.email}).
             </p>
 
@@ -407,7 +407,7 @@ export default function PlatformTeamPage() {
 
             <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>New Password *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>New Password *</label>
                 <input
                   type="password"
                   required
@@ -415,7 +415,7 @@ export default function PlatformTeamPage() {
                   onChange={(e) => setResetPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
                   autoFocus
-                  style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 12px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 />
               </div>
 
@@ -426,14 +426,14 @@ export default function PlatformTeamPage() {
                     setShowResetModal(false);
                     setSelectedMember(null);
                   }}
-                  style={{ background: 'transparent', border: '1px solid #1E293B', color: '#F1F5F9', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
+                  style={{ background: 'transparent', border: '1px solid #1F1F1F', color: '#FFFFFF', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={resetSubmitting}
-                  style={{ background: '#5EEAD4', border: 'none', color: '#090D16', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                  style={{ background: '#5EEAD4', border: 'none', color: '#000000', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
                 >
                   {resetSubmitting ? 'Resetting...' : 'Reset Password'}
                 </button>

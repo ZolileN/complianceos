@@ -110,7 +110,7 @@ export default function AdminProfile() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#94A3B8' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
           <span>Loading account settings...</span>
@@ -145,48 +145,48 @@ export default function AdminProfile() {
 
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F8FAFC' }}>Personal Profile</h1>
-        <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: 4 }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF' }}>Personal Profile</h1>
+        <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 4 }}>
           Manage your platform administrator credentials, email notifications, and primary secure keys.
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
         {/* Profile Info Form */}
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24 }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 16 }}>Profile Details</h2>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24 }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 16 }}>Profile Details</h2>
           <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Full Name</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Full Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 required
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Email Address</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 required
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Contact Number</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Contact Number</label>
               <input
                 type="tel"
                 value={contactNumber}
                 onChange={(e) => setContactNumber(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 placeholder="+27..."
               />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B', borderTop: '1px solid #1E293B', paddingTop: 16, marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B', borderTop: '1px solid #1F1F1F', paddingTop: 16, marginTop: 8 }}>
               <span>Role:</span>
               <span style={{ color: '#5EEAD4', fontWeight: 600, textTransform: 'uppercase' }}>{personal?.role}</span>
             </div>
@@ -195,7 +195,7 @@ export default function AdminProfile() {
               disabled={saving}
               style={{
                 background: '#5EEAD4',
-                color: '#090D16',
+                color: '#000000',
                 border: 'none',
                 borderRadius: 6,
                 padding: '10px 16px',
@@ -211,36 +211,36 @@ export default function AdminProfile() {
         </div>
 
         {/* Change Password Form */}
-        <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, padding: 24 }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 16 }}>Security & Password</h2>
+        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24 }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 16 }}>Security & Password</h2>
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Current Password</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Current Password</label>
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 required
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>New Password</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>New Password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 required
               />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94A3B8' }}>Confirm New Password</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Confirm New Password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, padding: '10px 14px', color: '#F1F5F9', fontSize: '0.85rem' }}
+                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
                 required
               />
             </div>
@@ -249,8 +249,8 @@ export default function AdminProfile() {
               disabled={saving}
               style={{
                 background: 'transparent',
-                border: '1px solid #1E293B',
-                color: '#F1F5F9',
+                border: '1px solid #1F1F1F',
+                color: '#FFFFFF',
                 borderRadius: 6,
                 padding: '10px 16px',
                 fontSize: '0.85rem',

@@ -63,7 +63,7 @@ export default function SystemAuditLogs() {
       case 'VACUUM_DATABASE':
         return { bg: 'rgba(56, 189, 248, 0.1)', border: 'rgba(56, 189, 248, 0.2)', text: '#38BDF8' };
       default:
-        return { bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.2)', text: '#94A3B8' };
+        return { bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.2)', text: '#888888' };
     }
   };
 
@@ -94,16 +94,16 @@ export default function SystemAuditLogs() {
       {/* Header section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#F8FAFC', margin: 0 }}>System Audit Stream</h1>
-          <p style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: 6 }}>Immutable log of high-risk platform operations, mutators, and maintenance heartbeats.</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#FFFFFF', margin: 0 }}>System Audit Stream</h1>
+          <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 6 }}>Immutable log of high-risk platform operations, mutators, and maintenance heartbeats.</p>
         </div>
         <button
           onClick={() => fetchLogs(true)}
           disabled={loading}
           style={{
             background: 'rgba(255,255,255,0.03)',
-            border: '1px solid #1E293B',
-            color: '#CBD5E1',
+            border: '1px solid #1F1F1F',
+            color: '#A3A3A3',
             borderRadius: 6,
             padding: '8px 16px',
             fontSize: '0.8rem',
@@ -117,18 +117,18 @@ export default function SystemAuditLogs() {
       </div>
 
       {/* Filter and Content Card */}
-      <div style={{ background: '#0F172A', border: '1px solid #1E293B', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
         {/* Filters bar */}
-        <div style={{ padding: 20, borderBottom: '1px solid #1E293B', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Action:</span>
+        <div style={{ padding: 20, borderBottom: '1px solid #1F1F1F', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter Action:</span>
           {['ALL', 'SUSPEND_TENANT', 'ACTIVATE_TENANT', 'DISCONNECT_WABA', 'VACUUM_DATABASE'].map(action => (
             <button
               key={action}
               onClick={() => setActionFilter(action)}
               style={{
-                background: actionFilter === action ? 'rgba(94, 234, 212, 0.08)' : 'transparent',
+                background: actionFilter === action ? '#141414' : 'transparent',
                 border: actionFilter === action ? '1px solid #5EEAD4' : '1px solid transparent',
-                color: actionFilter === action ? '#5EEAD4' : '#94A3B8',
+                color: actionFilter === action ? '#5EEAD4' : '#888888',
                 borderRadius: 4,
                 padding: '4px 10px',
                 fontSize: '0.75rem',
@@ -146,7 +146,7 @@ export default function SystemAuditLogs() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid #1E293B', color: '#94A3B8' }}>
+              <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Timestamp</th>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Action</th>
                 <th style={{ padding: '14px 20px', fontWeight: 600 }}>Administrator</th>
@@ -157,7 +157,7 @@ export default function SystemAuditLogs() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '48px 0', color: '#94A3B8' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '48px 0', color: '#888888' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
                       <span>Reading audit records...</span>
@@ -166,7 +166,7 @@ export default function SystemAuditLogs() {
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '48px 0', color: '#94A3B8', fontStyle: 'italic' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '48px 0', color: '#888888', fontStyle: 'italic' }}>
                     No audit log records match the current filter selection.
                   </td>
                 </tr>
@@ -179,8 +179,8 @@ export default function SystemAuditLogs() {
                   } catch {}
 
                   return (
-                    <tr key={log.id} style={{ borderBottom: '1px solid #1E293B', transition: 'background 0.15s ease' }}>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1', whiteSpace: 'nowrap' }}>
+                    <tr key={log.id} style={{ borderBottom: '1px solid #1F1F1F', transition: 'background 0.15s ease' }}>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3', whiteSpace: 'nowrap' }}>
                         {new Date(log.createdAt).toLocaleString()}
                       </td>
                       <td style={{ padding: '16px 20px' }}>
@@ -199,11 +199,11 @@ export default function SystemAuditLogs() {
                       </td>
                       <td style={{ padding: '16px 20px' }}>
                         <div>
-                          <div style={{ fontWeight: 600, color: '#F8FAFC' }}>{log.admin.name || 'Unnamed Admin'}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: 2 }}>{log.adminEmail}</div>
+                          <div style={{ fontWeight: 600, color: '#FFFFFF' }}>{log.admin.name || 'Unnamed Admin'}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#888888', marginTop: 2 }}>{log.adminEmail}</div>
                         </div>
                       </td>
-                      <td style={{ padding: '16px 20px', color: '#CBD5E1', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                      <td style={{ padding: '16px 20px', color: '#A3A3A3', fontFamily: 'monospace', fontSize: '0.8rem' }}>
                         {log.targetId || '-'}
                       </td>
                       <td style={{ padding: '16px 20px' }}>
