@@ -94,9 +94,13 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl && process.env.VERCEL_URL) appUrl = process.env.VERCEL_URL;
-    appUrl = appUrl || 'localhost:3000';
+    // 1. Prioritize your custom target domain, fall back to production vercel url, then fallback to local
+    const rawDomain = process.env.NEXT_PUBLIC_APP_URL || 
+                      (process.env.VERCEL_ENV === 'production' ? 'praxis.mlkcomputer.com' : process.env.VERCEL_URL) || 
+                      'localhost:3000';
+
+    // 2. Safely normalize the protocol loop
+    let appUrl = rawDomain;
     if (!appUrl.startsWith('http')) {
       appUrl = appUrl.includes('localhost') ? `http://${appUrl}` : `https://${appUrl}`;
     }
