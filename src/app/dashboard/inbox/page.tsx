@@ -7,6 +7,14 @@ import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Conversation, Message } from '@/types';
 import Link from 'next/link';
 
+function getRelativeDateText(msgDateStr: string) {
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (msgDateStr === today) return 'Today';
+  if (msgDateStr === yesterday) return 'Yesterday';
+  return new Date(msgDateStr).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function InboxPage() {
   const { tenant } = useAuth();
   const { toast } = useToast();
@@ -252,13 +260,31 @@ export default function InboxPage() {
                   </div>
                 </div>
                 <div className="chat-messages" ref={chatContainerRef}>
-                  {messages.map((m) => {
+                  {messages.map((m, index) => {
                     const mData = m as unknown as { messageType?: string; mediaUrl?: string };
                     const messageType = mData.messageType || m.message_type;
                     const mediaUrl = mData.mediaUrl || m.media_url;
                     
+                    const prevMsg = index > 0 ? messages[index - 1] : null;
+                    const msgDateStr = new Date(m.created_at).toDateString();
+                    const prevDateStr = prevMsg ? new Date(prevMsg.created_at).toDateString() : null;
+                    const showDateBadge = msgDateStr !== prevDateStr;
+                    
+                    let dateBadgeText = msgDateStr;
+                    if (showDateBadge) {
+                      dateBadgeText = getRelativeDateText(msgDateStr);
+                    }
+                    
                     return (
-                      <div key={m.id} className={`message-bubble ${m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'}`}>
+                      <React.Fragment key={m.id}>
+                        {showDateBadge && (
+                          <div style={{ textAlign: 'center', margin: '12px 0' }}>
+                            <span style={{ background: '#182229', color: '#8696a0', fontSize: '0.75rem', padding: '5px 12px', borderRadius: 8, boxShadow: '0 1px 0.5px rgba(11,20,26,.13)' }}>
+                              {dateBadgeText}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`message-bubble ${m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'}`}>
                         {messageType === 'image' && mediaUrl ? (
                           <div style={{ marginBottom: 4 }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -339,9 +365,17 @@ export default function InboxPage() {
                         ) : (
                           <div>{m.content}</div>
                         )}
-                        <div className="message-time">{formatTime(m.created_at)}</div>
+                        <div className="message-meta">
+                          <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          {m.direction === 'outbound' && (
+                            <svg viewBox="0 0 16 15" width="16" height="15" fill="#53bdeb" style={{ marginLeft: 2 }}>
+                              <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
+                            </svg>
+                          )}
+                        </div>
                       </div>
-                    );
+                    </React.Fragment>
+                  );
                   })}
                   <div ref={messagesEndRef} />
                 </div>
