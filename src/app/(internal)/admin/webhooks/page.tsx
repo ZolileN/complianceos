@@ -14,6 +14,10 @@ export default function WebhooksAndMetering() {
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeLog, setActiveLog] = useState<AdminLog | null>(null);
+  const [finops, setFinops] = useState<{
+    totalMessages: number;
+    topStarter: { name: string; tokens: number; limit: number };
+  } | null>(null);
 
   const fetchLogs = async () => {
     try {
@@ -29,9 +33,28 @@ export default function WebhooksAndMetering() {
     }
   };
 
+  const fetchFinOps = async () => {
+    try {
+      const res = await fetch('/api/admin/finops');
+      const data = await res.json();
+      if (data.success) {
+        setFinops({
+          totalMessages: data.totalMessages,
+          topStarter: data.topStarter
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching finops:', err);
+    }
+  };
+
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 5000); // Poll every 5s for live webhooks!
+    fetchFinOps();
+    const interval = setInterval(() => {
+      fetchLogs();
+      fetchFinOps();
+    }, 5000); // Poll every 5s for live webhooks & metering
     return () => clearInterval(interval);
   }, []);
 
@@ -50,22 +73,38 @@ export default function WebhooksAndMetering() {
           <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
               <span style={{ color: '#F1F5F9' }}>Starter Workspace API Credits</span>
-              <span style={{ color: '#5EEAD4' }}>654 / 1,000 tokens</span>
+              <span style={{ color: '#5EEAD4' }}>
+                {finops ? `${finops.topStarter.tokens.toLocaleString()} / ${finops.topStarter.limit.toLocaleString()} tokens` : 'Loading...'}
+              </span>
             </div>
             <div style={{ height: 8, background: '#1E293B', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
-              <div style={{ width: '65.4%', height: '100%', background: '#5EEAD4', borderRadius: 4 }} />
+              <div style={{ 
+                width: finops ? `${Math.min((finops.topStarter.tokens / finops.topStarter.limit) * 100, 100)}%` : '0%', 
+                height: '100%', 
+                background: finops && finops.topStarter.tokens > finops.topStarter.limit * 0.9 ? '#EF4444' : '#5EEAD4', 
+                borderRadius: 4 
+              }} />
             </div>
-            <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>65.4% capacity consumed. Soft limit alert dispatched to MLK Consulting.</div>
+            <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>
+              {finops ? (
+                <>
+                  {((finops.topStarter.tokens / finops.topStarter.limit) * 100).toFixed(1)}% capacity consumed. 
+                  {finops.topStarter.tokens > 0 ? ` Top consumer: ${finops.topStarter.name}.` : ''}
+                </>
+              ) : 'Calculating capacity...'}
+            </div>
           </div>
 
           {/* Progress bar card 2 */}
           <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
               <span style={{ color: '#F1F5F9' }}>Total WhatsApp Messages Metered</span>
-              <span style={{ color: '#60A5FA' }}>12,854 messages</span>
+              <span style={{ color: '#60A5FA' }}>
+                {finops ? `${finops.totalMessages.toLocaleString()} messages` : 'Loading...'}
+              </span>
             </div>
             <div style={{ height: 8, background: '#1E293B', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
-              <div style={{ width: '80%', height: '100%', background: '#3B82F6', borderRadius: 4 }} />
+              <div style={{ width: finops ? `${Math.min((finops.totalMessages / 15000) * 100, 100)}%` : '0%', height: '100%', background: '#3B82F6', borderRadius: 4 }} />
             </div>
             <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 8 }}>Rate limit ceiling: 15,000 / day. Current queue handling: Healthy.</div>
           </div>
