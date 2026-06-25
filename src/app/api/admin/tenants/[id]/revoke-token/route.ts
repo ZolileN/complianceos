@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { AdminLogger } from '@/lib/admin-logs';
+import { logAdminAction } from '@/lib/admin-audit';
+import { pushTenantLog } from '@/lib/redis';
 
 export async function POST(
   request: NextRequest,
@@ -27,6 +29,20 @@ export async function POST(
         whatsappPhoneNumber: null
       }
     });
+
+    // Central Platform Admin Logging (Postgres)
+    await logAdminAction(
+      'DISCONNECT_WABA',
+      id,
+      { tenantName: tenant.name, tenantSlug: tenant.slug }
+    );
+
+    // Isolated Tenant Streaming Log (Redis)
+    await pushTenantLog(
+      id,
+      `Meta WhatsApp WABA credentials revoked`,
+      'system'
+    );
 
     AdminLogger.log(
       'system',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 
 interface TenantItem {
@@ -37,6 +37,7 @@ export default function FleetOverview() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [queueDepth, setQueueDepth] = useState<number>(0);
 
   // Card filter state
   const [filterType, setFilterType] = useState<'all' | 'active' | 'suspended' | 'waba'>('all');
@@ -47,29 +48,50 @@ export default function FleetOverview() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const [tenantsRes, onboardingRes] = await Promise.all([
+      const [tenantsRes, onboardingRes, diagnosticsRes] = await Promise.all([
         fetch('/api/admin/tenants'),
-        fetch('/api/admin/onboarding')
+        fetch('/api/admin/onboarding'),
+        fetch('/api/admin/diagnostics')
       ]);
 
       const tenantsData = await tenantsRes.json();
       const onboardingData = await onboardingRes.json();
+      const diagnosticsData = await diagnosticsRes.json();
 
       if (tenantsData.success) setTenants(tenantsData.data);
       if (onboardingData.success) setOnboardingClients(onboardingData.data);
+      if (diagnosticsData.success) {
+        setQueueDepth(diagnosticsData.queueDepth);
+      }
     } catch (err) {
       console.error(err);
       showToast('Failed to retrieve fleet data.', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const init = async () => {
+      await fetchData();
+    };
+    init();
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/admin/diagnostics');
+        const data = await res.json();
+        if (data.success) {
+          setQueueDepth(data.queueDepth);
+        }
+      } catch (err) {
+        console.error('Failed to poll diagnostics:', err);
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   const handleToggleActive = async (tenantId: string, currentStatus: boolean) => {
     setActionLoading(tenantId + '-toggle');
@@ -83,8 +105,9 @@ export default function FleetOverview() {
       if (!res.ok) throw new Error(data.error || 'Failed to update tenant status');
       showToast(`Tenant successfully ${!currentStatus ? 'activated' : 'suspended'}`);
       fetchData();
-    } catch (err: any) {
-      showToast(err.message || 'Operation failed', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      showToast(msg, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -103,8 +126,9 @@ export default function FleetOverview() {
       if (!res.ok) throw new Error(data.error || 'Failed to revoke token');
       showToast('Meta connection successfully revoked and reset!');
       fetchData();
-    } catch (err: any) {
-      showToast(err.message || 'Operation failed', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      showToast(msg, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -249,6 +273,23 @@ export default function FleetOverview() {
         >
           <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stuck Intake Lines</div>
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#EF4444', marginTop: 8 }}>{pendingIntake}</div>
+        </div>
+
+        {/* Card 6: Webhook Queue Backlog */}
+        <div 
+          style={{ 
+            background: '#0F172A', 
+            border: '1px solid #1E293B', 
+            borderRadius: 8, 
+            padding: 20,
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Queue Backlog</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: queueDepth > 0 ? '#38BDF8' : '#34D399', marginTop: 8 }}>
+            {queueDepth}
+            <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#94A3B8', marginLeft: 8 }}>payloads</span>
+          </div>
         </div>
       </div>
 

@@ -71,6 +71,7 @@ model User {
 
   auditLogs     AuditLog[]
   notifications Notification[]
+  adminAuditLogs AdminAuditLog[]
 }
 
 model VerificationToken {
@@ -380,6 +381,24 @@ model Notification {
   link      String?  // Optional path to redirect on click
   
   createdAt DateTime @default(now())
+}
+
+enum AdminActionType {
+  SUSPEND_TENANT
+  ACTIVATE_TENANT
+  DISCONNECT_WABA
+  VACUUM_DATABASE
+}
+
+model AdminAuditLog {
+  id          String          @id @default(cuid())
+  action      AdminActionType
+  adminId     String
+  admin       User            @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  adminEmail  String
+  targetId    String?         // ID of the target tenant or entity
+  details     String          // JSON string for metadata
+  createdAt   DateTime        @default(now())
 }
 
 

@@ -3,10 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { AdminLogger } from '@/lib/admin-logs';
+import { redis } from '@/lib/redis';
+import { logAdminAction } from '@/lib/admin-audit';
 
 export async function POST() {
   const session = await getServerSession(authOptions);
-  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
+  const user = session?.user as { email?: string; role?: string; tenantSlug?: string } | undefined;
   if (!session || user?.role !== 'administrator' || user?.tenantSlug !== 'praxisone') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -22,10 +24,16 @@ export async function POST() {
       successMessage = 'Storage maintenance simulated run completed successfully (DB pooler override).';
     }
 
+    // Set the heartbeat token in Redis
+    await redis.set('last_vacuum_timestamp', new Date().toISOString());
+
+    // Log the platform admin action to DB
+    await logAdminAction('VACUUM_DATABASE', null, { executor: user?.email });
+
     AdminLogger.log(
       'system',
       'Automated storage tuning ran: Database tables optimized and index stats recalculated.',
-      { executor: session.user?.email }
+      { executor: user?.email }
     );
 
     return NextResponse.json({ success: true, message: successMessage });

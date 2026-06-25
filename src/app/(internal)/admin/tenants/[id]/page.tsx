@@ -46,12 +46,47 @@ interface InspectorEntity {
   details: Record<string, string | null>;
 }
 
+interface TenantLog {
+  id: string;
+  timestamp: string;
+  type: string;
+  message: string;
+  payload?: Record<string, unknown>;
+}
+
 export default function TenantProfile() {
   const { id } = useParams() as { id: string };
   const [tenant, setTenant] = useState<TenantDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'members' | 'clients'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'clients' | 'logs'>('members');
   const [error, setError] = useState<string | null>(null);
+  
+  // Redis Logs State
+  const [logs, setLogs] = useState<TenantLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+
+  // Poll Redis Logs when tab is active
+  useEffect(() => {
+    if (activeTab !== 'logs') return;
+
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch(`/api/admin/tenants/${id}/logs`);
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setLogs(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to retrieve logs:', err);
+      } finally {
+        setLogsLoading(false);
+      }
+    };
+
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
+  }, [activeTab, id]);
 
   // Inspector Modal State
   const [inspectionEntity, setInspectionEntity] = useState<InspectorEntity | null>(null);
@@ -295,6 +330,22 @@ export default function TenantProfile() {
         >
           Registered Clients ({tenant.clients.length})
         </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'logs' ? '2px solid #5EEAD4' : '2px solid transparent',
+            color: activeTab === 'logs' ? '#F8FAFC' : '#94A3B8',
+            padding: '12px 16px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          Live System Logs
+        </button>
       </div>
 
       {/* Active Tab View */}
@@ -374,7 +425,7 @@ export default function TenantProfile() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeTab === 'clients' ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
@@ -454,6 +505,50 @@ export default function TenantProfile() {
                 )}
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div style={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Redis Live Capped Message & Status Logs</h3>
+              <span style={{ fontSize: '0.7rem', color: '#5EEAD4', background: 'rgba(94, 234, 212, 0.08)', padding: '2px 8px', borderRadius: 4, fontWeight: 600 }}>
+                ● Auto-polling (5s)
+              </span>
+            </div>
+            
+            {logsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', color: '#94A3B8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+                  <span style={{ fontSize: '0.8rem' }}>Loading log stream...</span>
+                </div>
+              </div>
+            ) : logs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94A3B8', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                No telemetry logs found for this tenant. Logs appear as system events occur (suspension, WABA disconnections, WhatsApp webhooks).
+              </div>
+            ) : (
+              <div style={{ background: '#090D16', border: '1px solid #1E293B', borderRadius: 6, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', padding: 12 }}>
+                {logs.map((log) => {
+                  let badgeColor = '#94A3B8';
+                  if (log.type === 'webhook') badgeColor = '#38BDF8';
+                  if (log.type === 'system') badgeColor = '#F59E0B';
+                  if (log.type === 'error') badgeColor = '#EF4444';
+                  
+                  return (
+                    <div key={log.id} style={{ display: 'flex', gap: 12, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                      <span style={{ color: '#64748B', flexShrink: 0 }}>[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                      <span style={{ color: badgeColor, fontWeight: 700, textTransform: 'uppercase', width: 70, flexShrink: 0 }}>[{log.type}]</span>
+                      <span style={{ color: '#E2E8F0', flex: 1, wordBreak: 'break-all' }}>{log.message}</span>
+                      {log.payload && (
+                        <span style={{ color: '#64748B', fontSize: '0.7rem', fontStyle: 'italic', marginLeft: 8 }}>
+                          {JSON.stringify(log.payload)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { redis } from '../lib/redis';
+import { redis, pushTenantLog } from '../lib/redis';
 import { prisma } from '../lib/prisma';
 import { markAsRead } from '../lib/whatsapp';
 
@@ -12,7 +12,7 @@ async function processWebhookQueue() {
       const res = await redis.brpop('whatsapp_webhook_queue', 0);
       
       if (res) {
-        const [queueName, payloadString] = res;
+        const [, payloadString] = res;
         const body = JSON.parse(payloadString);
 
         if (!body.entry?.[0]?.changes?.[0]?.value) {
@@ -24,10 +24,22 @@ async function processWebhookQueue() {
         // Handle message status updates
         if (value.statuses) {
           for (const status of value.statuses) {
+            const affectedMsg = await prisma.message.findFirst({
+              where: { whatsappMessageId: status.id },
+              select: { tenantId: true }
+            });
             await prisma.message.updateMany({
               where: { whatsappMessageId: status.id },
               data: { status: status.status }
             });
+            if (affectedMsg?.tenantId) {
+              await pushTenantLog(
+                affectedMsg.tenantId,
+                `WhatsApp message status updated to "${status.status}"`,
+                'webhook',
+                { messageId: status.id, status: status.status }
+              );
+            }
           }
           console.log(`✅ Processed webhook status update sequentially.`);
           continue;
@@ -123,6 +135,14 @@ async function processWebhookQueue() {
               status: 'delivered',
             }
           });
+
+          // Isolated Tenant Streaming Log (Redis)
+          await pushTenantLog(
+            conversation.tenantId,
+            `Inbound WhatsApp message received from ${from}`,
+            'webhook',
+            { messageId: waMessageId, type: messageType, snippet: content.substring(0, 60) }
+          );
 
           // Auto-save documents to platform Documents module
           if (messageType === 'document' && mediaUrl && conversation.clientId) {

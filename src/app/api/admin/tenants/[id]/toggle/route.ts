@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { AdminLogger } from '@/lib/admin-logs';
+import { logAdminAction } from '@/lib/admin-audit';
+import { pushTenantLog } from '@/lib/redis';
 
 export async function PUT(
   request: NextRequest,
@@ -27,6 +29,21 @@ export async function PUT(
       where: { id },
       data: { isActive }
     });
+
+    // Central Platform Admin Logging (Postgres)
+    await logAdminAction(
+      isActive ? 'ACTIVATE_TENANT' : 'SUSPEND_TENANT',
+      id,
+      { tenantName: tenant.name, tenantSlug: tenant.slug }
+    );
+
+    // Isolated Tenant Streaming Log (Redis)
+    await pushTenantLog(
+      id,
+      `Tenant status updated to ${isActive ? 'ACTIVE' : 'SUSPENDED'}`,
+      'system',
+      { isActive }
+    );
 
     AdminLogger.log(
       'system',
