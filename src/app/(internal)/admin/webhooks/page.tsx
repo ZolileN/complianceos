@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface AdminLog {
   id: string;
   timestamp: string;
   type: 'system' | 'webhook' | 'finops';
   message: string;
-  payload?: any;
+  payload?: Record<string, unknown>;
 }
 
 export default function WebhooksAndMetering() {
@@ -19,7 +19,7 @@ export default function WebhooksAndMetering() {
     topStarter: { name: string; tokens: number; limit: number };
   } | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/logs');
       const data = await res.json();
@@ -31,9 +31,9 @@ export default function WebhooksAndMetering() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchFinOps = async () => {
+  const fetchFinOps = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/finops');
       const data = await res.json();
@@ -46,17 +46,21 @@ export default function WebhooksAndMetering() {
     } catch (err) {
       console.error('Error fetching finops:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchLogs();
-    fetchFinOps();
+    const init = async () => {
+      await fetchLogs();
+      await fetchFinOps();
+    };
+    init();
+    
     const interval = setInterval(() => {
       fetchLogs();
       fetchFinOps();
     }, 5000); // Poll every 5s for live webhooks & metering
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchLogs, fetchFinOps]);
 
   const totalWebhooks = logs.filter(l => l.type === 'webhook').length;
   const totalSystem = logs.filter(l => l.type === 'system').length;
