@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = 'PraxisOne <no-reply@resend.dev>';
+const FROM_EMAIL = 'PraxisOne <no-reply@praxis.mlkcomputer.com>';
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   try {
