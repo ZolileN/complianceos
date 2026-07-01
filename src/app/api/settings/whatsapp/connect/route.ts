@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
       client_id: appId,
       client_secret: appSecret,
       code: code,
-      ...(redirectUri ? { redirect_uri: redirectUri } : {}),
+      // NOTE: Do NOT include redirect_uri here.
+      // Meta Embedded Signup codes are issued without a redirect URI,
+      // and passing one will cause the exchange to fail with invalid_redirect_uri.
     });
     const tokenUrl = `${GRAPH_API_URL}/oauth/access_token?${tokenParams.toString()}`;
     const tokenRes = await fetch(tokenUrl);

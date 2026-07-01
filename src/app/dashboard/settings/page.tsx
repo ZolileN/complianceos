@@ -152,19 +152,19 @@ function SettingsPageContent() {
     };
   }, [tenant, toast, refreshKey]);
 
-  // Handle URL code exchange if returning from Facebook OAuth
-  const exchangeCode = useCallback(async (code: string, redirectUri: string) => {
+  // Exchange the Embedded Signup authorization code for tenant credentials.
+  // NOTE: Do NOT pass redirectUri — Meta Embedded Signup does not use one.
+  const exchangeCode = useCallback(async (code: string) => {
     setSaving(true);
     try {
       const res = await fetch('/api/settings/whatsapp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirectUri }),
+        body: JSON.stringify({ code }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to exchange token');
       toast('WhatsApp Business successfully connected!', 'success');
-      // Refresh settings to get updated connection details
       setRefreshKey(prev => prev + 1);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to connect WhatsApp';
@@ -174,20 +174,34 @@ function SettingsPageContent() {
     }
   }, [toast]);
 
+  // Load Meta JS SDK when the WhatsApp tab is active.
+  // FB.login() must be available before the user clicks Connect.
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthCode = urlParams.get('code');
-    const oauthError = urlParams.get('error');
+    if (activeTab !== 'whatsapp') return;
+    const appId = process.env.NEXT_PUBLIC_META_APP_ID || '';
+    if (!appId || typeof window === 'undefined') return;
 
-    if (oauthError) {
-      toast('Facebook authorisation cancelled or failed.', 'error');
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (oauthCode) {
-      window.history.replaceState({}, '', window.location.pathname);
-      const redirectUri = `${window.location.origin}/dashboard/settings`;
-      setTimeout(() => exchangeCode(oauthCode, redirectUri), 0);
+    // Avoid loading the script twice
+    if (document.getElementById('facebook-jssdk')) {
+      // SDK already injected — just ensure it's initialised
+      if (typeof window.FB !== 'undefined') {
+        window.FB.init({ appId, version: 'v25.0', cookie: true, xfbml: false });
+      }
+      return;
     }
-  }, [exchangeCode, toast]);
+
+    // Set the FB async init callback before loading the script
+    window.fbAsyncInit = function () {
+      window.FB.init({ appId, version: 'v25.0', cookie: true, xfbml: false });
+    };
+
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  }, [activeTab]);
 
   // Save Profile Changes
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -315,26 +329,42 @@ function SettingsPageContent() {
     }
   };
 
-  // Launch Meta Sign-up redirect
-  const handleMetaSignup = () => {
-    const appId = process.env.NEXT_PUBLIC_META_APP_ID || '';
+  // Launch Meta Embedded Signup via the Facebook JS SDK popup.
+  // IMPORTANT: FB.login() MUST be called synchronously from a user click event.
+  // Calling it from a setTimeout or async context will cause the popup to be blocked.
+  const handleEmbeddedSignup = () => {
     const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
-    const redirectUri = `${window.location.origin}/dashboard/settings`;
 
-    if (!appId || !configId) {
-      toast('WhatsApp connection is not configured correctly. Missing App ID or Config ID.', 'error');
+    if (!configId) {
+      toast('WhatsApp connection is not configured correctly. Missing Config ID.', 'error');
       return;
     }
 
-    const params = new URLSearchParams({
-      client_id: appId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'whatsapp_business_management,whatsapp_business_messaging',
-      config_id: configId,
-    });
+    if (typeof window.FB === 'undefined') {
+      toast('Meta SDK is still loading — please wait a moment and try again.', 'error');
+      return;
+    }
 
-    window.location.href = `https://www.facebook.com/dialog/oauth?${params.toString()}`;
+    window.FB.login(
+      function (response: { authResponse?: { code?: string } }) {
+        if (response.authResponse?.code) {
+          exchangeCode(response.authResponse.code);
+        } else {
+          // User closed the popup or denied permissions
+          toast('WhatsApp connection cancelled.', 'error');
+        }
+      },
+      {
+        config_id: configId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: '',
+          sessionInfoVersion: '3',
+        },
+      }
+    );
   };
 
   // Save Manual WhatsApp Setup
@@ -636,27 +666,27 @@ function SettingsPageContent() {
               <div className="card">
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Connect in 60 Seconds</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-                  Use Meta&apos;s secure OAuth flow to link your WhatsApp Business number. You&apos;ll be redirected to Facebook to authorise, then returned here automatically.
+                  Use Meta&apos;s secure Embedded Signup flow to link your WhatsApp Business number. A secure popup will open — no page redirect required.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>1️⃣</span>
-                    <span>Click <strong>Connect WhatsApp</strong> below — you&apos;ll be redirected to Facebook.</span>
+                    <span>Click <strong>Connect WhatsApp</strong> — a secure Meta popup will open.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>2️⃣</span>
-                    <span>Log in and grant permissions to PraxisOne.</span>
+                    <span>Select your Business Portfolio, WhatsApp Business Account, and phone number.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>3️⃣</span>
-                    <span>You&apos;ll be returned here automatically and your account will be connected.</span>
+                    <span>Grant permissions — the popup closes automatically and your account is connected.</span>
                   </div>
                 </div>
 
                 <button 
                   className="btn btn-primary" 
-                  onClick={handleMetaSignup}
+                  onClick={handleEmbeddedSignup}
                   disabled={saving}
                   style={{ background: '#1877F2', borderColor: '#1877F2', display: 'flex', alignItems: 'center', gap: 8 }}
                 >
