@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { GRAPH_API_URL } from '@/lib/whatsapp';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -46,6 +47,15 @@ export async function POST(request: NextRequest) {
           whatsappVerifiedName: verifiedName,
           whatsappPhoneNumber: displayPhoneNumber,
         }
+      });
+
+      await logAuditAction({
+        tenantId,
+        userId: (session.user as { id: string }).id,
+        action: 'UPDATE',
+        entityType: 'Tenant',
+        entityId: tenantId,
+        details: { action: 'WhatsApp Manual Setup', verifiedName, displayPhoneNumber },
       });
 
       return NextResponse.json({ 
@@ -156,6 +166,15 @@ export async function POST(request: NextRequest) {
         whatsappVerifiedName: verifiedName,
         whatsappPhoneNumber: displayPhoneNumber,
       }
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: (session.user as { id: string }).id,
+      action: 'UPDATE',
+      entityType: 'Tenant',
+      entityId: tenantId,
+      details: { action: 'WhatsApp Embedded Signup', verifiedName, displayPhoneNumber },
     });
 
     return NextResponse.json({ 

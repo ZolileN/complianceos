@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -78,6 +79,15 @@ export async function POST(request: NextRequest) {
         data: { status: 'accepted' }
       });
     }
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'Skill',
+      entityId: skill.id,
+      details: { skillName: skill.name, triggerEvent },
+    });
 
     return NextResponse.json({ data: { skill, installation } }, { status: 201 });
   } catch (error: unknown) {
