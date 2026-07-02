@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import { emitSkillEvent } from '@/lib/skill-triggers';
 
 export async function GET(
   request: NextRequest,
@@ -327,6 +328,12 @@ export async function PUT(
             completedAt
           }
         });
+
+        // --- SKILL ENGINE TRIGGER ---
+        emitSkillEvent(tenantId, 'workflow.completed', userId, currentUser.role, {
+          workflowId: updatedProgress.clientWorkflowId,
+          clientId: clientId
+        }).catch(err => console.error('Skill event workflow.completed failed:', err));
       } else {
         // If it was completed, move it back to in_progress
         if (updatedProgress.clientWorkflow.status === 'completed') {
@@ -350,6 +357,15 @@ export async function PUT(
         entityId: updatedProgress.id,
         details: { status: updatedProgress.status, workflowStatus: newWorkflowStatus },
       });
+
+      // --- SKILL ENGINE TRIGGER ---
+      emitSkillEvent(tenantId, 'workflow.step_advanced', userId, currentUser.role, {
+        stepId: updatedProgress.stepId,
+        progressId: updatedProgress.id,
+        status: updatedProgress.status,
+        workflowId: updatedProgress.clientWorkflowId,
+        clientId: clientId
+      }).catch(err => console.error('Skill event workflow.step_advanced failed:', err));
 
       return NextResponse.json({
         data: {
