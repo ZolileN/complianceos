@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
+import IntelligenceTab from './IntelligenceTab';
 
 /* ── Types ── */
 interface SkillData {
@@ -87,7 +89,7 @@ function StarRating({ rating }: { rating: number }) {
 /* ── Main Page ── */
 export default function MarketplacePage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'discover' | 'installed' | 'executions'>('discover');
+  const [activeTab, setActiveTab] = useState<'discover' | 'installed' | 'executions' | 'intelligence'>('discover');
   const [skills, setSkills] = useState<SkillData[]>([]);
   const [packs, setPacks] = useState<PackData[]>([]);
   const [executions, setExecutions] = useState<ExecutionData[]>([]);
@@ -153,6 +155,24 @@ export default function MarketplacePage() {
     }
   };
 
+  const handleRate = async (skillId: string, rating: number) => {
+    if (!isAdmin) return;
+    try {
+      const res = await fetch(`/api/skills/${skillId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, comment: '' }),
+      });
+      if (res.ok) {
+        // Quick local update to avoid full refetch delay
+        setSkills(skills.map(s => s.id === skillId ? { ...s, rating } : s));
+        await fetchData(); // background sync
+      }
+    } catch (err) {
+      console.error('Rating failed:', err);
+    }
+  };
+
   const filteredSkills = skills.filter((s) => {
     if (searchQuery && !s.name.toLowerCase().includes(searchQuery.toLowerCase()) && !s.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (selectedCategory && s.category !== selectedCategory) return false;
@@ -196,14 +216,18 @@ export default function MarketplacePage() {
 
       {/* Tabs */}
       <div className="tabs">
-        {(['discover', 'installed', 'executions'] as const).map((tab) => (
+        {(['discover', 'installed', 'executions', 'intelligence'] as const).map((tab) => (
           <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
-            {tab === 'discover' ? '🏪 Discover' : tab === 'installed' ? '✅ Installed' : '📊 Executions'}
+            {tab === 'discover' ? '🏪 Discover' : tab === 'installed' ? '✅ Installed' : tab === 'executions' ? '📊 Executions' : '🧠 Intelligence'}
           </button>
         ))}
       </div>
 
-      {activeTab !== 'executions' && (
+      {activeTab === 'intelligence' && (
+        <IntelligenceTab />
+      )}
+
+      {activeTab !== 'executions' && activeTab !== 'intelligence' && (
         <>
           {/* Search + Filter Bar */}
           <div style={{ display: 'flex', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
@@ -418,15 +442,39 @@ export default function MarketplacePage() {
                 ))}
               </div>
             </div>
-            <div className="modal-footer">
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
               {selectedSkill.installed ? (
-                <button className="btn btn-danger" onClick={() => { handleUninstall(selectedSkill.id); setSelectedSkill(null); }} disabled={!isAdmin || installing === selectedSkill.id}>
-                  {installing === selectedSkill.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Uninstall'}
-                </button>
+                <>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: 8 }}>Rate this skill:</span>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => handleRate(selectedSkill.id, star)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                          fontSize: '1.2rem', color: star <= selectedSkill.rating ? '#f59e0b' : 'var(--border-primary)'
+                        }}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button className="btn btn-danger" onClick={() => { handleUninstall(selectedSkill.id); setSelectedSkill(null); }} disabled={!isAdmin || installing === selectedSkill.id}>
+                      {installing === selectedSkill.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Uninstall'}
+                    </button>
+                    <Link href={`/dashboard/marketplace/installed/${selectedSkill.id}`} className="btn btn-primary" style={{ textDecoration: 'none' }}>
+                      Manage Skill
+                    </Link>
+                  </div>
+                </>
               ) : (
-                <button className="btn btn-primary" onClick={() => { handleInstall(selectedSkill.id); setSelectedSkill(null); }} disabled={!isAdmin || installing === selectedSkill.id}>
-                  {installing === selectedSkill.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '⚡ Install Skill'}
-                </button>
+                <div style={{ marginLeft: 'auto' }}>
+                  <button className="btn btn-primary" onClick={() => { handleInstall(selectedSkill.id); setSelectedSkill(null); }} disabled={!isAdmin || installing === selectedSkill.id}>
+                    {installing === selectedSkill.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : '⚡ Install Skill'}
+                  </button>
+                </div>
               )}
             </div>
           </div>

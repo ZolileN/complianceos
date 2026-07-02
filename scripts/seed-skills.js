@@ -60,6 +60,71 @@ const CORE_SKILLS = [
       { name: 'Generate Response', stepOrder: 2, stepType: 'llm_call', config: '{"prompt":"Generate WhatsApp reply"}' },
     ],
   },
+  {
+    slug: 'sars-deadline-checker',
+    name: 'SARS Deadline Checker',
+    description: 'Tracks upcoming SARS deadlines and flags items that need attention.',
+    category: 'compliance',
+    icon: '🗓️',
+    isCore: true,
+    isPublished: true,
+    triggers: ['compliance.deadline_approaching'],
+    requiredPermissions: ['compliance.read', 'compliance.write'],
+    skillDefinition: 'Checks SARS deadlines and updates compliance item statuses accordingly.',
+    steps: [
+      { name: 'Check Deadlines', stepOrder: 0, stepType: 'database_query', config: '{"query":"check_sars_deadlines"}' },
+      { name: 'Update Statuses', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/compliance/bulk_update"}' }
+    ],
+  },
+  {
+    slug: 'cipc-ar-checker',
+    name: 'CIPC Annual Return Checker',
+    description: 'Checks CIPC annual return status for clients.',
+    category: 'compliance',
+    icon: '🏢',
+    isCore: true,
+    isPublished: true,
+    triggers: ['compliance.deadline_approaching'],
+    requiredPermissions: ['compliance.read', 'compliance.write'],
+    skillDefinition: 'Queries CIPC (or internal DB) to check if annual returns are due.',
+    steps: [
+      { name: 'Check AR Status', stepOrder: 0, stepType: 'api_call', config: '{"endpoint":"https://api.cipc.co.za/ar_status"}' },
+      { name: 'Update Compliance Item', stepOrder: 1, stepType: 'database_query', config: '{"query":"update_cipc_status"}' }
+    ],
+  },
+  {
+    slug: 'bee-expiry-monitor',
+    name: 'BEE Expiry Monitor',
+    description: 'Monitors BEE certificate expiry and alerts 60 days before.',
+    category: 'compliance',
+    icon: '⏳',
+    isCore: true,
+    isPublished: true,
+    triggers: ['compliance.deadline_approaching'],
+    requiredPermissions: ['compliance.read', 'notifications.send'],
+    skillDefinition: 'Monitors BEE certificates and sends notifications before expiry.',
+    steps: [
+      { name: 'Find Expiring BEE Certs', stepOrder: 0, stepType: 'database_query', config: '{"query":"find_expiring_bee"}' },
+      { name: 'Send Alert', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/notifications"}' }
+    ],
+  },
+  {
+    slug: 'escalation-skill',
+    name: 'Compliance Escalation',
+    description: 'Auto-notifies ops manager and client via WhatsApp for critical compliance changes.',
+    category: 'compliance',
+    icon: '⚠️',
+    isCore: true,
+    isPublished: true,
+    triggers: ['compliance.status_changed'],
+    requiredPermissions: ['compliance.read', 'whatsapp.send'],
+    skillDefinition: 'Escalates critical compliance issues to managers.',
+    steps: [
+      { name: 'Check Severity', stepOrder: 0, stepType: 'condition', config: '{"condition":"status == \'critical\'"}' },
+      { name: 'Notify Ops Manager', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/notifications"}' },
+      { name: 'WhatsApp Client', stepOrder: 2, stepType: 'llm_call', config: '{"prompt":"Draft urgent compliance alert"}' }
+    ],
+  },
 ];
 
 const PACKS = [

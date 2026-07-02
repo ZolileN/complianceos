@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import path from 'path';
 import { logAuditAction } from '@/lib/auditLogger';
+import { emitSkillEvent } from '@/lib/skill-triggers';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -139,6 +140,13 @@ export async function POST(request: NextRequest) {
       entityId: document.id,
       details: { title: document.name, category: document.category },
     });
+
+    // --- SKILL ENGINE TRIGGER ---
+    emitSkillEvent(tenantId, 'document.uploaded', userId as string, user.role || 'client', {
+      documentId: document.id,
+      category: document.category,
+      name: document.name
+    }).catch(err => console.error('Skill event emission failed:', err));
 
     // --- OCR BACKGROUND WORKER ---
     triggerOcrSimulation(document.id).catch(err => {
@@ -563,6 +571,16 @@ export async function triggerOcrSimulation(documentId: string) {
         ocrMetadata: JSON.stringify(metadata)
       }
     });
+
+    // --- SKILL ENGINE TRIGGER ---
+    const tenantIdStr = (docRaw as { tenantId?: string }).tenantId;
+    if (tenantIdStr) {
+      emitSkillEvent(tenantIdStr, 'document.classified', 'system', 'system', {
+        documentId,
+        category: cleanCategory,
+        metadata
+      }).catch(err => console.error('Skill event document.classified failed:', err));
+    }
 
     console.log(`[OCR Worker] Completed successfully for document ${documentId}`);
   } catch (error) {
