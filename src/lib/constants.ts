@@ -71,6 +71,7 @@ export const NAV_ITEMS = [
   { href: '/dashboard/workflows', label: 'Workflows', icon: 'git-branch' },
   { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
   { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },
+  { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'zap' },
 ] as const;
 
 // ── Pricing Plans ──────────────────────────────────────────

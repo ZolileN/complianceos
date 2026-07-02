@@ -8,7 +8,7 @@ import { NAV_ITEMS } from '@/lib/constants';
 import Logo from '@/components/Logo';
 
 const icons: Record<string, string> = {
-  grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬', shield: '🛡️', activity: '📊', settings: '⚙️'
+  grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬', shield: '🛡️', activity: '📊', settings: '⚙️', zap: '⚡'
 };
 
 interface SearchResult {
