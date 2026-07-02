@@ -112,6 +112,9 @@ model Tenant {
   conversations       Conversation[]
   messages            Message[]
   complianceItems     ComplianceItem[]
+  skillReviews        SkillReview[]
+  customSkills        Skill[] @relation("TenantSkills")
+  skillSuggestions    SkillSuggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -430,9 +433,12 @@ model Skill {
   installCount  Int      @default(0)
 
   // Relationships
+  tenantId      String?
+  tenant        Tenant?  @relation("TenantSkills", fields: [tenantId], references: [id], onDelete: Cascade)
   installations SkillInstallation[]
   executions    SkillExecution[]
   steps         SkillStep[]
+  reviews       SkillReview[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -521,6 +527,38 @@ model BusinessPack {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model SkillReview {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  rating    Int      // 1 to 5
+  comment   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, skillId])
+}
+
+model SkillSuggestion {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  title           String
+  description     String
+  triggerEvent    String
+  suggestedSteps  String   // JSON array of suggested steps
+  
+  status          String   @default("pending") // pending, accepted, dismissed
+  
+  createdAt       DateTime @default(now())
 }
 
 
