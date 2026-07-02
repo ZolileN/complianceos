@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { logAuditAction } from '@/lib/auditLogger';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -49,6 +50,15 @@ export async function POST(request: NextRequest) {
       data: { installCount: { increment: 1 } },
     });
 
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'CREATE',
+      entityType: 'SkillInstallation',
+      entityId: installation.id,
+      details: { skillId: skill.id, skillName: skill.name },
+    });
+
     return NextResponse.json({ data: installation }, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Install failed';
@@ -83,6 +93,15 @@ export async function DELETE(request: NextRequest) {
     await prisma.skill.update({
       where: { id: skillId },
       data: { installCount: { decrement: 1 } },
+    });
+
+    await logAuditAction({
+      tenantId,
+      userId: currentUser.id,
+      action: 'DELETE',
+      entityType: 'SkillInstallation',
+      entityId: skillId,
+      details: { skillId },
     });
 
     return NextResponse.json({ success: true });

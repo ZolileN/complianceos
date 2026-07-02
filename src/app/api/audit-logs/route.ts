@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
   const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
   const tenantId = currentUser.tenantId;
   
-  if (currentUser.role !== 'administrator') {
-    return NextResponse.json({ error: 'Forbidden. Only administrators can view audit logs.' }, { status: 403 });
+  if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {
+    return NextResponse.json({ error: 'Forbidden. Only administrators and operations managers can view audit logs.' }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

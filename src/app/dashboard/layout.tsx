@@ -66,6 +66,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ];
     }
 
+    if (user.role === 'operations_manager') {
+      return [
+        ...NAV_ITEMS,
+        { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: 'activity' },
+      ];
+    }
+
     if (user.role === 'administrator') {
       return [
         ...NAV_ITEMS,
