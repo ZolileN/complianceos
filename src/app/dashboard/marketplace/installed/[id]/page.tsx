@@ -9,7 +9,8 @@ export const metadata = {
   title: 'Manage Skill | PraxisOne',
 };
 
-export default async function ManageSkillPage({ params }: { params: { id: string } }) {
+export default async function ManageSkillPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
   
@@ -19,7 +20,7 @@ export default async function ManageSkillPage({ params }: { params: { id: string
     redirect('/dashboard/marketplace');
   }
 
-  const skillId = params.id;
+  const skillId = id;
 
   const installation = await prisma.skillInstallation.findUnique({
     where: { tenantId_skillId: { tenantId: user.tenantId, skillId } },

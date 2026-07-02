@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -14,7 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 
   const { isActive, config } = await request.json();
-  const installationId = params.id;
+  const installationId = id;
 
   try {
     const install = await prisma.skillInstallation.findUnique({ where: { id: installationId } });
