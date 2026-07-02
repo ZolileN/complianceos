@@ -7,6 +7,7 @@ import { useConfirm } from '@/contexts/ConfirmContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc, ComplianceItem, ClientWorkflow, WorkflowTemplate, WorkflowStepProgress } from '@/types';
+import { checkDocumentMatch } from '@/lib/workflowEngine';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import { UploadDropzone } from "@/lib/uploadthing";
@@ -712,20 +713,14 @@ export default function ClientDetailPage() {
                       {w.progress?.map((p, index) => {
                         let requiredDocs: string[] = [];
                         try { requiredDocs = JSON.parse(p.step?.required_documents || '[]'); } catch {}
-                        const clientDocCategories: string[] = documents.map(d => d.category);
-                        const mapToCategory = (docStr: string) => {
-                          const s = docStr.toLowerCase();
-                          if (s.includes('id') || s.includes('identity')) return 'id_document';
-                          if (s.includes('tax') || s.includes('vat101') || s.includes('itr14') || s.includes('irp6') || s.includes('assessment')) return 'tax_certificate';
-                          if (s.includes('bank') || s.includes('turnover')) return 'bank_statement';
-                          if (s.includes('cor') || s.includes('annual return')) return 'cor_document';
-                          if (s.includes('vat registration') || s.includes('vat cert')) return 'vat_certificate';
-                          if (s.includes('bee') || s.includes('scorecard')) return 'bee_certificate';
-                          if (s.includes('afs') || s.includes('financials') || s.includes('payroll')) return 'financial_statement';
-                          if (s.includes('mandate') || s.includes('power of attorney')) return 'mandate';
-                          return 'other';
-                        };
-                        const docsPresent = requiredDocs.length > 0 && requiredDocs.every(cat => clientDocCategories.includes(mapToCategory(cat)));
+                        
+                        const docsPresent = requiredDocs.length > 0 && requiredDocs.every(cat => {
+                          return documents.some(doc => checkDocumentMatch(cat, {
+                            name: doc.name,
+                            category: doc.category,
+                            ocrMetadata: doc.ocr_metadata
+                          }));
+                        });
                         
                         // Check if previous steps are completed
                         const previousSteps = w.progress?.slice(0, index) || [];
@@ -784,8 +779,11 @@ export default function ClientDetailPage() {
                                   </div>
                                   <div className="stack" style={{ gap: 8 }}>
                                     {requiredDocs.map(cat => {
-                                      const mappedCategory = mapToCategory(cat);
-                                      const uploadedDoc = documents.find(d => d.category === mappedCategory);
+                                      const uploadedDoc = documents.find(d => checkDocumentMatch(cat, {
+                                        name: d.name,
+                                        category: d.category,
+                                        ocrMetadata: d.ocr_metadata
+                                      }));
                                       return (
                                         <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem' }}>
                                           {uploadedDoc ? (
