@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
     // Create the custom skill
     const skill = await prisma.skill.create({
       data: {
-        // @ts-expect-error - TS caching issue, tenantId is in the schema
         tenantId,
         name,
         slug,
@@ -70,12 +69,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Mark a suggestion as accepted if one matches
-    // @ts-expect-error - TS caching issue, skillSuggestion is in the schema
     const sug = await prisma.skillSuggestion.findFirst({
       where: { tenantId, triggerEvent, status: 'pending' }
     });
     if (sug) {
-      // @ts-expect-error - TS caching issue, skillSuggestion is in the schema
       await prisma.skillSuggestion.update({
         where: { id: sug.id },
         data: { status: 'accepted' }

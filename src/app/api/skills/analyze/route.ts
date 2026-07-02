@@ -49,13 +49,11 @@ export async function POST() {
     const createdSuggestions = [];
     for (const sug of mockSuggestions) {
       // Create only if similar one doesn't exist
-      // @ts-expect-error - TS caching issue
       const exists = await prisma.skillSuggestion.findFirst({
         where: { tenantId, title: sug.title }
       });
       
       if (!exists) {
-        // @ts-expect-error - TS caching issue
         const created = await prisma.skillSuggestion.create({
           data: {
             tenantId,
@@ -70,7 +68,6 @@ export async function POST() {
     }
 
     // Also return existing pending suggestions
-    // @ts-expect-error - TS caching issue
     const pending = await prisma.skillSuggestion.findMany({
       where: { tenantId, status: 'pending' },
       orderBy: { createdAt: 'desc' }

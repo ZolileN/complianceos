@@ -37,7 +37,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Upsert review
-    // @ts-expect-error - TS caching issue, skillReview is in the schema
     const review = await prisma.skillReview.upsert({
       where: {
         tenantId_skillId: { tenantId, skillId }
@@ -55,7 +54,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     // Recalculate average rating
-    // @ts-expect-error - TS caching issue, skillReview is in the schema
     const aggregations = await prisma.skillReview.aggregate({
       where: { skillId },
       _avg: { rating: true }
