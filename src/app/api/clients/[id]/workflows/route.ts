@@ -73,7 +73,9 @@ export async function GET(
           name: s.name,
           description: s.description,
           step_order: s.stepOrder,
-          sla_days: s.slaDays
+          sla_days: s.slaDays,
+          required_documents: s.requiredDocuments,
+          auto_complete: s.autoComplete
         }))
       } : null,
       progress: w.progress.map(p => ({
@@ -89,7 +91,9 @@ export async function GET(
           name: p.step.name,
           description: p.step.description,
           step_order: p.step.stepOrder,
-          sla_days: p.step.slaDays
+          sla_days: p.step.slaDays,
+          required_documents: p.step.requiredDocuments,
+          auto_complete: p.step.autoComplete
         } : null
       })).sort((a, b) => (a.step?.step_order || 0) - (b.step?.step_order || 0))
     }));
@@ -201,7 +205,9 @@ export async function POST(
           name: s.name,
           description: s.description,
           step_order: s.stepOrder,
-          sla_days: s.slaDays
+          sla_days: s.slaDays,
+          required_documents: s.requiredDocuments,
+          auto_complete: s.autoComplete
         }))
       } : null,
       progress: clientWorkflow.progress.map(p => ({
@@ -217,7 +223,9 @@ export async function POST(
           name: p.step.name,
           description: p.step.description,
           step_order: p.step.stepOrder,
-          sla_days: p.step.slaDays
+          sla_days: p.step.slaDays,
+          required_documents: p.step.requiredDocuments,
+          auto_complete: p.step.autoComplete
         } : null
       })).sort((a, b) => (a.step?.step_order || 0) - (b.step?.step_order || 0))
     };

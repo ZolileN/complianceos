@@ -179,6 +179,8 @@ model WorkflowStep {
   stepOrder   Int      @default(0)
   slaDays     Int      @default(3)
   boundSkillSlug String?                    // Optional: auto-execute this skill when step becomes active
+  requiredDocuments String @default("[]")   // JSON array of document category slugs
+  autoComplete      Boolean @default(false)
 
   progress WorkflowStepProgress[]
 }

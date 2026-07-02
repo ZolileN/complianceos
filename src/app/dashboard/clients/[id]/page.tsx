@@ -708,47 +708,123 @@ export default function ClientDetailPage() {
                     </div>
 
                     {/* Steps list */}
-                    <div className="table-container" style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '8px 0' }}>
-                      <table className="table" style={{ background: 'transparent' }}>
-                        <thead>
-                          <tr>
-                            <th style={{ width: 60, textAlign: 'center' }}>Step</th>
-                            <th>Name</th>
-                            <th>Status</th>
-                            <th>Due/SLA</th>
-                            <th>Notes</th>
-                            {user?.role !== 'client' && <th style={{ textAlign: 'right' }}>Actions</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {w.progress?.map((p, index) => (
-                            <tr key={p.id} style={{ borderBottom: index === (w.progress?.length || 0) - 1 ? 'none' : '1px solid var(--border-subtle)' }}>
-                              <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--text-muted)' }}>
-                                {p.step?.step_order || index + 1}
-                              </td>
-                              <td style={{ fontWeight: 500 }}>{p.step?.name}</td>
-                              <td>
-                                <span className={`badge ${statusBadge(p.status)}`}>
-                                  {p.status.replace('_', ' ')}
-                                </span>
-                              </td>
-                              <td style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                                {p.step?.sla_days ? `${p.step.sla_days} days SLA` : '—'}
-                              </td>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.notes || ''}>
-                                {p.notes || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No notes</span>}
-                              </td>
-                              {user?.role !== 'client' && (
-                                <td style={{ textAlign: 'right' }}>
-                                  <button onClick={() => handleEditStep(p)} className="btn btn-secondary btn-sm" style={{ padding: '2px 8px' }}>
-                                    ✏️ Edit
-                                  </button>
-                                </td>
+                    <div className="workflow-stepper stack" style={{ marginTop: 16, gap: 16 }}>
+                      {w.progress?.map((p, index) => {
+                        let requiredDocs: string[] = [];
+                        try { requiredDocs = JSON.parse(p.step?.required_documents || '[]'); } catch {}
+                        const clientDocCategories: string[] = documents.map(d => d.category);
+                        const docsPresent = requiredDocs.length > 0 && requiredDocs.every(cat => clientDocCategories.includes(cat));
+                        
+                        // Check if previous steps are completed
+                        const previousSteps = w.progress?.slice(0, index) || [];
+                        const previousCompleted = previousSteps.every(prev => prev.status === 'completed' || prev.status === 'skipped');
+                        
+                        let displayStatus: string = p.status;
+                        if (p.status !== 'completed' && docsPresent && !previousCompleted) {
+                          displayStatus = 'waiting_active';
+                        }
+
+                        return (
+                          <div key={p.id} className="stepper-item" style={{ 
+                            display: 'flex', gap: 16, padding: 16, 
+                            background: p.status === 'completed' ? 'var(--bg-primary)' : 'var(--bg-secondary)', 
+                            borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' 
+                          }}>
+                            {/* Step Number Badge */}
+                            <div style={{ flexShrink: 0 }}>
+                              <div style={{ 
+                                width: 32, height: 32, borderRadius: '50%', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: p.status === 'completed' ? 'var(--accent)' : 'var(--bg-primary)',
+                                color: p.status === 'completed' ? '#fff' : 'var(--text)',
+                                fontWeight: 700, fontSize: '0.9rem',
+                                border: p.status === 'completed' ? 'none' : '1px solid var(--border-primary)'
+                              }}>
+                                {p.status === 'completed' ? '✓' : (p.step?.step_order || index + 1)}
+                              </div>
+                            </div>
+                            
+                            <div style={{ flex: 1 }}>
+                              {/* Step Header */}
+                              <div className="flex-between" style={{ marginBottom: 12 }}>
+                                <div>
+                                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{p.step?.name}</h4>
+                                  {p.status === 'completed' && p.completed_at && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                      Completed on {new Date(p.completed_at).toLocaleDateString('en-GB')}
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  {displayStatus === 'waiting_active' ? (
+                                    <span className="badge badge-amber">Waiting for Step to Become Active</span>
+                                  ) : (
+                                    <span className={`badge ${statusBadge(p.status)}`}>{p.status.replace('_', ' ')}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Document Checklist */}
+                              {requiredDocs.length > 0 && (
+                                <div style={{ background: 'var(--bg-primary)', padding: 12, borderRadius: 6, marginBottom: 12 }}>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Required Documents
+                                  </div>
+                                  <div className="stack" style={{ gap: 8 }}>
+                                    {requiredDocs.map(cat => {
+                                      const uploadedDoc = documents.find(d => d.category === cat);
+                                      return (
+                                        <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem' }}>
+                                          {uploadedDoc ? (
+                                            <span style={{ color: 'var(--green)', fontSize: '1.1rem' }}>✅</span>
+                                          ) : (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>⚪</span>
+                                          )}
+                                          <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 500, color: uploadedDoc ? 'var(--text)' : 'var(--text-secondary)' }}>
+                                              {cat.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                            </span>
+                                            {uploadedDoc ? (
+                                              <button type="button" onClick={(e) => { e.stopPropagation(); setActiveViewDoc(uploadedDoc); }} className="btn-link" style={{ fontSize: '0.75rem', padding: 0 }}>View</button>
+                                            ) : (
+                                              <span style={{ fontSize: '0.75rem', color: 'var(--amber)' }}>Missing</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
                               )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+
+                              {/* Step Actions */}
+                              <div className="flex-between" style={{ alignItems: 'flex-start', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                                <div style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-muted)', paddingRight: 16 }}>
+                                  {p.notes ? (
+                                    <div style={{ fontStyle: 'italic' }}>&quot;{p.notes}&quot;</div>
+                                  ) : (
+                                    p.step?.description || 'No additional details.'
+                                  )}
+                                </div>
+                                
+                                {user?.role !== 'client' && p.status !== 'completed' && (
+                                  <div>
+                                    {p.step?.auto_complete && docsPresent ? (
+                                      <div style={{ fontSize: '0.8rem', color: '#10B981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span>⚡</span> Auto-completes when active
+                                      </div>
+                                    ) : (
+                                      <button onClick={() => handleEditStep(p)} className="btn btn-secondary btn-sm" style={{ padding: '4px 12px' }}>
+                                        {docsPresent ? '✓ Mark Complete' : '✏️ Update Status'}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
