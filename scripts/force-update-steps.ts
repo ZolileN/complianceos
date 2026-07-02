@@ -48,37 +48,29 @@ const DEFAULT_TEMPLATES = [
 ];
 
 async function main() {
-  const tenants = await prisma.tenant.findMany();
+  const steps = await prisma.workflowStep.findMany({
+    include: { template: true }
+  });
 
-  for (const tenant of tenants) {
-    console.log(`Updating templates for tenant: ${tenant.name}`);
+  let updatedCount = 0;
 
-    // Delete existing templates so we can freshly insert the exact data the user wants
-    await prisma.workflowTemplate.deleteMany({
-      where: { tenantId: tenant.id }
-    });
-    
-    for (const tpl of DEFAULT_TEMPLATES) {
-      await prisma.workflowTemplate.create({
-        data: {
-          name: tpl.name,
-          category: tpl.category,
-          description: tpl.description,
-          tenantId: tenant.id,
-          steps: {
-            create: tpl.steps.map((s, i) => ({
-              name: s.name,
-              stepOrder: i + 1,
-              slaDays: 3,
-              requiredDocuments: JSON.stringify(s.requiredDocuments)
-            }))
-          }
-        }
-      });
+  for (const step of steps) {
+    // Find matching template
+    const templateMatch = DEFAULT_TEMPLATES.find(t => t.name === step.template.name);
+    if (templateMatch) {
+      // Find matching step
+      const stepMatch = templateMatch.steps.find(s => s.name === step.name);
+      if (stepMatch && stepMatch.requiredDocuments) {
+        await prisma.workflowStep.update({
+          where: { id: step.id },
+          data: { requiredDocuments: JSON.stringify(stepMatch.requiredDocuments) }
+        });
+        updatedCount++;
+      }
     }
   }
 
-  console.log('Successfully updated workflow templates for all tenants!');
+  console.log(`Successfully forced update on ${updatedCount} existing WorkflowStep records with exact document strings!`);
 }
 
 main()
