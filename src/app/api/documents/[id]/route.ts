@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -189,6 +190,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       details: { name: document.name, category: document.category, categoryChanged },
     });
 
+    evaluateWorkflowDocumentTriggers(tenantId, existingDoc.clientId).catch(err => {
+      console.error("[DocumentUpdate] Workflow trigger evaluation failed:", err);
+    });
+
     return NextResponse.json({ data: mappedDoc });
   } catch (error: unknown) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -210,7 +215,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   try {
     const documentToDelete = await prisma.document.findUnique({
       where: { id, tenantId },
-      select: { name: true }
+      select: { name: true, clientId: true }
     });
 
     if (!documentToDelete) {
@@ -228,6 +233,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       entityType: 'Document',
       entityId: id,
       details: { title: documentToDelete.name },
+    });
+
+    evaluateWorkflowDocumentTriggers(tenantId, documentToDelete.clientId).catch(err => {
+      console.error("[DocumentDelete] Workflow trigger evaluation failed:", err);
     });
 
     return NextResponse.json({ success: true });

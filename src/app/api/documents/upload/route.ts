@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import path from 'path';
 import { logAuditAction } from '@/lib/auditLogger';
+import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
 import { emitSkillEvent } from '@/lib/skill-triggers';
 
 if (typeof global !== 'undefined') {
@@ -211,6 +212,11 @@ export async function POST(request: NextRequest) {
       }).catch(err => console.error('Compliance auto-update or notification failed (non-critical):', err));
     }
     // --- END COMPLIANCE AUTOMATION ---
+
+    // Auto-trigger Workflow evaluation for document dependencies
+    evaluateWorkflowDocumentTriggers(tenantId, client_id).catch((err: unknown) => {
+      console.error("[DocumentUpload] Workflow trigger evaluation failed:", err);
+    });
 
     return NextResponse.json({ data: mappedDocument }, { status: 201 });
   } catch (error: unknown) {

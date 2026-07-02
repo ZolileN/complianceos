@@ -88,6 +88,8 @@ export interface WorkflowStep {
   description?: string;
   step_order: number;
   sla_days: number;
+  required_documents?: string;
+  auto_complete?: boolean;
 }
 
 // ── Client Workflows (Active) ──────────────────────────────
