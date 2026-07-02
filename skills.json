@@ -1,0 +1,26 @@
+{
+  "project": {
+    "name": "complianceOS",
+    "description": "PraxisOne Document-Aware Compliance Operations Platform",
+    "environment": "linux",
+    "frameworks": ["nextjs", "prisma", "react"]
+  },
+  "workspaces": {
+    "default": {
+      "path": "./",
+      "roles": ["frontend", "backend", "database"]
+    }
+  },
+  "skills": {
+    "whatsapp-testing": {
+      "path": ".agents/skills/whatsapp-testing/SKILL.md",
+      "description": "Automates the verification and testing of the WhatsApp Embedded Signup API routes.",
+      "tags": ["testing", "whatsapp", "api"]
+    }
+  },
+  "preferences": {
+    "packageManager": "npm",
+    "strictTyping": true,
+    "uiFramework": "vanilla-css"
+  }
+}
