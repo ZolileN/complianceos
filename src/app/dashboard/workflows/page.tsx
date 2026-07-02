@@ -23,6 +23,7 @@ export default function WorkflowsPage() {
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTemplate, setActiveTemplate] = useState<WorkflowTemplate | null>(null);
 
   useEffect(() => {
     if (user && user.role !== 'administrator' && user.role !== 'operations_manager') {
@@ -94,7 +95,12 @@ export default function WorkflowsPage() {
             const cat = getCategoryInfo(tpl.category);
             const steps = tpl.steps || [];
             return (
-              <div key={tpl.id} className={`card card-hover animate-in animate-delay-${(i % 4) + 1}`}>
+              <div 
+                key={tpl.id} 
+                className={`card card-hover animate-in animate-delay-${(i % 4) + 1}`}
+                onClick={() => setActiveTemplate(tpl)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 'var(--radius-md)', background: `${cat.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>{cat.icon}</div>
                   <div>
@@ -115,6 +121,61 @@ export default function WorkflowsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Template Details Modal */}
+      {activeTemplate && (
+        <div className="modal-backdrop" onClick={() => setActiveTemplate(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="card" onClick={e => e.stopPropagation()} style={{ width: 600, maxWidth: '90%', maxHeight: '90vh', overflowY: 'auto', padding: 24, zIndex: 101 }}>
+            <div className="flex-between" style={{ marginBottom: 20 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{activeTemplate.name}</h2>
+                  <span className="badge badge-gray">{getCategoryInfo(activeTemplate.category).label}</span>
+                </div>
+                {activeTemplate.description && <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '0.85rem' }}>{activeTemplate.description}</p>}
+              </div>
+              <button onClick={() => setActiveTemplate(null)} className="btn btn-ghost btn-icon">✕</button>
+            </div>
+            
+            <div className="stack" style={{ gap: 16 }}>
+              {activeTemplate.steps?.map((step, index) => {
+                // Determine required docs (either from snake_case API or camelCase DB model)
+                let docs: string[] = [];
+                try { 
+                  // @ts-expect-error - Fallback to prisma casing if frontend type lacks it
+                  const reqDocsStr = step.required_documents || step.requiredDocuments || '[]';
+                  docs = JSON.parse(reqDocsStr); 
+                } catch {}
+
+                return (
+                  <div key={step.id || index} style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: docs.length > 0 ? 12 : 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 600 }}>{index + 1}</div>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{step.name}</div>
+                        {step.description && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{step.description}</div>}
+                      </div>
+                    </div>
+                    
+                    {docs.length > 0 && (
+                      <div style={{ marginLeft: 40 }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Required Documents:</div>
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {docs.map(d => (
+                            <li key={d} style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ color: 'var(--accent)' }}>•</span> {d.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>
