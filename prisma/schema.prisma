@@ -175,6 +175,7 @@ model WorkflowStep {
   description String?
   stepOrder   Int      @default(0)
   slaDays     Int      @default(3)
+  boundSkillSlug String?                    // Optional: auto-execute this skill when step becomes active
 
   progress WorkflowStepProgress[]
 }
@@ -400,6 +401,126 @@ model AdminAuditLog {
   targetId    String?         // ID of the target tenant or entity
   details     String          // JSON string for metadata
   createdAt   DateTime        @default(now())
+}
+
+// ── Skills.sh Execution Layer ──
+
+model Skill {
+  id            String   @id @default(cuid())
+  slug          String   @unique              // e.g. "invoice-ocr"
+  name          String                        // e.g. "Invoice OCR"
+  description   String?
+  version       String   @default("1.0.0")
+  author        String   @default("PraxisOne Core")
+  category      String                        // finance, hr, crm, whatsapp, compliance, general
+  icon          String   @default("⚡")       // Emoji icon for display
+
+  packId        String?
+  pack          BusinessPack? @relation(fields: [packId], references: [id], onDelete: SetNull)
+
+  // Skill definition
+  skillDefinition    String                   // The SKILL.md content or instruction set
+  triggers           String  @default("[]")   // JSON: ["document.uploaded", "message.received"]
+  requiredPermissions String @default("[]")   // JSON: ["documents.read", "clients.write"]
+
+  // Marketplace metadata
+  isCore        Boolean  @default(false)       // Ships with PraxisOne
+  isPublished   Boolean  @default(false)
+  rating        Float    @default(0)
+  installCount  Int      @default(0)
+
+  // Relationships
+  installations SkillInstallation[]
+  executions    SkillExecution[]
+  steps         SkillStep[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SkillStep {
+  id          String  @id @default(cuid())
+  skillId     String
+  skill       Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  name        String                          // e.g. "Extract Text"
+  description String?
+  stepOrder   Int     @default(0)
+  stepType    String                          // llm_call, api_call, database_query, condition, human_approval
+  config      String  @default("{}")          // JSON config for the step (prompt, endpoint, query, etc.)
+
+  createdAt   DateTime @default(now())
+}
+
+model SkillInstallation {
+  id          String   @id @default(cuid())
+  tenantId    String
+  skillId     String
+  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  isActive    Boolean  @default(true)
+  config      String   @default("{}")         // Tenant-specific config overrides
+
+  installedAt DateTime @default(now())
+
+  permissions SkillPermission[]
+
+  @@unique([tenantId, skillId])
+}
+
+model SkillPermission {
+  id              String  @id @default(cuid())
+  installationId  String
+  installation    SkillInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  permission      String                     // e.g. "crm.read", "whatsapp.send", "invoices.create"
+  allowedRoles    String @default("[]")      // JSON: ["administrator", "operations_manager"]
+  granted         Boolean @default(false)
+  grantedBy       String?                    // userId of admin who approved
+
+  @@unique([installationId, permission])
+}
+
+model SkillExecution {
+  id            String   @id @default(cuid())
+  tenantId      String
+  skillId       String
+  skill         Skill    @relation(fields: [skillId], references: [id])
+
+  triggeredBy   String                       // userId or "system"
+  triggerEvent  String                       // e.g. "document.uploaded", "manual"
+
+  status        String   @default("pending") // pending, running, completed, failed, cancelled
+
+  // Input/Output
+  input         String   @default("{}")      // JSON
+  output        String?                      // JSON
+  error         String?
+
+  // Metrics
+  stepsCompleted Int     @default(0)
+  totalSteps     Int     @default(0)
+  tokensUsed     Int     @default(0)
+  durationMs     Int?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model BusinessPack {
+  id          String   @id @default(cuid())
+  slug        String   @unique               // e.g. "construction-pack"
+  name        String                          // e.g. "Construction Pack"
+  description String?
+  industry    String                          // construction, medical, legal, real-estate, accounting
+  icon        String   @default("📦")
+  price       Int      @default(0)            // Monthly price in cents (ZAR)
+
+  skills      Skill[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 
