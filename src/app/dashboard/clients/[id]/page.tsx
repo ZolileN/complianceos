@@ -713,7 +713,19 @@ export default function ClientDetailPage() {
                         let requiredDocs: string[] = [];
                         try { requiredDocs = JSON.parse(p.step?.required_documents || '[]'); } catch {}
                         const clientDocCategories: string[] = documents.map(d => d.category);
-                        const docsPresent = requiredDocs.length > 0 && requiredDocs.every(cat => clientDocCategories.includes(cat));
+                        const mapToCategory = (docStr: string) => {
+                          const s = docStr.toLowerCase();
+                          if (s.includes('id') || s.includes('identity')) return 'id_document';
+                          if (s.includes('tax') || s.includes('vat101') || s.includes('itr14') || s.includes('irp6') || s.includes('assessment')) return 'tax_certificate';
+                          if (s.includes('bank') || s.includes('turnover')) return 'bank_statement';
+                          if (s.includes('cor') || s.includes('annual return')) return 'cor_document';
+                          if (s.includes('vat registration') || s.includes('vat cert')) return 'vat_certificate';
+                          if (s.includes('bee') || s.includes('scorecard')) return 'bee_certificate';
+                          if (s.includes('afs') || s.includes('financials') || s.includes('payroll')) return 'financial_statement';
+                          if (s.includes('mandate') || s.includes('power of attorney')) return 'mandate';
+                          return 'other';
+                        };
+                        const docsPresent = requiredDocs.length > 0 && requiredDocs.every(cat => clientDocCategories.includes(mapToCategory(cat)));
                         
                         // Check if previous steps are completed
                         const previousSteps = w.progress?.slice(0, index) || [];
@@ -772,7 +784,8 @@ export default function ClientDetailPage() {
                                   </div>
                                   <div className="stack" style={{ gap: 8 }}>
                                     {requiredDocs.map(cat => {
-                                      const uploadedDoc = documents.find(d => d.category === cat);
+                                      const mappedCategory = mapToCategory(cat);
+                                      const uploadedDoc = documents.find(d => d.category === mappedCategory);
                                       return (
                                         <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem' }}>
                                           {uploadedDoc ? (
@@ -782,7 +795,7 @@ export default function ClientDetailPage() {
                                           )}
                                           <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span style={{ fontWeight: 500, color: uploadedDoc ? 'var(--text)' : 'var(--text-secondary)' }}>
-                                              {cat.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                                              {cat}
                                             </span>
                                             {uploadedDoc ? (
                                               <button type="button" onClick={(e) => { e.stopPropagation(); setActiveViewDoc(uploadedDoc); }} className="btn-link" style={{ fontSize: '0.75rem', padding: 0 }}>View</button>

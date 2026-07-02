@@ -53,10 +53,11 @@ export async function POST(request: NextRequest) {
         category,
         tenantId,
         steps: {
-          create: steps && Array.isArray(steps) ? steps.map((s: { name: string; sla_days?: number }, i: number) => ({
+          create: steps && Array.isArray(steps) ? steps.map((s: { name: string; sla_days?: number; requiredDocuments?: string[] }, i: number) => ({
             name: s.name,
             stepOrder: i + 1,
             slaDays: s.sla_days || 3,
+            requiredDocuments: s.requiredDocuments ? JSON.stringify(s.requiredDocuments) : "[]"
           })) : []
         }
       },

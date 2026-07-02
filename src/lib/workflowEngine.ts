@@ -47,8 +47,22 @@ export async function evaluateWorkflowDocumentTriggers(tenantId: string, clientI
 
       if (requiredDocs.length === 0) continue; // Nothing required, so we don't auto-complete on docs.
 
+      // Helper to map human-readable doc strings to internal DocumentCategory enum
+      const mapToCategory = (docStr: string) => {
+        const s = docStr.toLowerCase();
+        if (s.includes('id') || s.includes('identity')) return 'id_document';
+        if (s.includes('tax') || s.includes('vat101') || s.includes('itr14') || s.includes('irp6') || s.includes('assessment')) return 'tax_certificate';
+        if (s.includes('bank') || s.includes('turnover')) return 'bank_statement';
+        if (s.includes('cor') || s.includes('annual return')) return 'cor_document';
+        if (s.includes('vat registration') || s.includes('vat cert')) return 'vat_certificate';
+        if (s.includes('bee') || s.includes('scorecard')) return 'bee_certificate';
+        if (s.includes('afs') || s.includes('financials') || s.includes('payroll')) return 'financial_statement';
+        if (s.includes('mandate') || s.includes('power of attorney')) return 'mandate';
+        return 'other';
+      };
+
       // 3. Check if all required docs are present
-      const allPresent = requiredDocs.every(cat => availableCategories.has(cat));
+      const allPresent = requiredDocs.every(cat => availableCategories.has(mapToCategory(cat)));
 
       if (allPresent) {
         console.log(`[WorkflowEngine] Auto-completing step ${progress.step.name} for workflow ${progress.clientWorkflow.template.name}`);
