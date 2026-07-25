@@ -11,10 +11,18 @@ import {
 } from '@/lib/entitlements';
 import {
   getPlanDefinition,
+  GRACE_PERIOD_DAYS,
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
 import { getBillingProvider } from '@/lib/billing/provider';
+
+/** Month-to-month: next period ends one calendar month after the payment date. */
+export function addOneMonth(from: Date): Date {
+  const d = new Date(from);
+  d.setMonth(d.getMonth() + 1);
+  return d;
+}
 
 async function ensureSubscription(tenantId: string, plan: TenantPlan) {
   const existing = await prisma.subscription.findUnique({ where: { tenantId } });
@@ -94,10 +102,9 @@ export async function activateSubscription(
         ? tenant.plan
         : 'starter';
 
+  // Month-to-month: the paid period starts on successful payment and runs one month.
   const now = new Date();
-  const periodEnd =
-    opts.periodEnd ??
-    new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const periodEnd = opts.periodEnd ?? addOneMonth(now);
 
   await prisma.$transaction([
     prisma.tenant.update({ where: { id: tenantId }, data: { plan } }),
@@ -224,6 +231,38 @@ export async function expireTrialsDue(now = new Date()) {
   }
 
   return { expired: due.length };
+}
+
+/**
+ * Month-to-month paid plans: if a period ended and no renewal payment arrived
+ * within the 7-day grace window, the subscription lapses to past_due (read-only).
+ */
+export async function markLapsedSubscriptions(now = new Date()) {
+  const graceCutoff = new Date(
+    now.getTime() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
+  );
+
+  const lapsed = await prisma.subscription.findMany({
+    where: {
+      status: 'active',
+      currentPeriodEnd: { lte: graceCutoff },
+    },
+    select: { tenantId: true, plan: true, currentPeriodEnd: true },
+  });
+
+  for (const row of lapsed) {
+    await prisma.subscription.update({
+      where: { tenantId: row.tenantId },
+      data: { status: 'past_due' },
+    });
+    await logAdminAction('MARK_PAST_DUE', row.tenantId, {
+      reason: 'grace_period_elapsed',
+      periodEnd: row.currentPeriodEnd,
+      graceDays: GRACE_PERIOD_DAYS,
+    });
+  }
+
+  return { lapsed: lapsed.length };
 }
 
 export async function resolveBillingSnapshot(tenantId: string) {

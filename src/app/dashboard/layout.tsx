@@ -9,6 +9,7 @@ import Logo from '@/components/Logo';
 import {
   Bell,
   CheckSquare2,
+  CreditCard,
   FileText,
   Gauge,
   GitBranch,
@@ -41,6 +42,7 @@ const icons: Record<string, LucideIcon> = {
   activity: Gauge,
   settings: Settings,
   zap: Sparkles,
+  'credit-card': CreditCard,
 };
 
 interface SearchResult {
@@ -109,6 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (user.role === 'administrator') {
       return [
         ...NAV_ITEMS,
+        { href: '/dashboard/billing', label: 'Billing', icon: 'credit-card' },
         { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: 'activity' },
         { href: '/dashboard/settings', label: 'Settings', icon: 'settings' },
       ];

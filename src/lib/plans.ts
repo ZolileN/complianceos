@@ -16,6 +16,9 @@ export function isTenantPlan(value: string): value is TenantPlan {
   return (TENANT_PLANS as readonly string[]).includes(value);
 }
 
+/** Days after a paid period ends before the account becomes read-only. */
+export const GRACE_PERIOD_DAYS = 7;
+
 /** null = unlimited */
 export type PlanDefinition = {
   id: TenantPlan;
@@ -41,8 +44,8 @@ export const PLAN_CATALOG: Record<TenantPlan, PlanDefinition> = {
     maxClients: 100,
     aiEnabled: false,
     messagesPerMonthSoft: 1_000,
-    trialDays: 30,
-    marketingBullets: ['3 users', '100 clients', '30-day free trial'],
+    trialDays: 14,
+    marketingBullets: ['3 users', '100 clients', '14-day free trial'],
   },
   growth: {
     id: 'growth',

@@ -58,9 +58,9 @@ export const ozowProvider: BillingProvider = {
     const countryCode = 'ZA';
     const currencyCode = 'ZAR';
 
-    const cancelUrl = `${appUrl}/dashboard/settings?billing=cancelled`;
-    const errorUrl = `${appUrl}/dashboard/settings?billing=error`;
-    const successUrl = `${appUrl}/dashboard/settings?billing=success`;
+    const cancelUrl = `${appUrl}/dashboard/billing?billing=cancelled`;
+    const errorUrl = `${appUrl}/dashboard/billing?billing=error`;
+    const successUrl = `${appUrl}/dashboard/billing?billing=success`;
     const notifyUrl = `${appUrl}/api/billing/ozow/webhook`;
 
     // Hash fields in Ozow-documented order (SiteCode … PrivateKey)

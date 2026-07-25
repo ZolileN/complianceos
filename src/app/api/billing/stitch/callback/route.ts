@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   if (!collectionId) {
     return NextResponse.redirect(
-      `${appUrl}/dashboard/settings?billing=error&reason=missing_collection`
+      `${appUrl}/dashboard/billing?billing=error&reason=missing_collection`
     );
   }
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   if (!sub) {
     return NextResponse.redirect(
-      `${appUrl}/dashboard/settings?billing=error&reason=unknown_collection`
+      `${appUrl}/dashboard/billing?billing=error&reason=unknown_collection`
     );
   }
 
@@ -39,5 +39,5 @@ export async function GET(request: NextRequest) {
     providerPlanId: sub.providerPlanId || undefined,
   });
 
-  return NextResponse.redirect(`${appUrl}/dashboard/settings?billing=success`);
+  return NextResponse.redirect(`${appUrl}/dashboard/billing?billing=success`);
 }

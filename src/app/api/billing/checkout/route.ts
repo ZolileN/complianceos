@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   isRbacResponse,
-  requireManager,
+  requireRoles,
   requireTenantSession,
 } from '@/lib/rbac';
 import { isTenantPlan } from '@/lib/plans';
@@ -9,11 +9,12 @@ import { startCheckout } from '@/lib/billing/service';
 
 /**
  * POST { plan } — start checkout / activate via configured billing provider.
+ * Tenant administrators only.
  */
 export async function POST(request: NextRequest) {
   const user = await requireTenantSession();
   if (isRbacResponse(user)) return user;
-  const forbidden = requireManager(user);
+  const forbidden = requireRoles(user, ['administrator']);
   if (forbidden) return forbidden;
 
   try {

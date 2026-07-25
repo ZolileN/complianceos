@@ -8,6 +8,7 @@ import { isTenantPlan } from '@/lib/plans';
 import {
   activateSubscription,
   cancelSubscription,
+  changePlan,
   markPastDue,
   setLimitsOverride,
   startTrial,
@@ -35,7 +36,7 @@ export async function GET(
 
 /**
  * PATCH — admin billing controls:
- * { action: 'activate'|'past_due'|'cancel'|'start_trial'|'override', plan?, immediately?, override? }
+ * { action: 'activate'|'past_due'|'cancel'|'start_trial'|'change_plan'|'override', plan?, immediately?, override? }
  */
 export async function PATCH(
   req: NextRequest,
@@ -81,6 +82,14 @@ export async function PATCH(
     if (action === 'start_trial') {
       const plan = isTenantPlan(body.plan) ? body.plan : 'starter';
       const data = await startTrial(id, plan);
+      return NextResponse.json({ success: true, data });
+    }
+
+    if (action === 'change_plan') {
+      if (!isTenantPlan(body.plan)) {
+        return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+      }
+      const data = await changePlan(id, body.plan);
       return NextResponse.json({ success: true, data });
     }
 
