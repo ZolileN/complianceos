@@ -1,6 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Webhook } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 interface AdminLog {
   id: string;
@@ -40,7 +50,7 @@ export default function WebhooksAndMetering() {
       if (data.success) {
         setFinops({
           totalMessages: data.totalMessages,
-          topTenant: data.topTenant
+          topTenant: data.topTenant,
         });
       }
     } catch (err) {
@@ -54,151 +64,206 @@ export default function WebhooksAndMetering() {
       await fetchFinOps();
     };
     init();
-    
+
     const interval = setInterval(() => {
       fetchLogs();
       fetchFinOps();
-    }, 5000); // Poll every 5s for live webhooks & metering
+    }, 5000);
     return () => clearInterval(interval);
   }, [fetchLogs, fetchFinOps]);
 
-  const totalWebhooks = logs.filter(l => l.type === 'webhook').length;
-  const totalSystem = logs.filter(l => l.type === 'system').length;
+  const totalWebhooks = logs.filter((l) => l.type === 'webhook').length;
+  const totalSystem = logs.filter((l) => l.type === 'system').length;
+
+  const tokenPct = finops
+    ? Math.min((finops.topTenant.tokens / finops.topTenant.limit) * 100, 100)
+    : 0;
+  const tokenOverNearLimit =
+    finops != null && finops.topTenant.tokens > finops.topTenant.limit * 0.9;
+  const messagesPct = finops ? Math.min((finops.totalMessages / 15000) * 100, 100) : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* FinOps Metering Overview */}
-      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>FinOps Token & Credit Metering</h2>
-        <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4 }}>Real-time usage statistics across all workspace plans. Limits are enforced based on subscription tier.</p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 20 }}>
-          {/* Progress bar card 1 */}
-          <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: '#FFFFFF' }}>Workspace API Credits Metering</span>
-              <span style={{ color: '#5EEAD4' }}>
-                {finops ? `${finops.topTenant.tokens.toLocaleString()} / ${finops.topTenant.limit.toLocaleString()} tokens` : 'Loading...'}
-              </span>
-            </div>
-            <div style={{ height: 8, background: '#1F1F1F', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
-              <div style={{ 
-                width: finops ? `${Math.min((finops.topTenant.tokens / finops.topTenant.limit) * 100, 100)}%` : '0%', 
-                height: '100%', 
-                background: finops && finops.topTenant.tokens > finops.topTenant.limit * 0.9 ? '#EF4444' : '#5EEAD4', 
-                borderRadius: 4 
-              }} />
-            </div>
-            <div style={{ fontSize: '0.65rem', color: '#888888', marginTop: 8 }}>
-              {finops ? (
-                <>
-                  {((finops.topTenant.tokens / finops.topTenant.limit) * 100).toFixed(1)}% capacity consumed. 
-                  {finops.topTenant.tokens > 0 ? ` Top consumer: ${finops.topTenant.name} (${finops.topTenant.plan} plan).` : ''}
-                </>
-              ) : 'Calculating capacity...'}
-            </div>
-          </div>
-
-          {/* Progress bar card 2 */}
-          <div style={{ padding: 16, background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ color: '#FFFFFF' }}>Total WhatsApp Messages Metered</span>
-              <span style={{ color: '#60A5FA' }}>
-                {finops ? `${finops.totalMessages.toLocaleString()} messages` : 'Loading...'}
-              </span>
-            </div>
-            <div style={{ height: 8, background: '#1F1F1F', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
-              <div style={{ width: finops ? `${Math.min((finops.totalMessages / 15000) * 100, 100)}%` : '0%', height: '100%', background: '#3B82F6', borderRadius: 4 }} />
-            </div>
-            <div style={{ fontSize: '0.65rem', color: '#888888', marginTop: 8 }}>Rate limit ceiling: 15,000 / day. Current queue handling: Healthy.</div>
-          </div>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <Webhook className="size-3.5" />
+          FinOps
         </div>
-      </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+          Webhooks & metering
+        </h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Real-time usage statistics and live webhook event inspection across all workspace plans.
+        </p>
+      </section>
 
-      {/* Webhook log list */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Left Side: Logs List */}
-        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
-          <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>Live Event & Webhook Stream</h3>
-              <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Click any event log to inspect payloads.</p>
+      <Card>
+        <CardHeader>
+          <CardTitle>FinOps token & credit metering</CardTitle>
+          <CardDescription>
+            Limits are enforced based on subscription tier.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated,transparent)] p-4">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-900">Workspace API credits metering</span>
+                <span className="text-teal-700">
+                  {finops
+                    ? `${finops.topTenant.tokens.toLocaleString()} / ${finops.topTenant.limit.toLocaleString()} tokens`
+                    : 'Loading...'}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded bg-slate-100">
+                <div
+                  className={`h-full rounded ${tokenOverNearLimit ? 'bg-red-500' : 'bg-teal-600'}`}
+                  style={{ width: `${tokenPct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[0.65rem] text-slate-500">
+                {finops ? (
+                  <>
+                    {((finops.topTenant.tokens / finops.topTenant.limit) * 100).toFixed(1)}% capacity
+                    consumed.
+                    {finops.topTenant.tokens > 0
+                      ? ` Top consumer: ${finops.topTenant.name} (${finops.topTenant.plan} plan).`
+                      : ''}
+                  </>
+                ) : (
+                  'Calculating capacity...'
+                )}
+              </p>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(94, 234, 212, 0.1)', color: '#5EEAD4' }}>{totalWebhooks} Webhooks</span>
-              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.1)', color: '#60A5FA' }}>{totalSystem} System</span>
+
+            <div className="rounded-lg border border-[var(--border-primary)] bg-[var(--bg-elevated,transparent)] p-4">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-900">Total WhatsApp messages metered</span>
+                <span className="text-blue-600">
+                  {finops ? `${finops.totalMessages.toLocaleString()} messages` : 'Loading...'}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded bg-slate-100">
+                <div
+                  className="h-full rounded bg-blue-500"
+                  style={{ width: `${messagesPct}%` }}
+                />
+              </div>
+              <p className="mt-2 text-[0.65rem] text-slate-500">
+                Rate limit ceiling: 15,000 / day. Current queue handling: Healthy.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card className="flex h-[500px] flex-col overflow-hidden p-0">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950">Live event & webhook stream</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Click any event log to inspect payloads.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Badge variant="success">{totalWebhooks} Webhooks</Badge>
+              <Badge variant="info">{totalSystem} System</Badge>
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
             {loading ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#888888', fontSize: '0.8rem' }}>Loading log stream...</div>
+              <div className="px-4 py-10 text-center text-sm text-slate-500">
+                Loading log stream...
+              </div>
             ) : logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 40, color: '#888888', fontSize: '0.8rem', fontStyle: 'italic' }}>No logs recorded yet.</div>
+              <div className="px-4 py-10 text-center text-sm text-slate-500 italic">
+                No logs recorded yet.
+              </div>
             ) : (
-              logs.map(log => {
+              logs.map((log) => {
                 const isSelected = activeLog?.id === log.id;
                 return (
-                  <div
+                  <button
                     key={log.id}
+                    type="button"
                     onClick={() => setActiveLog(log)}
-                    style={{
-                      padding: 12,
-                      borderRadius: 6,
-                      background: isSelected ? 'rgba(94, 234, 212, 0.05)' : 'rgba(255,255,255,0.01)',
-                      border: isSelected ? '1px solid rgba(94, 234, 212, 0.3)' : '1px solid rgba(255,255,255,0.03)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      isSelected
+                        ? 'border-teal-300 bg-teal-50/60'
+                        : 'border-slate-100 bg-slate-50/40 hover:border-slate-200'
+                    }`}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                      <span style={{
-                        fontWeight: 700,
-                        color: log.type === 'webhook' ? '#5EEAD4' : log.type === 'finops' ? '#60A5FA' : '#F59E0B',
-                        textTransform: 'uppercase'
-                      }}>
-                        [{log.type}]
-                      </span>
-                      <span style={{ color: '#64748B' }}>
+                    <div className="flex items-center justify-between text-xs">
+                      <Badge
+                        variant={
+                          log.type === 'webhook'
+                            ? 'success'
+                            : log.type === 'finops'
+                              ? 'info'
+                              : 'warning'
+                        }
+                        className="uppercase"
+                      >
+                        {log.type}
+                      </Badge>
+                      <span className="text-slate-400">
                         {new Date(log.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#E2E8F0', marginTop: 6, fontWeight: 600 }}>{log.message}</div>
-                  </div>
+                    <div className="mt-2 text-xs font-semibold text-slate-800">{log.message}</div>
+                  </button>
                 );
               })
             )}
           </div>
-        </div>
+        </Card>
 
-        {/* Right Side: Payload Inspector */}
-        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
-          <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>Webhook Payload Inspector</h3>
-            <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Inspect JSON bodies of incoming WhatsApp webhook events.</p>
+        <Card className="flex h-[500px] flex-col overflow-hidden p-0">
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h3 className="text-sm font-semibold text-slate-950">Webhook payload inspector</h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Inspect JSON bodies of incoming WhatsApp webhook events.
+            </p>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#000000', fontFamily: 'monospace', fontSize: '0.7rem' }}>
+          <div
+            className="flex-1 overflow-auto p-4 font-mono text-xs"
+            style={{
+              background: 'var(--bg-primary, var(--card))',
+              color: 'var(--text-secondary)',
+            }}
+          >
             {activeLog ? (
               <div>
-                <div style={{ borderBottom: '1px solid #1F1F1F', paddingBottom: 12, marginBottom: 12 }}>
-                  <div style={{ color: '#FFFFFF', fontWeight: 600 }}>Event: {activeLog.message}</div>
-                  <div style={{ color: '#888888', fontSize: '0.65rem', marginTop: 4 }}>Timestamp: {new Date(activeLog.timestamp).toISOString()}</div>
+                <div className="mb-3 border-b border-[var(--border-primary)] pb-3">
+                  <div className="font-semibold text-[var(--text-primary)]">
+                    Event: {activeLog.message}
+                  </div>
+                  <div className="mt-1 text-[0.65rem] text-[var(--text-muted)]">
+                    Timestamp: {new Date(activeLog.timestamp).toISOString()}
+                  </div>
                 </div>
                 {activeLog.payload ? (
-                  <pre style={{ color: '#34D399', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                  <pre
+                    className="whitespace-pre-wrap break-all"
+                    style={{ color: 'var(--accent-strong, var(--accent))' }}
+                  >
                     {JSON.stringify(activeLog.payload, null, 2)}
                   </pre>
                 ) : (
-                  <div style={{ color: '#64748B', fontStyle: 'italic' }}>No structured payload attached to this log entry.</div>
+                  <div className="text-[var(--text-muted)] italic">
+                    No structured payload attached to this log entry.
+                  </div>
                 )}
               </div>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#64748B', fontStyle: 'italic', fontSize: '0.8rem' }}>
+              <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)] italic">
                 Select a log on the left to inspect its payload details.
               </div>
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
