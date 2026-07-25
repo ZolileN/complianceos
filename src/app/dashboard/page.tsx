@@ -1,8 +1,31 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import Link from 'next/link';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarClock,
+  CheckCircle2,
+  CircleGauge,
+  FileText,
+  Plus,
+  ShieldAlert,
+  UsersRound,
+} from "lucide-react";
+
+import { useAuth } from "@/contexts/AuthContext";
+import CompliancePostureChart from "@/components/dashboard/CompliancePostureChart";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface ComplianceStats {
   compliant: number;
@@ -10,27 +33,83 @@ interface ComplianceStats {
   critical: number;
 }
 
-interface Stats { 
-  clients: number; 
-  tasks: number; 
-  documents: number; 
-  overdue: number; 
+interface Stats {
+  clients: number;
+  tasks: number;
+  documents: number;
+  overdue: number;
   compliance?: ComplianceStats;
+}
+
+interface RecentClient {
+  id: string;
+  company_name: string;
+  status: string;
+  created_at: string;
+}
+
+interface RecentTask {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+}
+
+interface ComplianceIssue {
+  id: string;
+  client_id: string;
+  company_name: string;
+  category: string;
+  name: string;
+  status: string;
+  due_date: string | null;
+}
+
+type BadgeVariant = "default" | "success" | "warning" | "destructive" | "info" | "outline";
+
+function statusVariant(status: string): BadgeVariant {
+  const variants: Record<string, BadgeVariant> = {
+    active: "success",
+    completed: "success",
+    compliant: "success",
+    inactive: "outline",
+    onboarding: "info",
+    new: "info",
+    processing: "info",
+    submitted: "info",
+    waiting_on_client: "warning",
+    action_required: "warning",
+    overdue: "destructive",
+    critical: "destructive",
+  };
+
+  return variants[status] || "default";
+}
+
+function formatStatus(status: string) {
+  return status.replaceAll("_", " ");
 }
 
 export default function DashboardPage() {
   const { user, tenant } = useAuth();
-  const [stats, setStats] = useState<Stats>({ clients: 0, tasks: 0, documents: 0, overdue: 0 });
-  const [recentClients, setRecentClients] = useState<Array<{ id: string; company_name: string; status: string; created_at: string }>>([]);
-  const [recentTasks, setRecentTasks] = useState<Array<{ id: string; title: string; status: string; priority: string; due_date: string | null }>>([]);
-  const [complianceIssues, setComplianceIssues] = useState<Array<{ id: string; client_id: string; company_name: string; category: string; name: string; status: string; due_date: string | null }>>([]);
+  const [stats, setStats] = useState<Stats>({
+    clients: 0,
+    tasks: 0,
+    documents: 0,
+    overdue: 0,
+  });
+  const [recentClients, setRecentClients] = useState<RecentClient[]>([]);
+  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([]);
+  const [complianceIssues, setComplianceIssues] = useState<ComplianceIssue[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!tenant) return;
+
     async function load() {
       try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch("/api/dashboard");
         if (res.ok) {
           const data = await res.json();
           if (data.stats) setStats(data.stats);
@@ -38,186 +117,307 @@ export default function DashboardPage() {
           if (data.recentTasks) setRecentTasks(data.recentTasks);
           if (data.complianceIssues) setComplianceIssues(data.complianceIssues);
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        console.error(error);
       } finally {
         setLoading(false);
       }
     }
+
     load();
   }, [tenant]);
 
-  const kpis = [
-    { label: 'Total Clients', value: stats.clients, icon: '👥', color: 'var(--accent)', bg: 'var(--accent-muted)', href: '/dashboard/clients' },
-    { label: 'Active Tasks', value: stats.tasks, icon: '☑', color: 'var(--blue)', bg: 'rgba(59,130,246,0.15)', href: '/dashboard/tasks' },
-    { label: 'Documents', value: stats.documents, icon: '📁', color: 'var(--purple)', bg: 'rgba(139,92,246,0.15)', href: '/dashboard/documents' },
-    { label: 'Overdue', value: stats.overdue, icon: '⚠', color: 'var(--red)', bg: 'rgba(239,68,68,0.15)', href: '/dashboard/tasks' },
-  ];
-
-  const statusBadge = (s: string) => {
-    const map: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue', new: 'badge-purple', waiting_on_client: 'badge-amber', processing: 'badge-blue', submitted: 'badge-purple', completed: 'badge-green', overdue: 'badge-red', action_required: 'badge-amber', critical: 'badge-red' };
-    return map[s] || 'badge-gray';
-  };
-
-  if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
-
-  if (user?.role === 'client') {
+  if (loading) {
     return (
-      <div className="flex-center" style={{ minHeight: '60vh' }}>
-        <div className="empty-state" style={{ maxWidth: 400, background: 'var(--bg-card)', padding: 40, border: '1px solid var(--border-primary)' }}>
-          <span className="empty-icon" style={{ fontSize: '3rem', marginBottom: 16 }}>🏢</span>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: 8 }}>Welcome to PraxisOne</h3>
-          <p style={{ color: 'var(--text-secondary)' }}>We are preparing your company dashboard. If you don&apos;t see your company details shortly, please contact your consultant.</p>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <span className="spinner size-9" />
       </div>
     );
   }
 
+  if (user?.role === "client") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <BriefcaseBusiness className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-950">Welcome to PraxisOne</h2>
+            <p className="text-sm leading-6 text-slate-500">
+              We are preparing your company dashboard. Contact your consultant if your
+              company details do not appear shortly.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const compliance = stats.compliance || {
+    compliant: 0,
+    action_required: 0,
+    critical: 0,
+  };
+
+  const metrics = [
+    {
+      label: "Total clients",
+      value: stats.clients,
+      detail: "Active portfolio",
+      icon: UsersRound,
+      href: "/dashboard/clients",
+      iconClass: "bg-teal-50 text-teal-700",
+    },
+    {
+      label: "Active tasks",
+      value: stats.tasks,
+      detail: "Across all consultants",
+      icon: CircleGauge,
+      href: "/dashboard/tasks",
+      iconClass: "bg-blue-50 text-blue-700",
+    },
+    {
+      label: "Documents",
+      value: stats.documents,
+      detail: "Stored securely",
+      icon: FileText,
+      href: "/dashboard/documents",
+      iconClass: "bg-violet-50 text-violet-700",
+    },
+    {
+      label: "Overdue",
+      value: stats.overdue,
+      detail: stats.overdue > 0 ? "Requires attention" : "Nothing overdue",
+      icon: CalendarClock,
+      href: "/dashboard/tasks",
+      iconClass: stats.overdue > 0 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600",
+    },
+  ];
+
   return (
-    <div>
-      <div className="page-header">
+    <div className="mx-auto max-w-[1500px] space-y-7">
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Welcome back, {user?.name?.split(' ')[0] || 'there'} 👋</p>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <span className="size-1.5 rounded-full bg-teal-600" />
+            Operations overview
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+            Good morning, {user?.name?.split(" ")[0] || "there"}
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Here&apos;s the current state of your client operations and compliance workload.
+          </p>
         </div>
-        <Link href="/dashboard/clients/new" className="btn btn-primary">+ New Client</Link>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="content-grid grid-4" style={{ marginBottom: 32 }}>
-        {kpis.map((kpi, i) => (
-          <Link key={kpi.label} href={kpi.href || '#'} className={`card kpi-card animate-in animate-delay-${i + 1}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <div className="kpi-icon" style={{ background: kpi.bg, color: kpi.color }}>{kpi.icon}</div>
-            <div className="kpi-value">{kpi.value}</div>
-            <div className="kpi-label">{kpi.label}</div>
+        <Button asChild variant="primary">
+          <Link href="/dashboard/clients/new">
+            <Plus />
+            New client
           </Link>
-        ))}
-      </div>
+        </Button>
+      </section>
 
-      {/* Compliance Monitoring Engine Overview */}
-      {stats.compliance && (
-        <div style={{ marginBottom: 32 }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            🛡️ Compliance Monitoring Engine
-          </h2>
-          <div className="content-grid grid-3">
-            <Link href="/dashboard/compliance?filter=compliant" className="card card-hover" style={{ borderLeft: '4px solid var(--green)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
-              <div>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--green)' }}>
-                  {stats.compliance.compliant}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  Requirements Compliant
-                </div>
-              </div>
-              <span style={{ fontSize: '2rem' }}>✅</span>
-            </Link>
-            <Link href="/dashboard/compliance?filter=action_required" className="card card-hover" style={{ borderLeft: '4px solid var(--amber)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
-              <div>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--amber)' }}>
-                  {stats.compliance.action_required}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  Need Action / Pending
-                </div>
-              </div>
-              <span style={{ fontSize: '2rem' }}>⚠️</span>
-            </Link>
-            <Link href="/dashboard/compliance?filter=critical" className="card card-hover" style={{ borderLeft: '4px solid var(--red)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textDecoration: 'none' }}>
-              <div>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--red)' }}>
-                  {stats.compliance.critical}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  Critical Deadlines / Expiries
-                </div>
-              </div>
-              <span style={{ fontSize: '2rem' }}>🚨</span>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Activity */}
-      <div className="content-grid grid-3">
-        <div className="card animate-in" style={{ animationDelay: '200ms' }}>
-          <div className="flex-between" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Recent Clients</h3>
-            <Link href="/dashboard/clients" className="btn btn-ghost btn-sm">View All →</Link>
-          </div>
-          {recentClients.length === 0 ? (
-            <div className="empty-state" style={{ padding: '32px 16px' }}>
-              <div className="empty-icon">👥</div>
-              <h3>No clients yet</h3>
-              <p>Add your first client to get started</p>
-            </div>
-          ) : (
-            <div className="stack" style={{ gap: 8 }}>
-              {recentClients.map((c) => (
-                <Link key={c.id} href={`/dashboard/clients/${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', transition: 'background var(--transition)', color: 'inherit', textDecoration: 'none' }} className="card-hover">
-                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{c.company_name}</span>
-                  <span className={`badge ${statusBadge(c.status)}`}>{c.status}</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card animate-in" style={{ animationDelay: '250ms' }}>
-          <div className="flex-between" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Active Tasks</h3>
-            <Link href="/dashboard/tasks" className="btn btn-ghost btn-sm">View All →</Link>
-          </div>
-          {recentTasks.length === 0 ? (
-            <div className="empty-state" style={{ padding: '32px 16px' }}>
-              <div className="empty-icon">☑</div>
-              <h3>No tasks yet</h3>
-              <p>Create tasks to track your compliance work</p>
-            </div>
-          ) : (
-            <div className="stack" style={{ gap: 8 }}>
-              {recentTasks.map((t) => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)' }}>
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{t.title}</div>
-                    {t.due_date && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Due: {new Date(t.due_date).toLocaleDateString('en-GB')}</div>}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Link key={metric.label} href={metric.href} className="group">
+              <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-slate-300 group-hover:shadow-md">
+                <CardContent className="p-5">
+                  <div className="mb-5 flex items-start justify-between">
+                    <div className={`flex size-10 items-center justify-center rounded-lg ${metric.iconClass}`}>
+                      <Icon className="size-[18px]" />
+                    </div>
+                    <ArrowRight className="size-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
                   </div>
-                  <span className={`badge ${statusBadge(t.status)}`}>{t.status.replace('_', ' ')}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card animate-in" style={{ animationDelay: '300ms' }}>
-          <div className="flex-between" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              Compliance Alerts
-              <span className="badge badge-amber" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{stats.compliance?.action_required || 0} Pending</span>
-            </h3>
-            <Link href="/dashboard/compliance" className="btn btn-ghost btn-sm">View All →</Link>
-          </div>
-          {complianceIssues.length === 0 ? (
-            <div className="empty-state" style={{ padding: '32px 16px' }}>
-              <div className="empty-icon">🛡️</div>
-              <h3>All clear!</h3>
-              <p>No critical compliance issues</p>
-            </div>
-          ) : (
-            <div className="stack" style={{ gap: 8 }}>
-              {complianceIssues.map((issue) => (
-                <Link key={issue.id} href={`/dashboard/clients/${issue.client_id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 'var(--radius-md)', transition: 'background var(--transition)', color: 'inherit', textDecoration: 'none' }} className="card-hover">
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{issue.company_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>{issue.category} - {issue.name}</div>
+                  <div className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+                    {metric.value}
                   </div>
-                  <span className={`badge ${statusBadge(issue.status)}`}>{issue.status.replace('_', ' ')}</span>
-                </Link>
-              ))}
+                  <div className="mt-1 text-sm font-medium text-slate-700">{metric.label}</div>
+                  <div className="mt-0.5 text-xs text-slate-400">{metric.detail}</div>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.45fr_1fr]">
+        <Card>
+          <CardHeader className="flex-row items-start justify-between">
+            <div>
+              <CardTitle className="text-base">Compliance attention</CardTitle>
+              <CardDescription className="mt-1">
+                Requirements that need action across your client portfolio.
+              </CardDescription>
             </div>
-          )}
-        </div>
-      </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/compliance">
+                View all
+                <ArrowRight />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="mt-2">
+            {complianceIssues.length === 0 ? (
+              <div className="flex min-h-52 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-6 text-center">
+                <CheckCircle2 className="mb-3 size-7 text-teal-700" />
+                <div className="text-sm font-semibold text-slate-900">Portfolio is clear</div>
+                <p className="mt-1 text-sm text-slate-500">
+                  No critical compliance issues need attention right now.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {complianceIssues.slice(0, 6).map((issue) => (
+                  <Link
+                    key={issue.id}
+                    href={`/dashboard/clients/${issue.client_id}`}
+                    className="group flex items-center justify-between gap-4 py-3.5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                          issue.status === "critical"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {issue.status === "critical" ? (
+                          <ShieldAlert className="size-4" />
+                        ) : (
+                          <AlertTriangle className="size-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-slate-900">
+                          {issue.company_name}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          {issue.category} · {issue.name}
+                          {issue.due_date
+                            ? ` · Due ${new Date(issue.due_date).toLocaleDateString("en-ZA", {
+                                day: "numeric",
+                                month: "short",
+                              })}`
+                            : ""}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant={statusVariant(issue.status)} className="shrink-0 capitalize">
+                      {formatStatus(issue.status)}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Compliance posture</CardTitle>
+            <CardDescription>
+              Overall health of active requirements.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="mt-4">
+            <CompliancePostureChart
+              compliant={compliance.compliant}
+              actionRequired={compliance.action_required}
+              critical={compliance.critical}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Recent clients</CardTitle>
+              <CardDescription className="mt-1">Newest additions to your workspace.</CardDescription>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/clients">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="mt-2">
+            {recentClients.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-500">No clients yet.</div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {recentClients.map((client) => (
+                  <Link
+                    key={client.id}
+                    href={`/dashboard/clients/${client.id}`}
+                    className="flex items-center justify-between gap-4 py-3.5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
+                        {client.company_name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-slate-900">
+                          {client.company_name}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Added {new Date(client.created_at).toLocaleDateString("en-ZA")}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant={statusVariant(client.status)} className="capitalize">
+                      {formatStatus(client.status)}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Active work</CardTitle>
+              <CardDescription className="mt-1">Tasks currently moving through the firm.</CardDescription>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/tasks">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="mt-2">
+            {recentTasks.length === 0 ? (
+              <div className="py-10 text-center text-sm text-slate-500">No active tasks yet.</div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {recentTasks.map((task) => (
+                  <div key={task.id} className="flex items-center justify-between gap-4 py-3.5">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-slate-900">{task.title}</div>
+                      <div className="mt-0.5 text-xs text-slate-400">
+                        {task.due_date
+                          ? `Due ${new Date(task.due_date).toLocaleDateString("en-ZA", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}`
+                          : "No due date"}
+                        {" · "}
+                        {task.priority} priority
+                      </div>
+                    </div>
+                    <Badge variant={statusVariant(task.status)} className="shrink-0 capitalize">
+                      {formatStatus(task.status)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }

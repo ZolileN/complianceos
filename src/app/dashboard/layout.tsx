@@ -6,9 +6,41 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { NAV_ITEMS } from '@/lib/constants';
 import Logo from '@/components/Logo';
+import {
+  Bell,
+  CheckSquare2,
+  FileText,
+  Gauge,
+  GitBranch,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  MessageSquareText,
+  Moon,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  UserRound,
+  UsersRound,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
-const icons: Record<string, string> = {
-  grid: '⊞', users: '👥', user: '👤', 'check-square': '☑', 'git-branch': '⑂', folder: '📁', 'message-circle': '💬', shield: '🛡️', activity: '📊', settings: '⚙️', zap: '⚡'
+const icons: Record<string, LucideIcon> = {
+  grid: LayoutGrid,
+  users: UsersRound,
+  user: UserRound,
+  'check-square': CheckSquare2,
+  'git-branch': GitBranch,
+  folder: FileText,
+  'message-circle': MessageSquareText,
+  shield: ShieldCheck,
+  activity: Gauge,
+  settings: Settings,
+  zap: Sparkles,
 };
 
 interface SearchResult {
@@ -22,6 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, tenant, signOut, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
 
@@ -209,7 +242,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [loading, user, tenant, signOut, router]);
 
   if (loading) {
-    return <div className="flex-center" style={{ minHeight: '100vh' }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
+    return (
+      <div className={`precision-ops ${theme === 'dark' ? 'dark' : ''} flex-center`} style={{ minHeight: '100vh' }}>
+        <span className="spinner" style={{ width: 40, height: 40 }} />
+      </div>
+    );
   }
 
   const statusBadge = (s: string) => {
@@ -218,21 +255,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <>
+    <div className={`precision-ops ${theme === 'dark' ? 'dark' : ''}`}>
       {/* Mobile overlay */}
       {sidebarOpen && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99 }} onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <Logo size={28} showText={true} />
+          <Logo size={28} showText={true} tone={theme === 'dark' ? 'dark' : 'light'} />
         </div>
         <nav className="sidebar-nav">
+          <div className="nav-section-label">Workspace</div>
           {getFilteredNavItems().map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+            const Icon = icons[item.icon] || LayoutGrid;
             return (
               <Link key={item.href} href={item.href} className={`nav-item ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-                <span className="nav-icon">{icons[item.icon] || '•'}</span>
+                <Icon className="nav-icon" aria-hidden="true" />
                 {item.label}
               </Link>
             );
@@ -247,7 +286,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{user?.role?.replace('_', ' ')}</div>
               </div>
             </Link>
-            <button className="btn btn-ghost btn-icon" onClick={signOut} title="Sign out" style={{ fontSize: '1rem' }}>⏻</button>
+            <button className="btn btn-ghost btn-icon" onClick={signOut} title="Sign out" aria-label="Sign out"><LogOut size={17} /></button>
           </div>
         </div>
       </aside>
@@ -255,13 +294,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Header */}
       <header className="header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }} id="mobile-menu-btn">☰</button>
+          <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }} id="mobile-menu-btn" aria-label="Open navigation"><Menu size={19} /></button>
           {/* Global Search */}
           {user?.role !== 'client' && (
             <div className="search-wrapper" ref={searchRef}>
               <div className="header-search">
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {searchLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> : '⌕'}
+                  {searchLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> : <Search size={16} />}
                 </span>
                 <input
                   type="text"
@@ -282,7 +321,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClick={() => { setSearchQuery(''); setShowDropdown(false); }}
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', lineHeight: 1 }}
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 )}
               </div>
@@ -306,7 +345,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
         </div>
-        <div className="header-actions" style={{ position: 'relative' }}>
+        <div className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon"
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <div ref={notificationsRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <button 
               className="btn btn-ghost btn-icon" 
@@ -314,7 +362,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setDropdownOpen(!dropdownOpen)}
               style={{ position: 'relative' }}
             >
-              🔔
+              <Bell size={18} />
               {unreadCount > 0 && (
                 <span className="badge-notification">{unreadCount}</span>
               )}
@@ -328,7 +376,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <button 
                       className="btn btn-xs" 
                       onClick={handleMarkAllRead} 
-                      style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', color: 'var(--text)' }}
+                      style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
                     >
                       Mark all read
                     </button>
@@ -398,7 +446,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           z-index: 1000;
           padding: 0;
           box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-          border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+          border: 1px solid var(--border-primary);
         }
 
         .notifications-header {
@@ -406,7 +454,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+          border-bottom: 1px solid var(--border-primary);
         }
 
         .notifications-list {
@@ -423,23 +471,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         .notification-item {
           padding: 12px 16px;
-          border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.04));
+          border-bottom: 1px solid var(--border-subtle);
           cursor: pointer;
           transition: background 0.15s ease;
         }
 
         .notification-item:hover {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--bg-hover);
         }
 
         .notification-item.unread {
-          background: rgba(255, 255, 255, 0.015);
+          background: var(--accent-muted);
         }
 
         .notification-title {
           font-size: 0.85rem;
           font-weight: 600;
-          color: var(--text, #f8fafc);
+          color: var(--text-primary);
           display: flex;
           align-items: center;
           gap: 6px;
@@ -468,6 +516,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           opacity: 0.8;
         }
       `}</style>
-    </>
+    </div>
   );
 }
