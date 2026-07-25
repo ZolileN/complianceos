@@ -1,10 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, Users, X } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface TeamMember {
   id: string;
@@ -12,6 +17,21 @@ interface TeamMember {
   full_name: string;
   role: 'administrator' | 'operations_manager' | 'consultant' | 'client';
   created_at: string;
+}
+
+type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
+
+function roleVariant(role: string): BadgeVariant {
+  switch (role) {
+    case 'administrator':
+      return 'destructive';
+    case 'operations_manager':
+      return 'info';
+    case 'consultant':
+      return 'success';
+    default:
+      return 'outline';
+  }
 }
 
 export default function TeamPage() {
@@ -148,246 +168,298 @@ export default function TeamPage() {
     }
   };
 
-  const roleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'administrator':
-        return 'var(--red)';
-      case 'operations_manager':
-        return 'var(--accent)';
-      case 'consultant':
-        return '#8b5cf6'; // Purple
-      default:
-        return 'var(--text-secondary)';
-    }
-  };
-
   const canManage = user?.role === 'administrator' || user?.role === 'operations_manager';
 
-  if (loading) return <div className="flex-center" style={{ padding: 80 }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[1000px] space-y-4">
+        <div className="skeleton h-10 w-56" />
+        <div className="skeleton h-64 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="mx-auto max-w-[1000px] space-y-6">
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="page-title">Team Management</h1>
-          <p className="page-subtitle">Manage your advisory firm staff and roles</p>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <Users className="size-3.5" />
+            People
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+            Team management
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Manage your advisory firm staff and roles
+          </p>
         </div>
         {canManage && (
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            + Add Team Member
-          </button>
+          <Button variant="primary" onClick={() => setShowAddModal(true)}>
+            <Plus />
+            Add team member
+          </Button>
         )}
-      </div>
+      </section>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Date Added</th>
-              {canManage && <th style={{ textAlign: 'right' }}>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {members.length === 0 ? (
-              <tr>
-                <td colSpan={canManage ? 5 : 4} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                  No team members found
-                </td>
-              </tr>
-            ) : (
-              members.map((m) => (
-                <tr key={m.id}>
-                  <td style={{ fontWeight: 600 }}>{m.full_name}</td>
-                  <td>{m.email}</td>
-                  <td>
-                    <span 
-                      style={{ 
-                        display: 'inline-block',
-                        padding: '2px 8px', 
-                        borderRadius: 'var(--radius-sm)', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        background: 'rgba(255,255,255,0.05)',
-                        color: roleBadgeColor(m.role),
-                        border: `1px solid ${roleBadgeColor(m.role)}22`
-                      }}
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                {['Name', 'Email', 'Role', 'Date added', ...(canManage ? ['Actions'] : [])].map(
+                  (label) => (
+                    <th
+                      key={label}
+                      className={`px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 uppercase ${
+                        label === 'Actions' ? 'text-right' : ''
+                      }`}
                     >
-                      {m.role.replace('_', ' ')}
-                    </span>
+                      {label}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {members.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={canManage ? 5 : 4}
+                    className="px-4 py-12 text-center text-sm text-slate-500"
+                  >
+                    No team members found
                   </td>
-                  <td style={{ color: 'var(--text-muted)' }}>
-                    {new Date(m.created_at).toLocaleDateString('en-GB')}
-                  </td>
-                  {canManage && (
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {user?.role === 'administrator' && (
-                          <button 
-                            className="btn btn-ghost btn-sm" 
-                            style={{ color: 'var(--accent)', padding: '2px 8px' }}
-                            onClick={() => {
-                              setSelectedMember(m);
-                              setResetPassword('');
-                              setResetError('');
-                              setShowResetModal(true);
-                            }}
-                          >
-                            Reset Password
-                          </button>
-                        )}
-                        {m.id === user?.id ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>You</span>
-                        ) : (user?.role === 'operations_manager' && m.role === 'administrator') ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingRight: 8 }}>Admin</span>
-                        ) : (
-                          <button 
-                            className="btn btn-ghost btn-sm" 
-                            style={{ color: 'var(--red)', padding: '2px 8px' }}
-                            onClick={() => handleDeleteMember(m.id, m.full_name)}
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                members.map((m) => (
+                  <tr key={m.id} className="border-b border-slate-100 last:border-0">
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-900">
+                      {m.full_name}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">{m.email}</td>
+                    <td className="px-4 py-3.5">
+                      <Badge variant={roleVariant(m.role)} className="capitalize">
+                        {m.role.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">
+                      {new Date(m.created_at).toLocaleDateString('en-GB')}
+                    </td>
+                    {canManage && (
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {user?.role === 'administrator' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMember(m);
+                                setResetPassword('');
+                                setResetError('');
+                                setShowResetModal(true);
+                              }}
+                            >
+                              Reset password
+                            </Button>
+                          )}
+                          {m.id === user?.id ? (
+                            <span className="px-2 text-xs italic text-slate-400">You</span>
+                          ) : user?.role === 'operations_manager' &&
+                            m.role === 'administrator' ? (
+                            <span className="px-2 text-xs italic text-slate-400">Admin</span>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteMember(m.id, m.full_name)}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
-      {/* Add Member Modal */}
       {showAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="card" style={{ width: '100%', maxWidth: 500, border: '1px solid var(--border-primary)', position: 'relative' }}>
-            <button 
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <Card className="relative w-full max-w-[500px]">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-3 right-3"
               onClick={() => setShowAddModal(false)}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+              aria-label="Close"
             >
-              ✕
-            </button>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Add Team Member</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>Create a new staff login and set their platform permissions.</p>
+              <X />
+            </Button>
+            <CardContent className="pt-5">
+              <h2 className="mb-1 text-xl font-semibold text-slate-950">Add team member</h2>
+              <p className="mb-5 text-sm text-slate-500">
+                Create a new staff login and set their platform permissions.
+              </p>
 
-            {error && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: 20, color: 'var(--red)', fontSize: '0.85rem' }}>
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
-            <form onSubmit={handleAddMember} className="stack">
-              <div className="form-group">
-                <label className="form-label">Full Name *</label>
-                <input 
-                  className="input" 
-                  required 
-                  value={form.name} 
-                  onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. Pepper Potts"
-                />
-              </div>
+              <form onSubmit={handleAddMember} className="stack">
+                <div className="form-group">
+                  <label className="form-label">Full Name *</label>
+                  <input
+                    className="input"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Pepper Potts"
+                  />
+                </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address *</label>
-                <input 
-                  className="input" 
-                  type="email" 
-                  required 
-                  value={form.email} 
-                  onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                  placeholder="e.g. pepper@starkindustries.com"
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address *</label>
+                  <input
+                    className="input"
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="e.g. pepper@starkindustries.com"
+                  />
+                </div>
 
+                <div className="form-group">
+                  <label className="form-label">Platform Role *</label>
+                  <select
+                    className="select"
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        role: e.target.value as
+                          | 'administrator'
+                          | 'operations_manager'
+                          | 'consultant'
+                          | 'client',
+                      }))
+                    }
+                  >
+                    {user?.role === 'administrator' && (
+                      <option value="administrator">Administrator (Full Access)</option>
+                    )}
+                    <option value="operations_manager">Operations Manager</option>
+                    <option value="consultant">Consultant</option>
+                    <option value="client">Client</option>
+                  </select>
+                </div>
 
-
-              <div className="form-group">
-                <label className="form-label">Platform Role *</label>
-                <select 
-                  className="select" 
-                  value={form.role} 
-                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as 'administrator' | 'operations_manager' | 'consultant' | 'client' }))}
-                >
-                  {user?.role === 'administrator' && (
-                    <option value="administrator">Administrator (Full Access)</option>
-                  )}
-                  <option value="operations_manager">Operations Manager</option>
-                  <option value="consultant">Consultant</option>
-                  <option value="client">Client</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? <span className="spinner" /> : 'Send Invite'}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={submitting}>
+                    {submitting ? <span className="spinner" /> : 'Send invite'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
-      {/* Reset Password Modal */}
+
       {showResetModal && selectedMember && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="card" style={{ width: '100%', maxWidth: 500, border: '1px solid var(--border-primary)', position: 'relative' }}>
-            <button 
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <Card className="relative w-full max-w-[500px]">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-3 right-3"
               onClick={() => {
                 setShowResetModal(false);
                 setSelectedMember(null);
               }}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+              aria-label="Close"
             >
-              ✕
-            </button>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 8 }}>Reset Password</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-              Enter a new password for <strong>{selectedMember.full_name}</strong> ({selectedMember.email}).
-            </p>
+              <X />
+            </Button>
+            <CardContent className="pt-5">
+              <h2 className="mb-1 text-xl font-semibold text-slate-950">Reset password</h2>
+              <p className="mb-5 text-sm text-slate-500">
+                Enter a new password for <strong>{selectedMember.full_name}</strong> (
+                {selectedMember.email}).
+              </p>
 
-            {resetError && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: 20, color: 'var(--red)', fontSize: '0.85rem' }}>
-                {resetError}
-              </div>
-            )}
+              {resetError && (
+                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {resetError}
+                </div>
+              )}
 
-            <form onSubmit={handleResetPassword} className="stack">
-              <div className="form-group">
-                <label className="form-label">New Password *</label>
-                <input 
-                  className="input" 
-                  type="password" 
-                  required 
-                  value={resetPassword} 
-                  onChange={(e) => setResetPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  autoFocus
-                />
-              </div>
+              <form onSubmit={handleResetPassword} className="stack">
+                <div className="form-group">
+                  <label className="form-label">New Password *</label>
+                  <input
+                    className="input"
+                    type="password"
+                    required
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    autoFocus
+                  />
+                </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => {
-                    setShowResetModal(false);
-                    setSelectedMember(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={resetSubmitting}>
-                  {resetSubmitting ? <span className="spinner" /> : 'Reset Password'}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowResetModal(false);
+                      setSelectedMember(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={resetSubmitting}>
+                    {resetSubmitting ? <span className="spinner" /> : 'Reset password'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

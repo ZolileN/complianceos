@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Building2, MessageSquare, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import CompanyProfileTab from '@/components/settings/CompanyProfileTab';
 import WhatsAppTab from '@/components/settings/WhatsAppTab';
 import PersonalProfileTab from '@/components/settings/PersonalProfileTab';
+import { Card, CardContent } from '@/components/ui/card';
 import type {
   CompanyData,
   PersonalData,
@@ -345,8 +347,9 @@ function SettingsPageContent() {
 
   if (loading) {
     return (
-      <div className="flex-center" style={{ padding: 80 }}>
-        <span className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="mx-auto max-w-[800px] space-y-4">
+        <div className="skeleton h-10 w-48" />
+        <div className="skeleton h-64 rounded-xl" />
       </div>
     );
   }
@@ -355,55 +358,54 @@ function SettingsPageContent() {
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/onboard/${company.slug}`
     : '';
 
+  const settingsTabs = [
+    ...(isAdminOrOps
+      ? [
+          { id: 'profile' as const, label: 'Company profile', icon: <Building2 className="size-3.5" /> },
+          { id: 'whatsapp' as const, label: 'WhatsApp', icon: <MessageSquare className="size-3.5" /> },
+        ]
+      : []),
+    { id: 'personal' as const, label: 'Personal profile', icon: <UserRound className="size-3.5" /> },
+  ];
+
   return (
-    <div style={{ maxWidth: 800 }} className="animate-in">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">Manage your company profile and external integrations</p>
+    <div className="mx-auto max-w-[800px] space-y-6">
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <Settings2 className="size-3.5" />
+          Workspace
         </div>
-      </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Settings</h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Manage your company profile and external integrations
+        </p>
+      </section>
 
       {saving && (
-        <div
-          className="card"
-          style={{
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: 'rgba(59,130,246,0.05)',
-            border: '1px solid rgba(59,130,246,0.15)',
-          }}
-        >
-          <span className="spinner" />
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Processing settings updates…</span>
-        </div>
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardContent className="flex items-center gap-3 py-3 text-sm text-slate-600">
+            <span className="spinner" />
+            Processing settings updates…
+          </CardContent>
+        </Card>
       )}
 
-      <div className="tabs">
-        {isAdminOrOps && (
-          <>
-            <button
-              className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => setActiveTab('profile')}
-            >
-              🏢 Company Profile
-            </button>
-            <button
-              className={`tab ${activeTab === 'whatsapp' ? 'active' : ''}`}
-              onClick={() => setActiveTab('whatsapp')}
-            >
-              💬 WhatsApp Integration
-            </button>
-          </>
-        )}
-        <button
-          className={`tab ${activeTab === 'personal' ? 'active' : ''}`}
-          onClick={() => setActiveTab('personal')}
-        >
-          👤 Personal Profile
-        </button>
+      <div className="flex flex-wrap gap-1 border-b border-[var(--border-primary)] pb-1">
+        {settingsTabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveTab(t.id)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+              activeTab === t.id
+                ? 'bg-teal-50 text-teal-800'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'profile' && company && isAdminOrOps && (
