@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { executeSkill } from '@/lib/skill-engine';
+import {
+  requireAiFeature,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -10,6 +17,14 @@ export async function POST(request: NextRequest) {
   const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  try {
+    await requireAiFeature(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
+  }
 
   const body = await request.json();
   const { skillSlug, input } = body;

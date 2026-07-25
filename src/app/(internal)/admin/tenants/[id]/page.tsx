@@ -9,6 +9,7 @@ import {
   Building2,
   Check,
   Copy,
+  CreditCard,
   MessageSquare,
   ScrollText,
   Shield,
@@ -88,6 +89,21 @@ interface TenantLog {
   payload?: Record<string, unknown>;
 }
 
+interface BillingSnapshot {
+  tenantId: string;
+  plan: string;
+  planName: string;
+  priceZarCents: number | null;
+  status: string;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  provider: string;
+  providerCustomerId: string | null;
+  providerSubscriptionId: string | null;
+  limitsOverride: string;
+}
+
 type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
 type TabType = 'members' | 'clients' | 'logs';
 
@@ -128,6 +144,54 @@ function logTypeVariant(type: string): BadgeVariant {
       return 'destructive';
     default:
       return 'outline';
+  }
+}
+
+function billingStatusVariant(status: string): BadgeVariant {
+  switch (status) {
+    case 'active':
+      return 'success';
+    case 'trialing':
+      return 'info';
+    case 'past_due':
+    case 'canceled':
+      return 'destructive';
+    case 'incomplete':
+      return 'warning';
+    default:
+      return 'outline';
+  }
+}
+
+function parseLimitsOverride(raw: string | null | undefined): {
+  maxUsers: string;
+  maxClients: string;
+  aiEnabled: '' | 'true' | 'false';
+} {
+  try {
+    const o = JSON.parse(raw || '{}') as Record<string, unknown>;
+    return {
+      maxUsers:
+        o.maxUsers === null
+          ? 'null'
+          : typeof o.maxUsers === 'number'
+            ? String(o.maxUsers)
+            : '',
+      maxClients:
+        o.maxClients === null
+          ? 'null'
+          : typeof o.maxClients === 'number'
+            ? String(o.maxClients)
+            : '',
+      aiEnabled:
+        typeof o.aiEnabled === 'boolean'
+          ? o.aiEnabled
+            ? 'true'
+            : 'false'
+          : '',
+    };
+  } catch {
+    return { maxUsers: '', maxClients: '', aiEnabled: '' };
   }
 }
 
@@ -181,6 +245,17 @@ export default function TenantProfile() {
   const [planSaving, setPlanSaving] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
+  // Subscription / billing
+  const [billing, setBilling] = useState<BillingSnapshot | null>(null);
+  const [billingLoading, setBillingLoading] = useState(true);
+  const [billingActionLoading, setBillingActionLoading] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({
+    maxUsers: '',
+    maxClients: '',
+    aiEnabled: '' as '' | 'true' | 'false',
+  });
+  const [overrideSaving, setOverrideSaving] = useState(false);
+
   // Member action loading
   const [userActionLoading, setUserActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -188,6 +263,20 @@ export default function TenantProfile() {
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchBilling = async () => {
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/subscription`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load subscription');
+      setBilling(data.data);
+      setOverrideForm(parseLimitsOverride(data.data.limitsOverride));
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setBillingLoading(false);
+    }
   };
 
   const fetchTenantDetail = async () => {
@@ -206,6 +295,7 @@ export default function TenantProfile() {
 
   useEffect(() => {
     fetchTenantDetail();
+    fetchBilling();
   }, [id]);
 
   const parseSettings = (settings?: string | null): Record<string, unknown> => {
@@ -225,15 +315,15 @@ export default function TenantProfile() {
     if (!tenant || editPlan === tenant.plan) return;
     setPlanSaving(true);
     try {
-      const res = await fetch(`/api/admin/tenants/${id}`, {
+      const res = await fetch(`/api/admin/tenants/${id}/subscription`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: editPlan }),
+        body: JSON.stringify({ action: 'change_plan', plan: editPlan }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update plan');
       showToast('Plan updated successfully');
-      await fetchTenantDetail();
+      await Promise.all([fetchTenantDetail(), fetchBilling()]);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to update plan', 'error');
     } finally {
@@ -257,6 +347,63 @@ export default function TenantProfile() {
       showToast(err instanceof Error ? err.message : 'Failed to update settings', 'error');
     } finally {
       setSettingsSaving(false);
+    }
+  };
+
+  const runBillingAction = async (
+    body: Record<string, unknown>,
+    successMsg: string
+  ) => {
+    setBillingActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/subscription`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Action failed');
+      showToast(successMsg);
+      await Promise.all([fetchTenantDetail(), fetchBilling()]);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Action failed', 'error');
+    } finally {
+      setBillingActionLoading(false);
+    }
+  };
+
+  const handleSaveOverride = async () => {
+    setOverrideSaving(true);
+    try {
+      const override: Record<string, unknown> = {};
+      if (overrideForm.maxUsers === 'null') override.maxUsers = null;
+      else if (overrideForm.maxUsers.trim() !== '') {
+        const n = Number(overrideForm.maxUsers);
+        if (!Number.isFinite(n)) throw new Error('maxUsers must be a number or null');
+        override.maxUsers = n;
+      }
+      if (overrideForm.maxClients === 'null') override.maxClients = null;
+      else if (overrideForm.maxClients.trim() !== '') {
+        const n = Number(overrideForm.maxClients);
+        if (!Number.isFinite(n)) throw new Error('maxClients must be a number or null');
+        override.maxClients = n;
+      }
+      if (overrideForm.aiEnabled === 'true') override.aiEnabled = true;
+      if (overrideForm.aiEnabled === 'false') override.aiEnabled = false;
+
+      const res = await fetch(`/api/admin/tenants/${id}/subscription`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'override', override }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save override');
+      showToast('Limits override saved');
+      await fetchBilling();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to save override', 'error');
+    } finally {
+      setOverrideSaving(false);
     }
   };
 
@@ -395,7 +542,7 @@ export default function TenantProfile() {
               <select
                 value={editPlan}
                 onChange={(e) => setEditPlan(e.target.value)}
-                className="input h-9 flex-1 text-sm"
+                className="select h-9 flex-1 text-sm"
               >
                 {TENANT_PLANS.map((p) => (
                   <option key={p} value={p}>
@@ -445,6 +592,230 @@ export default function TenantProfile() {
               tenant workspace.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Subscription / Billing */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CreditCard className="size-4 text-teal-700" />
+              Subscription
+            </CardTitle>
+            <CardDescription>
+              Status, billing period, and limits override for this tenant.
+            </CardDescription>
+          </div>
+          {billing && (
+            <Badge variant={billingStatusVariant(billing.status)} className="capitalize">
+              {billing.status.replace('_', ' ')}
+            </Badge>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {billingLoading ? (
+            <p className="text-sm text-[var(--text-muted)]">Loading subscription…</p>
+          ) : !billing ? (
+            <p className="text-sm text-[var(--text-muted)]">
+              No subscription snapshot available.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ['Plan', billing.planName],
+                  [
+                    'Trial ends',
+                    billing.trialEndsAt
+                      ? new Date(billing.trialEndsAt).toLocaleDateString('en-GB')
+                      : '—',
+                  ],
+                  [
+                    'Period ends',
+                    billing.currentPeriodEnd
+                      ? new Date(billing.currentPeriodEnd).toLocaleDateString('en-GB')
+                      : '—',
+                  ],
+                  ['Provider', billing.provider],
+                ].map(([label, val]) => (
+                  <div key={label as string}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                      {label}
+                    </div>
+                    <div className="mt-0.5 text-sm font-medium capitalize text-[var(--text-primary)]">
+                      {val}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {(billing.providerCustomerId || billing.providerSubscriptionId) && (
+                <div className="grid gap-2 rounded-lg bg-[var(--bg-secondary)] p-3 font-mono text-xs text-[var(--text-secondary)] sm:grid-cols-2">
+                  <div>
+                    <span className="text-[var(--text-muted)]">Customer: </span>
+                    {billing.providerCustomerId || '—'}
+                  </div>
+                  <div>
+                    <span className="text-[var(--text-muted)]">Subscription: </span>
+                    {billing.providerSubscriptionId || '—'}
+                  </div>
+                </div>
+              )}
+
+              {billing.cancelAtPeriodEnd && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Cancellation scheduled at period end.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={billingActionLoading}
+                  onClick={() =>
+                    runBillingAction(
+                      { action: 'activate', plan: billing.plan },
+                      'Subscription activated'
+                    )
+                  }
+                >
+                  Activate (payment)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={billingActionLoading}
+                  onClick={() =>
+                    runBillingAction(
+                      { action: 'start_trial', plan: 'starter' },
+                      'Trial started'
+                    )
+                  }
+                >
+                  Start trial
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={billingActionLoading}
+                  onClick={() =>
+                    runBillingAction({ action: 'past_due' }, 'Marked past due')
+                  }
+                >
+                  Mark past due
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={billingActionLoading}
+                  onClick={() => {
+                    if (!confirm('Cancel at period end?')) return;
+                    runBillingAction(
+                      { action: 'cancel', immediately: false },
+                      'Cancellation scheduled'
+                    );
+                  }}
+                >
+                  Cancel at period end
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={billingActionLoading}
+                  onClick={() => {
+                    if (!confirm('Cancel immediately?')) return;
+                    runBillingAction(
+                      { action: 'cancel', immediately: true },
+                      'Subscription canceled'
+                    );
+                  }}
+                >
+                  Cancel now
+                </Button>
+              </div>
+
+              <div className="border-t border-[var(--border-primary)] pt-4">
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+                  Limits override
+                </h4>
+                <p className="mb-3 text-xs text-[var(--text-muted)]">
+                  Leave blank to use plan defaults. Use <code>null</code> for unlimited.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-[var(--text-secondary)]">
+                      maxUsers
+                    </label>
+                    <input
+                      className="input h-9 w-full text-sm"
+                      placeholder="e.g. 5 or null"
+                      value={overrideForm.maxUsers}
+                      onChange={(e) =>
+                        setOverrideForm((f) => ({ ...f, maxUsers: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-[var(--text-secondary)]">
+                      maxClients
+                    </label>
+                    <input
+                      className="input h-9 w-full text-sm"
+                      placeholder="e.g. 200 or null"
+                      value={overrideForm.maxClients}
+                      onChange={(e) =>
+                        setOverrideForm((f) => ({ ...f, maxClients: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-[var(--text-secondary)]">
+                      aiEnabled
+                    </label>
+                    <select
+                      className="select h-9 w-full text-sm"
+                      value={overrideForm.aiEnabled}
+                      onChange={(e) =>
+                        setOverrideForm((f) => ({
+                          ...f,
+                          aiEnabled: e.target.value as '' | 'true' | 'false',
+                        }))
+                      }
+                    >
+                      <option value="">Plan default</option>
+                      <option value="true">Force on</option>
+                      <option value="false">Force off</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveOverride}
+                    disabled={overrideSaving}
+                  >
+                    {overrideSaving ? 'Saving…' : 'Save override'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={overrideSaving}
+                    onClick={() =>
+                      runBillingAction(
+                        { action: 'override', override: {} },
+                        'Override cleared'
+                      ).then(() =>
+                        setOverrideForm({ maxUsers: '', maxClients: '', aiEnabled: '' })
+                      )
+                    }
+                  >
+                    Clear override
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -667,7 +1038,7 @@ export default function TenantProfile() {
                               handleUserUpdate(user.id, { role: e.target.value })
                             }
                             disabled={userActionLoading !== null}
-                            className="input h-8 max-w-[140px] px-2 text-xs"
+                            className="select h-8 max-w-[140px] px-2 text-xs"
                           >
                             {USER_ROLES.map((r) => (
                               <option key={r} value={r}>

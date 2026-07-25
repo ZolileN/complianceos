@@ -733,7 +733,7 @@ export default function FleetOverview() {
                   onChange={(e) =>
                     setProvisionForm((prev) => ({ ...prev, plan: e.target.value }))
                   }
-                  className="input w-full"
+                  className="select w-full"
                 >
                   {TENANT_PLANS.map((p) => (
                     <option key={p} value={p}>

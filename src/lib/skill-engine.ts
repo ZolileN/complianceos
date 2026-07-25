@@ -341,6 +341,10 @@ export async function executeSkill(
 ): Promise<SkillExecutionResult> {
   const startTime = Date.now();
 
+  // Plan gate — AI / skills require Professional+
+  const { requireAiFeature } = await import('@/lib/entitlements');
+  await requireAiFeature(context.tenantId);
+
   // 1. Resolve the skill
   const skill = await prisma.skill.findUnique({
     where: { slug: skillSlug },

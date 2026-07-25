@@ -4,6 +4,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { sendWhatsAppMessage } from '@/lib/twilio';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import {
+  assertWhatsappEnabled,
+  incrementUsage,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -19,6 +27,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    try {
+      await assertWhatsappEnabled(tenantId);
+    } catch (err) {
+      if (err instanceof PlanLimitError) return planLimitResponse(err);
+      if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+      throw err;
+    }
+
     const result = await sendWhatsAppMessage(to, message);
     const waMessageId = result.sid;
 
@@ -32,14 +48,16 @@ export async function POST(request: NextRequest) {
           messageType: 'text',
           whatsappMessageId: waMessageId || null,
           status: 'sent',
-        }
+        },
       });
 
       await prisma.conversation.update({
         where: { id: conversation_id },
-        data: { lastMessageAt: new Date() }
+        data: { lastMessageAt: new Date() },
       });
     }
+
+    await incrementUsage(tenantId, 'whatsapp_messages', 1).catch(() => undefined);
 
     if (tenantId && user.id) {
       emitSkillEvent(tenantId, 'message.sent', user.id, user.role || 'client', {

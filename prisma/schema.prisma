@@ -94,6 +94,8 @@ model Tenant {
   plan      String   @default("starter")
   isActive  Boolean  @default(true)
   settings  String   @default("{}") // SQLite doesn't support JSON, use String
+  /// JSON overrides for Enterprise/custom deals, e.g. { "maxUsers": 50, "aiEnabled": true }
+  limitsOverride String @default("{}")
   
   whatsappProvider       String    @default("twilio") // Twilio WhatsApp
   whatsappSetupComplete  Boolean   @default(false)
@@ -117,11 +119,59 @@ model Tenant {
   skillReviews        SkillReview[]
   customSkills        Skill[] @relation("TenantSkills")
   skillSuggestions    SkillSuggestion[]
+  subscription        Subscription?
+  usageCounters       UsageCounter[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   auditLogs AuditLog[]
+}
+
+/// Billing subscription for a tenant. Provider IDs stay empty until Stitch/Ozow checkout completes.
+model Subscription {
+  id        String @id @default(cuid())
+  tenantId  String @unique
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan      String // starter | growth | professional | enterprise
+  status    String @default("trialing") // trialing | active | past_due | canceled | incomplete
+
+  trialStartsAt      DateTime?
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean  @default(false)
+  canceledAt         DateTime?
+
+  /// manual | stitch | ozow
+  provider               String  @default("manual")
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  providerPlanId         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([provider])
+}
+
+/// Metered usage buckets (e.g. whatsapp_messages for 2026-07).
+model UsageCounter {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  metric    String   // whatsapp_messages | documents | skill_llm_tokens
+  periodKey String   // YYYY-MM for monthly buckets
+  quantity  Int      @default(0)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, metric, periodKey])
+  @@index([tenantId, metric])
 }
 
 model Client {
@@ -406,6 +456,11 @@ enum AdminActionType {
   COMPLETE_ONBOARDING
   REJECT_ONBOARDING
   REASSIGN_ONBOARDING
+  START_TRIAL
+  ACTIVATE_SUBSCRIPTION
+  MARK_PAST_DUE
+  CANCEL_SUBSCRIPTION
+  UPDATE_LIMITS_OVERRIDE
 }
 
 model AdminAuditLog {

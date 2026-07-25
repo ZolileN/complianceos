@@ -6,6 +6,13 @@ import crypto from 'crypto';
 import { logAuditAction } from '@/lib/auditLogger';
 import { sendTeamInviteEmail } from '@/lib/email';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import {
+  assertSeatAvailable,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -65,6 +72,14 @@ export async function POST(request: NextRequest) {
     // Prevent operations manager from creating an administrator
     if (currentUser.role === 'operations_manager' && role === 'administrator') {
       return NextResponse.json({ error: 'Operations managers cannot create administrator accounts' }, { status: 403 });
+    }
+
+    try {
+      await assertSeatAvailable(tenantId);
+    } catch (err) {
+      if (err instanceof PlanLimitError) return planLimitResponse(err);
+      if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+      throw err;
     }
 
     // Check if email already exists

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  CreditCard,
   Gauge,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ import Logo from '@/components/Logo';
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/admin', label: 'Fleet Overview', icon: Gauge },
+  { href: '/admin/billing', label: 'Billing', icon: CreditCard },
   { href: '/admin/team', label: 'Platform Team', icon: UsersRound },
   { href: '/admin/audit-logs', label: 'System Audit Logs', icon: ScrollText },
   { href: '/admin/webhooks', label: 'Webhook & Metering', icon: Webhook },

@@ -462,6 +462,7 @@ export default function Home() {
             <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
               <li>3 users</li>
               <li>100 clients</li>
+              <li>14-day free trial</li>
             </ul>
             <Link href="/signup" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Get Started</Link>
           </div>
@@ -490,6 +491,7 @@ export default function Home() {
             </div>
             <ul className="feature-bullets" style={{ flex: 1, marginBottom: 32 }}>
               <li>Unlimited users</li>
+              <li>Unlimited clients</li>
               <li>AI features</li>
             </ul>
             <Link href="/signup" className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>Get Started</Link>

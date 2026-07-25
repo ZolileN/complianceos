@@ -3,6 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import {
+  requireAiFeature,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -14,6 +21,14 @@ export async function POST(request: NextRequest) {
 
   if (currentUser.role !== 'administrator') {
     return NextResponse.json({ error: 'Only administrators can install skills' }, { status: 403 });
+  }
+
+  try {
+    await requireAiFeature(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
   }
 
   const body = await request.json();
