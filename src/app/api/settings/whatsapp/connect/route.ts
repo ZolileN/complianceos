@@ -8,12 +8,10 @@ import { sendVerificationCode, normaliseToE164 } from '@/lib/twilio';
 /**
  * POST /api/settings/whatsapp/connect
  *
- * Twilio Self-Service WhatsApp Connection Flow:
- * - Accepts { phoneNumber } from the settings UI
- * - Sends an OTP via Twilio Verify to validate ownership
- * - Marks the tenant as pending verification
- * 
- * The actual verification (OTP check) happens at /api/settings/whatsapp/verify
+ * Accepts { phoneNumber } and connects Twilio WhatsApp for the tenant.
+ *
+ * OTP via Twilio Verify is the intended production path.
+ * Set TWILIO_SKIP_OTP=true to bypass Verify during sandbox/trial testing.
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -38,19 +36,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
-    // Normalise to E.164 format
     const e164Number = normaliseToE164(phoneNumber);
+    const skipOtp = process.env.TWILIO_SKIP_OTP === 'true';
 
-    // Send OTP verification code via Twilio Verify
+    // Testing bypass: mark connected without Twilio Verify SMS
+    if (skipOtp) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: {
+          whatsappPhoneNumber: e164Number,
+          whatsappProvider: 'twilio',
+          whatsappSetupComplete: true,
+          whatsappVerifiedName: e164Number,
+        },
+      });
+
+      await logAuditAction({
+        tenantId,
+        userId: (session.user as { id: string }).id,
+        action: 'UPDATE',
+        entityType: 'Tenant',
+        entityId: tenantId,
+        details: {
+          action: 'WhatsApp Twilio Connect — OTP bypassed (TWILIO_SKIP_OTP)',
+          phoneNumber: e164Number,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        connected: true,
+        skippedOtp: true,
+        phoneNumber: e164Number,
+        message: 'WhatsApp connected (OTP verification bypassed for testing).',
+      });
+    }
+
     const verifyStatus = await sendVerificationCode(e164Number);
 
-    // Store the phone number on the tenant (not yet fully connected)
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         whatsappPhoneNumber: e164Number,
         whatsappProvider: 'twilio',
-        // Don't set whatsappSetupComplete yet — wait for OTP verification
       },
     });
 
@@ -65,6 +93,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      connected: false,
+      skippedOtp: false,
       status: verifyStatus,
       phoneNumber: e164Number,
       message: 'Verification code sent. Please check your phone for the OTP.',

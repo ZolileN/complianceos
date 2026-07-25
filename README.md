@@ -50,6 +50,7 @@ Ensure you have the following installed:
     *   `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID`
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
+    *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP during Twilio sandbox/trial testing).
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

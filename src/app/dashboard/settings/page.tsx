@@ -142,11 +142,22 @@ function SettingsPageContent() {
         body: JSON.stringify({ phoneNumber: connectPhone }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send verification code');
+      if (!res.ok) throw new Error(data.error || 'Failed to connect WhatsApp');
+
+      // Testing path: TWILIO_SKIP_OTP marks the tenant connected immediately
+      if (data.connected || data.skippedOtp) {
+        toast(data.message || 'WhatsApp connected!', 'success');
+        setConnectStep('phone');
+        setConnectPhone('');
+        setOtpCode('');
+        setRefreshKey((prev) => prev + 1);
+        return;
+      }
+
       toast('Verification code sent to your phone!', 'success');
       setConnectStep('otp');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send verification code';
+      const msg = err instanceof Error ? err.message : 'Failed to connect WhatsApp';
       toast(msg, 'error');
     } finally {
       setSaving(false);

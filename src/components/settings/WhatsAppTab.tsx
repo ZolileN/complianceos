@@ -108,22 +108,18 @@ export default function WhatsAppTab({
       <div className="card">
         <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Connect Your WhatsApp Number</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-          Link your WhatsApp number to start receiving and sending messages directly from PraxisOne. We&apos;ll verify your
-          number with a one-time code.
+          Link your WhatsApp number to start receiving and sending messages from PraxisOne. OTP verification is temporarily
+          bypassed for sandbox testing — enter your number and connect.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
           <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             <span>1️⃣</span>
-            <span>Enter your WhatsApp phone number below.</span>
+            <span>Join the Twilio Sandbox from WhatsApp (send the join code to the sandbox number).</span>
           </div>
           <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             <span>2️⃣</span>
-            <span>Receive a verification code via SMS.</span>
-          </div>
-          <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            <span>3️⃣</span>
-            <span>Enter the code — your WhatsApp is instantly connected to PraxisOne.</span>
+            <span>Enter that same WhatsApp number below and connect.</span>
           </div>
         </div>
 
@@ -141,12 +137,12 @@ export default function WhatsAppTab({
                 style={{ maxWidth: 340 }}
               />
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Enter your number with country code. We&apos;ll send a verification code via SMS.
+                Enter your number with country code (e.g. +2782…).
               </span>
             </div>
             <div style={{ marginTop: 8 }}>
               <button type="submit" className="btn btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {saving ? <span className="spinner" /> : '📱 Send Verification Code'}
+                {saving ? <span className="spinner" /> : '📱 Connect WhatsApp'}
               </button>
             </div>
           </form>
