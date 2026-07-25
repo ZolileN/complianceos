@@ -24,10 +24,9 @@ export async function GET() {
         plan: true,
         createdAt: true,
         whatsappSetupComplete: true,
-        whatsappPhoneNumberId: true,
-        whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
-        whatsappAccessToken: true,
+        whatsappVerifiedName: true,
+        whatsappProvider: true,
         email: true,
         contactNumber: true,
         address: true,
@@ -39,32 +38,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Auto-backfill metadata from Meta's API if it is missing
-    if (tenant.whatsappSetupComplete && tenant.whatsappPhoneNumberId && tenant.whatsappAccessToken && (!tenant.whatsappPhoneNumber || !tenant.whatsappVerifiedName)) {
-      try {
-        const verifyRes = await fetch(`https://graph.facebook.com/v21.0/${tenant.whatsappPhoneNumberId}?access_token=${tenant.whatsappAccessToken}`);
-        if (verifyRes.ok) {
-          const verifyData = await verifyRes.json();
-          const verifiedName = verifyData.verified_name || 'Connected Account';
-          const displayPhoneNumber = verifyData.display_phone_number || '';
-          
-          await prisma.tenant.update({
-            where: { id: tenantId },
-            data: {
-              whatsappVerifiedName: verifiedName,
-              whatsappPhoneNumber: displayPhoneNumber
-            }
-          });
-
-          tenant.whatsappVerifiedName = verifiedName;
-          tenant.whatsappPhoneNumber = displayPhoneNumber;
-        }
-      } catch (err) {
-        console.error('Failed to backfill WhatsApp metadata:', err);
-      }
-    }
-
-    // Omit access token from client response
+    // Omit sensitive fields from client response
     const safeTenant = {
       id: tenant.id,
       name: tenant.name,
@@ -72,9 +46,9 @@ export async function GET() {
       plan: tenant.plan,
       createdAt: tenant.createdAt,
       whatsappSetupComplete: tenant.whatsappSetupComplete,
-      whatsappPhoneNumberId: tenant.whatsappPhoneNumberId,
-      whatsappVerifiedName: tenant.whatsappVerifiedName,
       whatsappPhoneNumber: tenant.whatsappPhoneNumber,
+      whatsappVerifiedName: tenant.whatsappVerifiedName,
+      whatsappProvider: tenant.whatsappProvider,
       email: tenant.email,
       contactNumber: tenant.contactNumber,
       address: tenant.address,
@@ -147,9 +121,9 @@ export async function PUT(request: NextRequest) {
         plan: true,
         createdAt: true,
         whatsappSetupComplete: true,
-        whatsappPhoneNumberId: true,
-        whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
+        whatsappVerifiedName: true,
+        whatsappProvider: true,
         email: true,
         contactNumber: true,
         address: true,

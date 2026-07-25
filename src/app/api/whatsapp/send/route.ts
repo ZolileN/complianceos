@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { sendTextMessage } from '@/lib/whatsapp';
+import { sendWhatsAppMessage } from '@/lib/twilio';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -17,17 +17,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { whatsappPhoneNumberId: true, whatsappAccessToken: true }
-    });
-
-    const credentials = tenant?.whatsappPhoneNumberId && tenant?.whatsappAccessToken
-      ? { phoneNumberId: tenant.whatsappPhoneNumberId, accessToken: tenant.whatsappAccessToken }
-      : undefined;
-
-    const result = await sendTextMessage(to, message, credentials);
-    const waMessageId = result.messages?.[0]?.id;
+    const result = await sendWhatsAppMessage(to, message);
+    const waMessageId = result.sid;
 
     if (conversation_id) {
       await prisma.message.create({
@@ -51,6 +42,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, message_id: waMessageId });
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+    console.error('Twilio send error:', err);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

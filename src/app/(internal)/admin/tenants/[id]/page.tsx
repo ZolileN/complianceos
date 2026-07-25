@@ -263,7 +263,7 @@ export default function TenantProfile() {
         </div>
 
         <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 20 }}>
-          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Integration</h3>
+          <h3 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp (Twilio)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, fontSize: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#64748B' }}>WhatsApp Linkage:</span>
@@ -531,7 +531,7 @@ export default function TenantProfile() {
               </div>
             ) : logs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#888888', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                No telemetry logs found for this tenant. Logs appear as system events occur (suspension, WABA disconnections, WhatsApp webhooks).
+                No telemetry logs found for this tenant. Logs appear as system events occur (suspension, WhatsApp disconnects, WhatsApp webhooks).
               </div>
             ) : (
               <div style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.75rem', padding: 12 }}>

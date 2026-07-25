@@ -88,6 +88,8 @@ export async function getTenantLogs(tenantId: string): Promise<RedisTenantLog[]>
 
 /**
  * Returns the current backlog depth of the WhatsApp webhook ingestion queue.
+ * Inbound Twilio messages are processed synchronously; this queue is only used
+ * for optional async jobs (e.g. status callbacks) and leftover Meta payloads.
  */
 export async function getQueueDepth(): Promise<number> {
   try {

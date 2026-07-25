@@ -19,17 +19,17 @@ export async function GET() {
       where: { id: tenantId },
       select: {
         whatsappSetupComplete: true,
-        whatsappPhoneNumberId: true,
-        whatsappVerifiedName: true,
         whatsappPhoneNumber: true,
+        whatsappVerifiedName: true,
+        whatsappProvider: true,
       }
     });
 
     return NextResponse.json({
       connected: tenant?.whatsappSetupComplete || false,
-      phoneNumberId: tenant?.whatsappPhoneNumberId || null,
-      verifiedName: tenant?.whatsappVerifiedName || null,
       phoneNumber: tenant?.whatsappPhoneNumber || null,
+      verifiedName: tenant?.whatsappVerifiedName || null,
+      provider: tenant?.whatsappProvider || 'twilio',
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error fetching status';
@@ -57,11 +57,10 @@ export async function DELETE() {
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        whatsappPhoneNumberId: null,
-        whatsappAccessToken: null,
         whatsappSetupComplete: false,
         whatsappVerifiedName: null,
         whatsappPhoneNumber: null,
+        whatsappProvider: 'twilio',
       }
     });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -12,9 +12,9 @@ interface CompanyData {
   plan: string;
   createdAt: string;
   whatsappSetupComplete: boolean;
-  whatsappPhoneNumberId: string | null;
-  whatsappVerifiedName: string | null;
   whatsappPhoneNumber: string | null;
+  whatsappVerifiedName: string | null;
+  whatsappProvider: string | null;
   email: string | null;
   contactNumber: string | null;
   address: string | null;
@@ -37,7 +37,6 @@ function SettingsPageContent() {
   
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const codeParam = searchParams.get('code');
 
   const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>('personal');
 
@@ -51,20 +50,25 @@ function SettingsPageContent() {
       } else {
         if (tabParam === 'personal') {
           setActiveTab('personal');
-        } else if (tabParam === 'whatsapp' || codeParam) {
+        } else if (tabParam === 'whatsapp') {
           setActiveTab('whatsapp');
         } else {
           setActiveTab('profile');
         }
       }
     }
-  }, [user, tabParam, codeParam]);
+  }, [user, tabParam]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [personal, setPersonal] = useState<PersonalData | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Twilio WhatsApp Connect State
+  const [connectPhone, setConnectPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [connectStep, setConnectStep] = useState<'phone' | 'otp'>('phone');
 
   // Change Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -87,12 +91,6 @@ function SettingsPageContent() {
     email: '',
     contactNumber: '',
     image: '',
-  });
-
-  // Manual WhatsApp Form State
-  const [manualForm, setManualForm] = useState({
-    phoneNumberId: '',
-    accessToken: '',
   });
 
   // Fetch all company, WhatsApp, and personal settings
@@ -152,56 +150,60 @@ function SettingsPageContent() {
     };
   }, [tenant, toast, refreshKey]);
 
-  // Exchange the Embedded Signup authorization code for tenant credentials.
-  // NOTE: Do NOT pass redirectUri — Meta Embedded Signup does not use one.
-  const exchangeCode = useCallback(async (code: string) => {
+  // Twilio WhatsApp Connect — Step 1: Send OTP
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!connectPhone.trim()) {
+      toast('Please enter your WhatsApp number', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/settings/whatsapp/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ phoneNumber: connectPhone }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to exchange token');
-      toast('WhatsApp Business successfully connected!', 'success');
-      setRefreshKey(prev => prev + 1);
+      if (!res.ok) throw new Error(data.error || 'Failed to send verification code');
+      toast('Verification code sent to your phone!', 'success');
+      setConnectStep('otp');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to connect WhatsApp';
+      const msg = err instanceof Error ? err.message : 'Failed to send verification code';
       toast(msg, 'error');
     } finally {
       setSaving(false);
     }
-  }, [toast]);
+  };
 
-  // Load Meta JS SDK when the WhatsApp tab is active.
-  // FB.login() must be available before the user clicks Connect.
-  useEffect(() => {
-    if (activeTab !== 'whatsapp') return;
-    const appId = process.env.NEXT_PUBLIC_META_APP_ID || '';
-    if (!appId || typeof window === 'undefined') return;
-
-    // Avoid loading the script twice
-    if (document.getElementById('facebook-jssdk')) {
-      // SDK already injected — just ensure it's initialised
-      if (typeof window.FB !== 'undefined') {
-        window.FB.init({ appId, version: 'v25.0', cookie: true, xfbml: false });
-      }
+  // Twilio WhatsApp Connect — Step 2: Verify OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode.trim()) {
+      toast('Please enter the verification code', 'error');
       return;
     }
-
-    // Set the FB async init callback before loading the script
-    window.fbAsyncInit = function () {
-      window.FB.init({ appId, version: 'v25.0', cookie: true, xfbml: false });
-    };
-
-    const script = document.createElement('script');
-    script.id = 'facebook-jssdk';
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-  }, [activeTab]);
+    setSaving(true);
+    try {
+      const res = await fetch('/api/settings/whatsapp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Verification failed');
+      toast('WhatsApp number verified and connected!', 'success');
+      setConnectStep('phone');
+      setConnectPhone('');
+      setOtpCode('');
+      setRefreshKey(prev => prev + 1);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Verification failed';
+      toast(msg, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Save Profile Changes
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -329,77 +331,7 @@ function SettingsPageContent() {
     }
   };
 
-  // Launch Meta Embedded Signup via the Facebook JS SDK popup.
-  // IMPORTANT: FB.login() MUST be called synchronously from a user click event.
-  // Calling it from a setTimeout or async context will cause the popup to be blocked.
-  const handleEmbeddedSignup = () => {
-    const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || '';
 
-    if (!configId) {
-      toast('WhatsApp connection is not configured correctly. Missing Config ID.', 'error');
-      return;
-    }
-
-    if (typeof window.FB === 'undefined') {
-      toast('Meta SDK is still loading — please wait a moment and try again.', 'error');
-      return;
-    }
-
-    window.FB.login(
-      function (response: { authResponse?: { code?: string } }) {
-        if (response.authResponse?.code) {
-          exchangeCode(response.authResponse.code);
-        } else {
-          // User closed the popup or denied permissions
-          toast('WhatsApp connection cancelled.', 'error');
-        }
-      },
-      {
-        config_id: configId,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          setup: {},
-          featureType: '',
-          sessionInfoVersion: '3',
-        },
-      }
-    );
-  };
-
-  // Save Manual WhatsApp Setup
-  const handleManualSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualForm.phoneNumberId || !manualForm.accessToken) {
-      toast('Please fill in all manual settings fields', 'error');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await fetch('/api/settings/whatsapp/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          isManual: true,
-          phoneNumberId: manualForm.phoneNumberId,
-          accessToken: manualForm.accessToken,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save manual settings');
-
-      toast('WhatsApp Business credentials saved successfully!', 'success');
-      setManualForm({ phoneNumberId: '', accessToken: '' });
-      setRefreshKey(prev => prev + 1);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to save manual settings';
-      toast(msg, 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // Disconnect WhatsApp
   const handleDisconnect = async () => {
@@ -601,9 +533,9 @@ function SettingsPageContent() {
                 <span style={{ fontWeight: 500 }}>{new Date(company.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</span>
               </div>
               <div className="flex-between" style={{ fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>WhatsApp Connection Status</span>
+                <span style={{ color: 'var(--text-secondary)' }}>WhatsApp Connection</span>
                 <span className={`badge ${company.whatsappSetupComplete ? 'badge-green' : 'badge-gray'}`}>
-                  {company.whatsappSetupComplete ? 'Connected' : 'Not Connected'}
+                  {company.whatsappSetupComplete ? 'Connected (Twilio)' : 'Not Connected'}
                 </span>
               </div>
             </div>
@@ -618,9 +550,9 @@ function SettingsPageContent() {
               <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
                 <div style={{ fontSize: '2rem' }}>✅</div>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 4 }}>WhatsApp Business Connected</h3>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 4 }}>WhatsApp Connected via Twilio</h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 12 }}>
-                    Clients can now message you on your connected number. Your incoming messages will appear automatically in the Inbox.
+                    Your WhatsApp number is verified and connected. Incoming messages will appear automatically in the Inbox.
                   </p>
                   
                   <div style={{ 
@@ -634,19 +566,33 @@ function SettingsPageContent() {
                     marginBottom: 16,
                     fontSize: '0.85rem'
                   }}>
-                    {company.whatsappVerifiedName && (
-                      <div>
-                        <strong style={{ color: 'var(--text-muted)' }}>Verified Name:</strong> <span style={{ fontWeight: 500 }}>{company.whatsappVerifiedName}</span>
-                      </div>
-                    )}
                     {company.whatsappPhoneNumber && (
                       <div>
-                        <strong style={{ color: 'var(--text-muted)' }}>WhatsApp Number:</strong> <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{company.whatsappPhoneNumber}</span>
+                        <strong style={{ color: 'var(--text-muted)' }}>WhatsApp Number:</strong>{' '}
+                        <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{company.whatsappPhoneNumber}</span>
                       </div>
                     )}
                     <div>
-                      <strong style={{ color: 'var(--text-muted)' }}>Phone Number ID:</strong> <code>{company.whatsappPhoneNumberId}</code>
+                      <strong style={{ color: 'var(--text-muted)' }}>Provider:</strong>{' '}
+                      <span className="badge badge-green" style={{ textTransform: 'capitalize' }}>Twilio</span>
                     </div>
+                    <div>
+                      <strong style={{ color: 'var(--text-muted)' }}>Status:</strong>{' '}
+                      <span className="badge badge-green">Active</span>
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    padding: '10px 14px', 
+                    background: 'rgba(59,130,246,0.07)', 
+                    border: '1px solid rgba(59,130,246,0.15)', 
+                    borderRadius: 'var(--radius-sm)', 
+                    fontSize: '0.8rem', 
+                    color: 'var(--text-secondary)',
+                    marginBottom: 16
+                  }}>
+                    💡 <strong>Sandbox Mode:</strong> Messages are routed through the Twilio Sandbox number. 
+                    Clients must first join the sandbox by sending the join code to the Twilio sandbox number before messages can be received.
                   </div>
 
                   <button 
@@ -662,77 +608,114 @@ function SettingsPageContent() {
             </div>
           ) : (
             <div className="stack">
-              {/* Connection Type Tabs */}
               <div className="card">
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Connect in 60 Seconds</h3>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Connect Your WhatsApp Number</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-                  Use Meta&apos;s secure Embedded Signup flow to link your WhatsApp Business number. A secure popup will open — no page redirect required.
+                  Link your WhatsApp number to start receiving and sending messages directly from PraxisOne. We&apos;ll verify your number with a one-time code.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>1️⃣</span>
-                    <span>Click <strong>Connect WhatsApp</strong> — a secure Meta popup will open.</span>
+                    <span>Enter your WhatsApp phone number below.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>2️⃣</span>
-                    <span>Select your Business Portfolio, WhatsApp Business Account, and phone number.</span>
+                    <span>Receive a verification code via SMS.</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     <span>3️⃣</span>
-                    <span>Grant permissions — the popup closes automatically and your account is connected.</span>
+                    <span>Enter the code — your WhatsApp is instantly connected to PraxisOne.</span>
                   </div>
                 </div>
 
-                <button 
-                  className="btn btn-primary" 
-                  onClick={handleEmbeddedSignup}
-                  disabled={saving}
-                  style={{ background: '#1877F2', borderColor: '#1877F2', display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                  {saving ? <span className="spinner" /> : '🔵 Connect WhatsApp Business'}
-                </button>
+                {connectStep === 'phone' ? (
+                  <form onSubmit={handleSendOtp} className="stack">
+                    <div className="form-group">
+                      <label className="form-label">WhatsApp Phone Number</label>
+                      <input 
+                        className="input" 
+                        type="tel"
+                        required 
+                        value={connectPhone} 
+                        onChange={(e) => setConnectPhone(e.target.value)}
+                        placeholder="e.g. +27 82 531 9901"
+                        style={{ maxWidth: 340 }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Enter your number with country code. We&apos;ll send a verification code via SMS.
+                      </span>
+                    </div>
+                    <div style={{ marginTop: 8 }}>
+                      <button type="submit" className="btn btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {saving ? <span className="spinner" /> : '📱 Send Verification Code'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOtp} className="stack">
+                    <div style={{ 
+                      padding: '10px 14px', 
+                      background: 'rgba(16,185,129,0.07)', 
+                      border: '1px solid rgba(16,185,129,0.15)', 
+                      borderRadius: 'var(--radius-sm)', 
+                      fontSize: '0.85rem', 
+                      color: 'var(--text-secondary)',
+                      marginBottom: 8
+                    }}>
+                      ✅ Verification code sent to <strong style={{ color: 'var(--text-primary)' }}>{connectPhone}</strong>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Verification Code</label>
+                      <input 
+                        className="input" 
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        required 
+                        value={otpCode} 
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        placeholder="Enter 6-digit code"
+                        style={{ maxWidth: 200, letterSpacing: '0.3em', fontSize: '1.2rem', textAlign: 'center', fontWeight: 600 }}
+                        autoFocus
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                      <button type="submit" className="btn btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {saving ? <span className="spinner" /> : '✓ Verify & Connect'}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        onClick={() => { setConnectStep('phone'); setOtpCode(''); }}
+                      >
+                        ← Change Number
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
-              <div className="card">
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Manual Developer Setup</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-                  If you have a developer access token and phone number ID from your Meta Developer Console, enter them directly below.
+              <div className="card" style={{ background: 'rgba(59,130,246,0.02)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 8 }}>ℹ️ Twilio Sandbox Setup</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 12 }}>
+                  PraxisOne uses the Twilio WhatsApp Sandbox for development. To test messaging, your clients need to:
                 </p>
-
-                <form onSubmit={handleManualSave} className="stack">
-                  <div className="form-group">
-                    <label className="form-label">WhatsApp Phone Number ID</label>
-                    <input 
-                      className="input" 
-                      required 
-                      value={manualForm.phoneNumberId} 
-                      onChange={(e) => setManualForm(p => ({ ...p, phoneNumberId: e.target.value }))}
-                      placeholder="e.g. 1166894683176895"
-                    />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The ID of your verified business phone number in Meta App console.</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span>1.</span>
+                    <span>Save the Twilio Sandbox number <strong style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>+1 (415) 523-8886</strong> in their contacts.</span>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">System User / Permanent Access Token</label>
-                    <textarea 
-                      className="input" 
-                      required 
-                      rows={4}
-                      value={manualForm.accessToken} 
-                      onChange={(e) => setManualForm(p => ({ ...p, accessToken: e.target.value }))}
-                      placeholder="EAAVGGRx7vzoBRwX..."
-                      style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
-                    />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A long-lived or permanent system user token with access to send messages.</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span>2.</span>
+                    <span>Send the sandbox join code (e.g. <code>join &lt;your-code&gt;</code>) to that number via WhatsApp.</span>
                   </div>
-
-                  <div style={{ marginTop: 12 }}>
-                    <button type="submit" className="btn btn-primary" disabled={saving}>
-                      {saving ? <span className="spinner" /> : 'Save Settings'}
-                    </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span>3.</span>
+                    <span>Once joined, all their messages to the sandbox number will arrive in your PraxisOne Inbox.</span>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
           )}

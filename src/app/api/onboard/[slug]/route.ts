@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTextMessage } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, normaliseToE164 } from '@/lib/twilio';
 
 // ── GET /api/onboard/[slug] ───────────────────────────────────────────────────
 // Public endpoint: returns the tenant's display name so the onboarding
@@ -37,8 +37,7 @@ export async function POST(
     select: { 
       id: true, 
       name: true,
-      whatsappPhoneNumberId: true,
-      whatsappAccessToken: true
+      whatsappSetupComplete: true,
     },
   });
 
@@ -107,20 +106,17 @@ export async function POST(
   });
 
   // ── WhatsApp welcome message (fire-and-forget, non-blocking) ─────────────
-  if (whatsapp_number?.trim()) {
-    const sanitised = whatsapp_number.trim().replace(/\D/g, '');
+  if (whatsapp_number?.trim() && tenant.whatsappSetupComplete) {
+    const e164 = normaliseToE164(whatsapp_number.trim());
     const welcomeMsg =
       `👋 Hi! Welcome to *${tenant.name}*.\n\n` +
       `We've received your onboarding details for *${company_name.trim()}* and your profile is now being set up. ` +
       `A consultant will be in touch shortly to guide you through the next steps.\n\n` +
       `Thank you for choosing us! 🙏`;
 
-    const credentials = tenant.whatsappPhoneNumberId && tenant.whatsappAccessToken
-      ? { phoneNumberId: tenant.whatsappPhoneNumberId, accessToken: tenant.whatsappAccessToken }
-      : undefined;
-
-    sendTextMessage(sanitised, welcomeMsg, credentials).catch(err => {
-      console.warn('[Onboarding] WhatsApp welcome message failed (non-critical):', err?.message);
+    sendWhatsAppMessage(e164, welcomeMsg).catch(err => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[Onboarding] WhatsApp welcome message failed (non-critical):', msg);
     });
   }
 

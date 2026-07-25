@@ -175,7 +175,7 @@ export default function WebhooksAndMetering() {
         <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 500 }}>
           <div style={{ padding: 16, borderBottom: '1px solid #1F1F1F' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#FFFFFF' }}>Webhook Payload Inspector</h3>
-            <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Inspect JSON bodies of incoming Meta event loops.</p>
+            <p style={{ fontSize: '0.7rem', color: '#888888', marginTop: 2 }}>Inspect JSON bodies of incoming WhatsApp webhook events.</p>
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#000000', fontFamily: 'monospace', fontSize: '0.7rem' }}>
             {activeLog ? (
