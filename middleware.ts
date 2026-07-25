@@ -1,19 +1,35 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { PLATFORM_ADMIN_SLUGS } from "@/lib/platform-admin";
 
 export default withAuth(
   function middleware(req) {
-    const token = req.nextauth.token;
+    const token = req.nextauth.token as
+      | { role?: string; tenantSlug?: string; accessRevoked?: boolean }
+      | null;
     const path = req.nextUrl.pathname;
+
+    if (token?.accessRevoked) {
+      if (path.startsWith('/api/')) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Session revoked. Please sign in again.' }),
+          { status: 401, headers: { 'content-type': 'application/json' } }
+        );
+      }
+      return NextResponse.redirect(new URL('/login?error=session_revoked', req.url));
+    }
 
     if (path.startsWith('/admin') || path.startsWith('/api/admin')) {
       const userRole = token?.role;
       const tenantSlug = token?.tenantSlug;
-      
-      if (userRole !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(tenantSlug as string)) {
+
+      if (
+        userRole !== 'administrator' ||
+        !(PLATFORM_ADMIN_SLUGS as readonly string[]).includes(tenantSlug as string)
+      ) {
         if (path.startsWith('/api/')) {
           return new NextResponse(
-            JSON.stringify({ error: "Forbidden: Platform Administrator access required" }),
+            JSON.stringify({ error: 'Forbidden: Platform Administrator access required' }),
             { status: 403, headers: { 'content-type': 'application/json' } }
           );
         }
@@ -23,7 +39,11 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => {
+        if (!token) return false;
+        if ((token as { accessRevoked?: boolean }).accessRevoked) return false;
+        return true;
+      },
     },
   }
 );

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import { emitSkillEvent } from '@/lib/skill-triggers';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -76,6 +77,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       entityId: id,
       details: { title: task.title, status: task.status },
     });
+
+    if (
+      body.status === 'completed' &&
+      existingTask.status !== 'completed' &&
+      tenantId &&
+      currentUser.id
+    ) {
+      emitSkillEvent(tenantId, 'task.completed', currentUser.id, currentUser.role, {
+        taskId: task.id,
+        title: task.title,
+        clientId: task.clientId,
+      }).catch((err) => console.error('Skill event emission failed:', err));
+    }
 
     return NextResponse.json({ data: task });
   } catch (error: unknown) {

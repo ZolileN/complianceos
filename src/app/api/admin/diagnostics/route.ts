@@ -1,33 +1,117 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/prisma';
+import {
+  isPlatformAdminResponse,
+  requirePlatformAdmin,
+} from '@/lib/platform-admin';
 import { getQueueDepth, redis } from '@/lib/redis';
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
-  
-  if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+async function pingRedis(): Promise<{ ok: boolean; latencyMs: number | null }> {
+  const start = Date.now();
+  try {
+    const pong = await redis.ping();
+    return { ok: pong === 'PONG', latencyMs: Date.now() - start };
+  } catch {
+    return { ok: false, latencyMs: null };
   }
+}
+
+async function pingDatabase(): Promise<{
+  ok: boolean;
+  latencyMs: number | null;
+  tenantCount: number;
+}> {
+  const start = Date.now();
+  try {
+    const tenantCount = await prisma.tenant.count();
+    return { ok: true, latencyMs: Date.now() - start, tenantCount };
+  } catch {
+    return { ok: false, latencyMs: null, tenantCount: 0 };
+  }
+}
+
+export async function GET() {
+  const admin = await requirePlatformAdmin();
+  if (isPlatformAdminResponse(admin)) return admin;
 
   try {
-    const queueDepth = await getQueueDepth();
-    let lastVacuumTimestamp: string | null = null;
-    
-    try {
-      lastVacuumTimestamp = await redis.get('last_vacuum_timestamp');
-    } catch (redisError) {
-      console.error('Failed to retrieve last_vacuum_timestamp from Redis:', redisError);
-    }
+    const [queueDepth, redisHealth, dbHealth, aggregates, lastVacuumTimestamp] =
+      await Promise.all([
+        getQueueDepth().catch(() => -1),
+        pingRedis(),
+        pingDatabase(),
+        prisma.$transaction([
+          prisma.tenant.count({ where: { isActive: true } }),
+          prisma.tenant.count({ where: { isActive: false } }),
+          prisma.user.count({ where: { isActive: true } }),
+          prisma.client.count(),
+          prisma.conversation.count({ where: { status: 'open' } }),
+          prisma.message.count({
+            where: {
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              },
+            },
+          }),
+          prisma.document.count({
+            where: {
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+              },
+            },
+          }),
+          prisma.task.count({
+            where: { status: { in: ['new', 'processing', 'waiting_on_client'] } },
+          }),
+        ]),
+        redis.get('last_vacuum_timestamp').catch(() => null),
+      ]);
+
+    const [
+      activeTenants,
+      suspendedTenants,
+      activeUsers,
+      clients,
+      openConversations,
+      messages24h,
+      documents24h,
+      openTasks,
+    ] = aggregates;
+
+    const overallOk = redisHealth.ok && dbHealth.ok;
 
     return NextResponse.json({
       success: true,
       queueDepth,
-      lastVacuumTimestamp
+      lastVacuumTimestamp,
+      health: {
+        overall: overallOk ? 'healthy' : 'degraded',
+        checkedAt: new Date().toISOString(),
+        redis: redisHealth,
+        database: dbHealth,
+        process: {
+          uptimeSeconds: Math.floor(process.uptime()),
+          nodeVersion: process.version,
+          memoryRssMb: Math.round(process.memoryUsage().rss / (1024 * 1024)),
+          memoryHeapUsedMb: Math.round(
+            process.memoryUsage().heapUsed / (1024 * 1024)
+          ),
+        },
+      },
+      aggregates: {
+        activeTenants,
+        suspendedTenants,
+        activeUsers,
+        clients,
+        openConversations,
+        messages24h,
+        documents24h,
+        openTasks,
+      },
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to retrieve diagnostics';
+    const msg =
+      error instanceof Error ? error.message : 'Failed to retrieve diagnostics';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

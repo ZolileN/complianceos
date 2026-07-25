@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import {
+  isPlatformAdminResponse,
+  requirePlatformAdmin,
+} from '@/lib/platform-admin';
 import { AdminLogger } from '@/lib/admin-logs';
 import { redis } from '@/lib/redis';
 import { logAdminAction } from '@/lib/admin-audit';
 
 export async function POST() {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { email?: string; role?: string; tenantSlug?: string } | undefined;
-  if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const admin = await requirePlatformAdmin();
+  if (isPlatformAdminResponse(admin)) return admin;
 
   try {
     let successMessage = 'Storage maintenance tuning run successfully. Database vacuumed and optimized.';
@@ -32,12 +31,12 @@ export async function POST() {
     }
 
     // Log the platform admin action to DB
-    await logAdminAction('VACUUM_DATABASE', null, { executor: user?.email });
+    await logAdminAction('VACUUM_DATABASE', null, { executor: admin.email });
 
     AdminLogger.log(
       'system',
       'Automated storage tuning ran: Database tables optimized and index stats recalculated.',
-      { executor: user?.email }
+      { executor: admin.email }
     );
 
     return NextResponse.json({ success: true, message: successMessage });

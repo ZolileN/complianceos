@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import {
+  isPlatformAdminResponse,
+  requirePlatformAdmin,
+} from '@/lib/platform-admin';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  const adminUser = session?.user as { role?: string; tenantSlug?: string } | undefined;
-  
-  if (!session || adminUser?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(adminUser?.tenantSlug as string)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const admin = await requirePlatformAdmin();
+  if (isPlatformAdminResponse(admin)) return admin;
 
   const { id } = await params;
   if (!id) {

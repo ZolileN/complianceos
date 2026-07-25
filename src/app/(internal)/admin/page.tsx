@@ -9,8 +9,10 @@ import {
   Copy,
   Gauge,
   MessageSquare,
+  Plus,
   UsersRound,
   Webhook,
+  X,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +55,8 @@ interface OnboardingClient {
   };
 }
 
+const TENANT_PLANS = ['starter', 'growth', 'professional', 'enterprise'] as const;
+
 export default function FleetOverview() {
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [onboardingClients, setOnboardingClients] = useState<OnboardingClient[]>([]);
@@ -60,6 +64,18 @@ export default function FleetOverview() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [queueDepth, setQueueDepth] = useState<number>(0);
+
+  // Provision workspace dialog
+  const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [provisionForm, setProvisionForm] = useState({
+    firmName: '',
+    fullName: '',
+    email: '',
+    password: '',
+    plan: 'starter',
+  });
+  const [provisionLoading, setProvisionLoading] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   // Card filter state
   const [filterType, setFilterType] = useState<
@@ -128,6 +144,49 @@ export default function FleetOverview() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update tenant status');
       showToast(`Tenant successfully ${!currentStatus ? 'activated' : 'suspended'}`);
+      fetchData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Operation failed';
+      showToast(msg, 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleProvision = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProvisionLoading(true);
+    setProvisionError(null);
+    try {
+      const res = await fetch('/api/admin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(provisionForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to provision workspace');
+      showToast(`Workspace "${provisionForm.firmName}" provisioned successfully`);
+      setShowProvisionModal(false);
+      setProvisionForm({ firmName: '', fullName: '', email: '', password: '', plan: 'starter' });
+      fetchData();
+    } catch (err: unknown) {
+      setProvisionError(err instanceof Error ? err.message : 'Provisioning failed');
+    } finally {
+      setProvisionLoading(false);
+    }
+  };
+
+  const handleOnboardingAction = async (clientId: string, action: 'complete' | 'reject') => {
+    setActionLoading(`${clientId}-${action}`);
+    try {
+      const res = await fetch('/api/admin/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Failed to ${action} onboarding`);
+      showToast(`Client onboarding ${action === 'complete' ? 'completed' : 'rejected'}`);
       fetchData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Operation failed';
@@ -255,6 +314,10 @@ export default function FleetOverview() {
             Monitor workspace health, connectivity, and onboarding across the tenant fleet.
           </p>
         </div>
+        <Button onClick={() => setShowProvisionModal(true)}>
+          <Plus />
+          Provision workspace
+        </Button>
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -532,10 +595,13 @@ export default function FleetOverview() {
                       'Reg number',
                       'Intake initiated',
                       'Status block',
+                      'Actions',
                     ].map((label) => (
                       <th
                         key={label}
-                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"
+                        className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] ${
+                          label === 'Actions' ? 'text-right' : ''
+                        }`}
                       >
                         {label}
                       </th>
@@ -578,6 +644,26 @@ export default function FleetOverview() {
                       <td className="px-5 py-4">
                         <Badge variant="warning">Onboarding</Badge>
                       </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={actionLoading !== null}
+                            onClick={() => handleOnboardingAction(client.id, 'complete')}
+                          >
+                            {actionLoading === `${client.id}-complete` ? '...' : 'Complete'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={actionLoading !== null}
+                            onClick={() => handleOnboardingAction(client.id, 'reject')}
+                          >
+                            {actionLoading === `${client.id}-reject` ? '...' : 'Reject'}
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -586,6 +672,83 @@ export default function FleetOverview() {
           )}
         </CardContent>
       </Card>
+
+      {showProvisionModal && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="modal max-w-[480px]">
+            <div className="modal-header">
+              <h2 className="modal-title">Provision workspace</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close"
+                onClick={() => {
+                  setShowProvisionModal(false);
+                  setProvisionError(null);
+                }}
+              >
+                <X />
+              </Button>
+            </div>
+            <form onSubmit={handleProvision} className="modal-body space-y-4">
+              <p className="text-sm text-[var(--text-secondary)]">
+                Create a new tenant workspace with an administrator account.
+              </p>
+              {provisionError && (
+                <div className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  {provisionError}
+                </div>
+              )}
+              {(
+                [
+                  ['firmName', 'Firm name', 'text'],
+                  ['fullName', 'Admin full name', 'text'],
+                  ['email', 'Admin email', 'email'],
+                  ['password', 'Admin password', 'password'],
+                ] as const
+              ).map(([key, label, type]) => (
+                <div key={key}>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    required
+                    minLength={key === 'password' ? 6 : undefined}
+                    value={provisionForm[key]}
+                    onChange={(e) =>
+                      setProvisionForm((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    className="input w-full"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Plan
+                </label>
+                <select
+                  value={provisionForm.plan}
+                  onChange={(e) =>
+                    setProvisionForm((prev) => ({ ...prev, plan: e.target.value }))
+                  }
+                  className="input w-full"
+                >
+                  {TENANT_PLANS.map((p) => (
+                    <option key={p} value={p}>
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button type="submit" className="w-full" disabled={provisionLoading}>
+                {provisionLoading ? 'Provisioning...' : 'Create workspace'}
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

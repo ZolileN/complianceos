@@ -3,12 +3,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import {
+  Archive,
+  ArchiveRestore,
   Download,
   FileText,
   MessageSquareText,
   Plug,
   Send,
   Settings,
+  UserCheck,
 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +37,15 @@ function clientName(conversation?: Conversation | null) {
   return (conversation?.client as unknown as { company_name?: string })?.company_name;
 }
 
+type StatusFilter = 'open' | 'closed' | 'archived' | 'all';
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'open', label: 'Open' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'archived', label: 'Archived' },
+  { value: 'all', label: 'All' },
+];
+
 function clientId(conversation?: Conversation | null) {
   return (conversation?.client as unknown as { id?: string })?.id;
 }
@@ -50,6 +62,8 @@ export default function InboxPage() {
   const [convoRefreshKey, setConvoRefreshKey] = useState(0);
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [actionLoading, setActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,7 +82,10 @@ export default function InboxPage() {
     (async () => {
       if (convoRefreshKey === 0) setLoading(true);
       try {
-        const res = await fetch('/api/conversations');
+        const params = new URLSearchParams();
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        const qs = params.toString();
+        const res = await fetch(`/api/conversations${qs ? `?${qs}` : ''}`);
         const { data } = await res.json();
         if (!cancelled) setConversations(data || []);
       } catch (err) {
@@ -80,7 +97,7 @@ export default function InboxPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenant, convoRefreshKey]);
+  }, [tenant, convoRefreshKey, statusFilter]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -170,6 +187,31 @@ export default function InboxPage() {
   };
 
   const activeConversation = conversations.find((c) => c.id === activeConvo);
+
+  const patchConversation = async (
+    body: { status?: string; assignToMe?: boolean },
+    successMsg: string
+  ) => {
+    if (!activeConvo) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/conversations/${activeConvo}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || 'Action failed');
+      }
+      toast(successMsg, 'success');
+      setConvoRefreshKey((k) => k + 1);
+    } catch (err) {
+      toast((err as Error).message || 'Action failed', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const handleSaveToDocuments = async (url: string, name: string, category: string) => {
     const linkedClientId = clientId(activeConversation);
@@ -272,7 +314,23 @@ export default function InboxPage() {
       ) : (
         <div className="inbox-layout" style={{ height: 'calc(100vh - 220px)' }}>
           <div className="conversation-list">
-            <div className="conversation-list-header">
+            <div className="conversation-list-header space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      statusFilter === f.value
+                        ? 'bg-teal-100 text-teal-800'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    onClick={() => setStatusFilter(f.value)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               <input
                 className="input"
                 placeholder="Search conversations..."
@@ -316,13 +374,73 @@ export default function InboxPage() {
                   <div className="conversation-avatar">
                     {clientName(activeConversation)?.[0] || '?'}
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-900">
                       {clientName(activeConversation) || activeConversation?.whatsapp_number}
                     </div>
                     <div className="text-xs text-slate-500">
                       {activeConversation?.whatsapp_number}
+                      {(activeConversation as Conversation & { assignee?: { name?: string } })
+                        ?.assignee?.name && (
+                        <span className="ml-2">
+                          · Assigned to{' '}
+                          {
+                            (activeConversation as Conversation & { assignee?: { name?: string } })
+                              .assignee?.name
+                          }
+                        </span>
+                      )}
                     </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {activeConversation?.status === 'open' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={actionLoading}
+                        onClick={() => patchConversation({ status: 'closed' }, 'Conversation closed')}
+                      >
+                        Close
+                      </Button>
+                    ) : activeConversation?.status === 'closed' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={actionLoading}
+                        onClick={() => patchConversation({ status: 'open' }, 'Conversation reopened')}
+                      >
+                        <ArchiveRestore className="size-3.5" />
+                        Reopen
+                      </Button>
+                    ) : null}
+                    {activeConversation?.status !== 'archived' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={actionLoading}
+                        onClick={() =>
+                          patchConversation({ status: 'archived' }, 'Conversation archived')
+                        }
+                      >
+                        <Archive className="size-3.5" />
+                        Archive
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={actionLoading}
+                      onClick={() =>
+                        patchConversation({ assignToMe: true }, 'Assigned to you')
+                      }
+                    >
+                      <UserCheck className="size-3.5" />
+                      Assign to me
+                    </Button>
                   </div>
                 </div>
                 <div className="chat-messages" ref={chatContainerRef}>

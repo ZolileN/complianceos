@@ -21,22 +21,18 @@ export default function BuilderPage() {
   // Fetch suggestion if present
   useEffect(() => {
     if (suggestionId) {
-      // In a real app we'd fetch the suggestion by ID from a dedicated API.
-      // For MVP, we query the analyze endpoint to fetch pending suggestions and find ours.
-      fetch('/api/skills/analyze', { method: 'POST' })
-        .then(r => r.json())
-        .then(data => {
+      fetch(`/api/skills/suggestions?id=${encodeURIComponent(suggestionId)}`)
+        .then((r) => r.json())
+        .then((data) => {
           if (data.data) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const sug = data.data.find((s: any) => s.id === suggestionId);
-            if (sug) {
-              setName(sug.title);
-              setDescription(sug.description);
-              setTriggerEvent(sug.triggerEvent);
-              setSteps(JSON.parse(sug.suggestedSteps));
-            }
+            const sug = data.data;
+            setName(sug.title);
+            setDescription(sug.description);
+            setTriggerEvent(sug.triggerEvent);
+            setSteps(JSON.parse(sug.suggestedSteps));
           }
-        });
+        })
+        .catch(console.error);
     }
   }, [suggestionId]);
 

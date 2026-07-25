@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import {
+  isPlatformAdminResponse,
+  requirePlatformAdmin,
+} from '@/lib/platform-admin';
 import { AdminLogger } from '@/lib/admin-logs';
 import { logAdminAction } from '@/lib/admin-audit';
 import { pushTenantLog } from '@/lib/redis';
@@ -10,11 +12,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
-  if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const admin = await requirePlatformAdmin();
+  if (isPlatformAdminResponse(admin)) return admin;
 
   try {
     const { id } = await params;

@@ -197,7 +197,7 @@ export interface Conversation {
   client_id?: string;
   tenant_id: string;
   whatsapp_number: string;
-  status: 'open' | 'closed' | 'pending';
+  status: 'open' | 'closed' | 'pending' | 'archived';
   assigned_to?: string;
   last_message_at?: string;
   client?: Client;
