@@ -4,31 +4,44 @@ import { isTenantPlan } from '@/lib/plans';
 
 /**
  * Returns an auto-submitting HTML form that POSTs to Ozow hosted checkout.
+ * Supports tenant billing (tenantId) or signup checkout (pendingId).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenantId');
+  const pendingId = searchParams.get('pendingId');
   const plan = searchParams.get('plan');
   const ref = searchParams.get('ref');
 
-  if (!tenantId || !plan || !ref || !isTenantPlan(plan)) {
+  let payload: Record<string, string> | null = null;
+
+  if (pendingId && ref) {
+    const pending = await prisma.pendingSignup.findUnique({
+      where: { id: pendingId },
+    });
+    if (!pending?.paymentPayload || pending.paymentReference !== ref) {
+      return NextResponse.json({ error: 'Checkout session expired' }, { status: 410 });
+    }
+    try {
+      payload = JSON.parse(pending.paymentPayload) as Record<string, string>;
+    } catch {
+      return NextResponse.json({ error: 'Invalid checkout payload' }, { status: 500 });
+    }
+  } else if (tenantId && plan && ref && isTenantPlan(plan)) {
+    const sub = await prisma.subscription.findUnique({ where: { tenantId } });
+    if (!sub?.providerCustomerId) {
+      return NextResponse.json({ error: 'Checkout session expired' }, { status: 410 });
+    }
+    try {
+      payload = JSON.parse(sub.providerCustomerId) as Record<string, string>;
+    } catch {
+      return NextResponse.json({ error: 'Invalid checkout payload' }, { status: 500 });
+    }
+    if (payload.transactionReference !== ref) {
+      return NextResponse.json({ error: 'Reference mismatch' }, { status: 400 });
+    }
+  } else {
     return NextResponse.json({ error: 'Invalid checkout request' }, { status: 400 });
-  }
-
-  const sub = await prisma.subscription.findUnique({ where: { tenantId } });
-  if (!sub?.providerCustomerId) {
-    return NextResponse.json({ error: 'Checkout session expired' }, { status: 410 });
-  }
-
-  let payload: Record<string, string>;
-  try {
-    payload = JSON.parse(sub.providerCustomerId) as Record<string, string>;
-  } catch {
-    return NextResponse.json({ error: 'Invalid checkout payload' }, { status: 500 });
-  }
-
-  if (payload.transactionReference !== ref) {
-    return NextResponse.json({ error: 'Reference mismatch' }, { status: 400 });
   }
 
   const fields = [

@@ -74,20 +74,25 @@ export async function POST(request: NextRequest) {
       where: { providerSubscriptionId: transactionReference },
     });
 
-    if (!sub) {
-      console.warn('[Ozow webhook] unknown reference', transactionReference);
-      return NextResponse.json({ received: true, activated: false });
+    if (sub) {
+      const plan = isTenantPlan(sub.plan) ? sub.plan : 'starter';
+      await activateSubscription(sub.tenantId, {
+        plan,
+        providerSubscriptionId: transactionReference,
+        providerCustomerId: transactionId || undefined,
+        providerPlanId: plan,
+      });
+      return NextResponse.json({ received: true, activated: true, type: 'tenant' });
     }
 
-    const plan = isTenantPlan(sub.plan) ? sub.plan : 'starter';
-    await activateSubscription(sub.tenantId, {
-      plan,
-      providerSubscriptionId: transactionReference,
-      providerCustomerId: transactionId || undefined,
-      providerPlanId: plan,
-    });
+    const { markPendingSignupPaid } = await import('@/lib/signup-checkout');
+    const pending = await markPendingSignupPaid(transactionReference);
+    if (pending) {
+      return NextResponse.json({ received: true, activated: true, type: 'signup' });
+    }
 
-    return NextResponse.json({ received: true, activated: true });
+    console.warn('[Ozow webhook] unknown reference', transactionReference);
+    return NextResponse.json({ received: true, activated: false });
   } catch (error: unknown) {
     console.error('[Ozow webhook]', error);
     return NextResponse.json(

@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { Button } from '@/components/ui/button';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function LoginPage() {
+  const { theme, toggleTheme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,10 +51,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-page">
+    <div className={`auth-page precision-ops ${theme === 'dark' ? 'dark' : ''}`}>
+      <div className="absolute right-4 top-4 z-10">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+        </Button>
+      </div>
       <div className="auth-card card card-glass animate-in">
         <div className="auth-logo" style={{ justifyContent: 'center', marginBottom: 12 }}>
-          <Logo size={42} showText={true} />
+          <Logo size={42} showText={true} tone={theme === 'dark' ? 'dark' : 'light'} />
         </div>
         <p className="auth-title">Welcome back</p>
         <p className="auth-subtitle">Sign in to your compliance workspace</p>

@@ -157,6 +157,26 @@ model Subscription {
   @@index([provider])
 }
 
+/// Pre-tenant signup checkout (pay-before-create for Growth/Professional).
+model PendingSignup {
+  id               String   @id @default(cuid())
+  plan             String
+  firmName         String
+  fullName         String
+  email            String
+  passwordHash     String
+  status           String   @default("pending") // pending | paid | completed | expired
+  paymentReference String   @unique
+  paymentPayload   String?  /// JSON Ozow form payload for redirect
+  provider         String   @default("ozow")
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+}
+
 /// Metered usage buckets (e.g. whatsapp_messages for 2026-07).
 model UsageCounter {
   id        String   @id @default(cuid())
