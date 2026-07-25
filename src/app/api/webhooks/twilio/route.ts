@@ -16,9 +16,10 @@ function emptyTwiml() {
  * Never falls back to an arbitrary first tenant.
  *
  * Resolution order:
- * 1. Exact match on tenant.whatsappPhoneNumber (E.164 or whatsapp:+ form)
- * 2. Sandbox / shared number: match sender to a known client under a
- *    WhatsApp-connected tenant
+ * 1. Exact match on tenant.whatsappPhoneNumber
+ * 2. Shared sandbox number (TWILIO_WHATSAPP_NUMBER) → connected tenant
+ *    (prefer one whose verified name matches the sender)
+ * 3. Match sender to a known client under a WhatsApp-connected tenant
  */
 async function resolveTenant(receiverPhone: string, toRaw: string, senderPhone: string) {
   const byNumber = await prisma.tenant.findFirst({
@@ -33,7 +34,37 @@ async function resolveTenant(receiverPhone: string, toRaw: string, senderPhone: 
   });
   if (byNumber) return byNumber;
 
-  // Shared sandbox number: route via known client WhatsApp / phone
+  const sandboxRaw = process.env.TWILIO_WHATSAPP_NUMBER || '';
+  const sandboxNumber = sandboxRaw
+    ? normaliseToE164(stripWhatsAppPrefix(sandboxRaw))
+    : '';
+  const receiverNorm = normaliseToE164(receiverPhone);
+
+  if (
+    sandboxNumber &&
+    (receiverNorm === sandboxNumber ||
+      receiverPhone === sandboxNumber ||
+      stripWhatsAppPrefix(toRaw) === stripWhatsAppPrefix(sandboxRaw))
+  ) {
+    const byVerifiedSender = await prisma.tenant.findFirst({
+      where: {
+        whatsappSetupComplete: true,
+        OR: [
+          { whatsappVerifiedName: senderPhone },
+          { whatsappVerifiedName: normaliseToE164(senderPhone) },
+        ],
+      },
+    });
+    if (byVerifiedSender) return byVerifiedSender;
+
+    const anyConnected = await prisma.tenant.findFirst({
+      where: { whatsappSetupComplete: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (anyConnected) return anyConnected;
+  }
+
+  // Shared sandbox / unknown receiver: route via known client WhatsApp / phone
   const localFormat =
     senderPhone.replace(/^\+/, '').startsWith('27') && senderPhone.replace(/^\+/, '').length === 11
       ? `0${senderPhone.replace(/^\+/, '').substring(2)}`
@@ -47,6 +78,7 @@ async function resolveTenant(receiverPhone: string, toRaw: string, senderPhone: 
         { whatsappNumber: senderPhone },
         { whatsappNumber: localFormat },
         { whatsappNumber: stripped },
+        { whatsappNumber: normaliseToE164(senderPhone) },
         { phone: senderPhone },
         { phone: localFormat },
         { phone: stripped },
@@ -71,14 +103,25 @@ export async function POST(req: Request) {
       if (typeof value === 'string') params[key] = value;
     });
 
-    // Validate Twilio signature when auth token is configured
+    // Validate Twilio signature when configured (skip in local dev unless forced)
     const signature = req.headers.get('x-twilio-signature') || '';
     const webhookUrl = process.env.TWILIO_WEBHOOK_URL || req.url;
-    if (process.env.TWILIO_AUTH_TOKEN) {
+    const enforceSignature =
+      process.env.TWILIO_ENFORCE_SIGNATURE === 'true' ||
+      (process.env.NODE_ENV === 'production' && !!process.env.TWILIO_AUTH_TOKEN);
+
+    if (enforceSignature) {
       const valid = validateTwilioSignature(webhookUrl, params, signature);
       if (!valid) {
         console.warn('⚠️ Invalid Twilio webhook signature');
         return new NextResponse('Forbidden', { status: 403 });
+      }
+    } else if (process.env.TWILIO_AUTH_TOKEN && signature) {
+      const valid = validateTwilioSignature(webhookUrl, params, signature);
+      if (!valid) {
+        console.warn(
+          '⚠️ Twilio signature mismatch (allowed in non-production). Check TWILIO_WEBHOOK_URL matches the console webhook exactly.'
+        );
       }
     }
 

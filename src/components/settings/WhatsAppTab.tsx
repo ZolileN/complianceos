@@ -55,12 +55,18 @@ export default function WhatsAppTab({
                   fontSize: '0.85rem',
                 }}
               >
-                {company.whatsappPhoneNumber && (
-                  <div>
-                    <strong style={{ color: 'var(--text-muted)' }}>WhatsApp Number:</strong>{' '}
-                    <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{company.whatsappPhoneNumber}</span>
-                  </div>
-                )}
+                    {company.whatsappPhoneNumber && (
+                      <div>
+                        <strong style={{ color: 'var(--text-muted)' }}>Routing number:</strong>{' '}
+                        <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{company.whatsappPhoneNumber}</span>
+                      </div>
+                    )}
+                    {company.whatsappVerifiedName && (
+                      <div>
+                        <strong style={{ color: 'var(--text-muted)' }}>Your WhatsApp:</strong>{' '}
+                        <span style={{ fontWeight: 500, fontFamily: 'monospace' }}>{company.whatsappVerifiedName}</span>
+                      </div>
+                    )}
                 <div>
                   <strong style={{ color: 'var(--text-muted)' }}>Provider:</strong>{' '}
                   <span className="badge badge-green" style={{ textTransform: 'capitalize' }}>

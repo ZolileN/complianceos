@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
-import { checkVerificationCode } from '@/lib/twilio';
+import { checkVerificationCode, normaliseToE164, stripWhatsAppPrefix } from '@/lib/twilio';
 
 /**
  * POST /api/settings/whatsapp/verify
@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Verification code is required' }, { status: 400 });
     }
 
-    // Get the tenant's pending phone number
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { whatsappPhoneNumber: true },
@@ -46,8 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the OTP with Twilio
-    const result = await checkVerificationCode(tenant.whatsappPhoneNumber, code);
+    const userPhone = tenant.whatsappPhoneNumber;
+    const result = await checkVerificationCode(userPhone, code);
 
     if (!result.valid) {
       return NextResponse.json(
@@ -56,12 +55,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // OTP verified — mark WhatsApp setup as complete
+    const sandboxRaw = process.env.TWILIO_WHATSAPP_NUMBER || '';
+    const routingNumber = sandboxRaw
+      ? normaliseToE164(stripWhatsAppPrefix(sandboxRaw))
+      : userPhone;
+
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         whatsappSetupComplete: true,
-        whatsappVerifiedName: tenant.whatsappPhoneNumber, // Use the phone number as display name
+        whatsappPhoneNumber: routingNumber,
+        whatsappVerifiedName: userPhone,
         whatsappProvider: 'twilio',
       },
     });
@@ -74,13 +78,14 @@ export async function POST(request: NextRequest) {
       entityId: tenantId,
       details: {
         action: 'WhatsApp Twilio Connect — Verified',
-        phoneNumber: tenant.whatsappPhoneNumber,
+        userPhone,
+        routingNumber,
       },
     });
 
     return NextResponse.json({
       success: true,
-      phoneNumber: tenant.whatsappPhoneNumber,
+      phoneNumber: userPhone,
       message: 'WhatsApp number verified and connected successfully!',
     });
   } catch (err: unknown) {
