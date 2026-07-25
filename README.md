@@ -8,6 +8,7 @@ ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline 
 *   **Automated OCR Pipeline:** Server-side PDF text extraction automatically processes uploaded regulatory documents (like COR14.3 and Tax Certificates), updates client profiles, and resolves pending compliance alerts upon staff approval.
 *   **SLA-Driven Workflows:** Customizable, multi-step workflow engines allow operations managers to define and track client onboarding and service processes against strict Service Level Agreements.
 *   **Omnichannel Inbox:** Twilio WhatsApp integration lets consultants send and receive messages from the platform without exposing personal numbers.
+*   **Compliance Monitoring Engine:** Daily cron escalates overdue obligations, alerts assigned consultants and ops/admins, and drains the skill-event queue (`/api/cron/compliance-deadlines`, `/api/cron/skill-events`).
 *   **Comprehensive Audit Trail:** An immutable ledger that tracks every significant state mutation (`CREATE`, `UPDATE`, `DELETE`) performed across the platform for full administrative transparency.
 
 ## 🛠 Tech Stack
@@ -51,6 +52,7 @@ Ensure you have the following installed:
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
     *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP during Twilio sandbox/trial testing).
+    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`; Vercel Cron sends `Authorization: Bearer $CRON_SECRET`).
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

@@ -219,6 +219,21 @@ async function executeDatabaseStep(
     return { output: { client: client || null, found: !!client }, tokensUsed: 0 };
   }
 
+  // Thin DB-only handlers for compliance monitoring skills (no fake HTTP endpoints)
+  if (query === 'log_compliance_event' || query === 'find_expiring_bee') {
+    return {
+      output: {
+        acknowledged: true,
+        query,
+        triggerEvent: context.triggerEvent,
+        input: context.input,
+        previous: previousOutput,
+        note: 'Compliance monitoring is handled by /api/cron/compliance-deadlines; skill step is a no-op ack.',
+      },
+      tokensUsed: 0,
+    };
+  }
+
   if (query === 'update_document_metadata') {
     const documentId = String(
       context.input['documentId'] ?? previousOutput['documentId'] ?? ''
@@ -270,7 +285,7 @@ async function executeDatabaseStep(
   }
 
   throw new Error(
-    `Unsupported database_query "${query}". Supported: client_lookup, update_document_metadata, document_search`
+    `Unsupported database_query "${query}". Supported: client_lookup, update_document_metadata, document_search, log_compliance_event, find_expiring_bee`
   );
 }
 

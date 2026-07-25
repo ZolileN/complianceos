@@ -70,10 +70,9 @@ const CORE_SKILLS = [
     isPublished: true,
     triggers: ['compliance.deadline_approaching'],
     requiredPermissions: ['compliance.read', 'compliance.write'],
-    skillDefinition: 'Checks SARS deadlines and updates compliance item statuses accordingly.',
+    skillDefinition: 'Acknowledges SARS deadline events; escalation is performed by the compliance deadline cron.',
     steps: [
-      { name: 'Check Deadlines', stepOrder: 0, stepType: 'database_query', config: '{"query":"check_sars_deadlines"}' },
-      { name: 'Update Statuses', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/compliance/bulk_update"}' }
+      { name: 'Acknowledge Deadline Event', stepOrder: 0, stepType: 'database_query', config: '{"query":"log_compliance_event"}' },
     ],
   },
   {
@@ -86,10 +85,9 @@ const CORE_SKILLS = [
     isPublished: true,
     triggers: ['compliance.deadline_approaching'],
     requiredPermissions: ['compliance.read', 'compliance.write'],
-    skillDefinition: 'Queries CIPC (or internal DB) to check if annual returns are due.',
+    skillDefinition: 'Acknowledges CIPC deadline events; due dates are managed by the compliance monitor (no live CIPC API).',
     steps: [
-      { name: 'Check AR Status', stepOrder: 0, stepType: 'api_call', config: '{"endpoint":"https://api.cipc.co.za/ar_status"}' },
-      { name: 'Update Compliance Item', stepOrder: 1, stepType: 'database_query', config: '{"query":"update_cipc_status"}' }
+      { name: 'Acknowledge Deadline Event', stepOrder: 0, stepType: 'database_query', config: '{"query":"log_compliance_event"}' },
     ],
   },
   {
@@ -102,27 +100,26 @@ const CORE_SKILLS = [
     isPublished: true,
     triggers: ['compliance.deadline_approaching'],
     requiredPermissions: ['compliance.read', 'notifications.send'],
-    skillDefinition: 'Monitors BEE certificates and sends notifications before expiry.',
+    skillDefinition: 'Acknowledges BEE expiry approaching events; staff notifications are created by the compliance monitor.',
     steps: [
       { name: 'Find Expiring BEE Certs', stepOrder: 0, stepType: 'database_query', config: '{"query":"find_expiring_bee"}' },
-      { name: 'Send Alert', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/notifications"}' }
+      { name: 'Acknowledge Alert', stepOrder: 1, stepType: 'database_query', config: '{"query":"log_compliance_event"}' },
     ],
   },
   {
     slug: 'escalation-skill',
     name: 'Compliance Escalation',
-    description: 'Auto-notifies ops manager and client via WhatsApp for critical compliance changes.',
+    description: 'Logs critical compliance status changes for ops follow-up (WhatsApp templates later).',
     category: 'compliance',
     icon: '⚠️',
     isCore: true,
     isPublished: true,
     triggers: ['compliance.status_changed'],
-    requiredPermissions: ['compliance.read', 'whatsapp.send'],
-    skillDefinition: 'Escalates critical compliance issues to managers.',
+    requiredPermissions: ['compliance.read'],
+    skillDefinition: 'Escalation notifications for staff are created by the compliance monitor; this skill acknowledges critical events.',
     steps: [
       { name: 'Check Severity', stepOrder: 0, stepType: 'condition', config: '{"condition":"status == \'critical\'"}' },
-      { name: 'Notify Ops Manager', stepOrder: 1, stepType: 'api_call', config: '{"endpoint":"/api/notifications"}' },
-      { name: 'WhatsApp Client', stepOrder: 2, stepType: 'llm_call', config: '{"prompt":"Draft urgent compliance alert"}' }
+      { name: 'Acknowledge Escalation', stepOrder: 1, stepType: 'database_query', config: '{"query":"log_compliance_event"}' },
     ],
   },
 ];
@@ -154,12 +151,28 @@ async function main() {
 
   for (const skillDef of CORE_SKILLS) {
     const existing = await prisma.skill.findUnique({ where: { slug: skillDef.slug } });
+    const { steps, ...skillData } = skillDef;
+
     if (existing) {
-      console.log(`  ⏭️  Skill "${skillDef.name}" already exists`);
+      // Refresh compliance skill steps so they no longer call missing endpoints
+      if (['sars-deadline-checker', 'cipc-ar-checker', 'bee-expiry-monitor', 'escalation-skill'].includes(skillDef.slug)) {
+        await prisma.skillStep.deleteMany({ where: { skillId: existing.id } });
+        await prisma.skill.update({
+          where: { id: existing.id },
+          data: {
+            skillDefinition: skillData.skillDefinition,
+            description: skillData.description,
+            requiredPermissions: JSON.stringify(skillData.requiredPermissions),
+            steps: { create: steps },
+          },
+        });
+        console.log(`  🔄 Updated skill steps: ${skillDef.icon} ${skillDef.name}`);
+      } else {
+        console.log(`  ⏭️  Skill "${skillDef.name}" already exists`);
+      }
       continue;
     }
 
-    const { steps, ...skillData } = skillDef;
     const skill = await prisma.skill.create({
       data: {
         ...skillData,
