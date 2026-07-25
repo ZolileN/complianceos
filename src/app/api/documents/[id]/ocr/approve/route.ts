@@ -3,6 +3,92 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import { resolveObligation } from '@/lib/compliance-catalog';
+import {
+  emitComplianceStatusChanged,
+  nextDueAfterCompliant,
+  notifyComplianceStakeholders,
+} from '@/lib/compliance-monitor';
+
+async function upsertObligation(opts: {
+  clientId: string;
+  tenantId: string;
+  category: string;
+  name: string;
+  status: string;
+  dueDate: Date | null;
+  userId: string;
+  userRole: string;
+  assignedConsultantId?: string | null;
+  companyName?: string;
+}) {
+  const resolved = resolveObligation(opts.category, opts.name);
+  let dueDate = opts.dueDate;
+  if (opts.status === 'compliant' && !dueDate) {
+    dueDate = nextDueAfterCompliant(resolved.category, resolved.name, null);
+  }
+
+  const existing = await prisma.complianceItem.findUnique({
+    where: {
+      clientId_category_name: {
+        clientId: opts.clientId,
+        category: resolved.category,
+        name: resolved.name,
+      },
+    },
+  });
+
+  const previousStatus = existing?.status ?? null;
+  const item = await prisma.complianceItem.upsert({
+    where: {
+      clientId_category_name: {
+        clientId: opts.clientId,
+        category: resolved.category,
+        name: resolved.name,
+      },
+    },
+    update: {
+      status: opts.status,
+      dueDate,
+      lastChecked: new Date(),
+    },
+    create: {
+      clientId: opts.clientId,
+      tenantId: opts.tenantId,
+      category: resolved.category,
+      name: resolved.name,
+      status: opts.status,
+      dueDate,
+      lastChecked: new Date(),
+    },
+  });
+
+  const like = {
+    id: item.id,
+    clientId: item.clientId,
+    tenantId: item.tenantId,
+    category: item.category,
+    name: item.name,
+    status: item.status,
+    dueDate: item.dueDate,
+  };
+
+  if (previousStatus !== item.status) {
+    await emitComplianceStatusChanged(like, previousStatus, opts.userId, opts.userRole);
+    await notifyComplianceStakeholders(
+      like,
+      {
+        title: `Compliance updated: ${item.name}`,
+        message: `${opts.companyName || 'Client'} — ${item.category} / ${item.name} is now "${item.status.replace(/_/g, ' ')}" (OCR approve).`,
+        type: item.status === 'critical' ? 'error' : item.status === 'action_required' ? 'warning' : 'success',
+        dedupeKey: `ocr-${item.status}`,
+      },
+      opts.assignedConsultantId
+    );
+  }
+
+  return item;
+}
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,7 +105,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try {
     const document = await prisma.document.findFirst({
       where: { id, tenantId },
-      include: { client: true }
+      include: {
+        client: {
+          select: {
+            id: true,
+            companyName: true,
+            assignedConsultantId: true,
+          },
+        },
+      },
     });
 
     if (!document) return NextResponse.json({ error: 'Document not found' }, { status: 404 });
@@ -72,111 +166,66 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: updateData
     });
 
-    // --- AUTOMATED COMPLIANCE ALERTS ---
+    // --- AUTOMATED COMPLIANCE ALERTS (canonical obligation names) ---
     const now = new Date();
-    
+    const clientMeta = {
+      userId: currentUser.id,
+      userRole: currentUser.role,
+      assignedConsultantId: document.client?.assignedConsultantId,
+      companyName: document.client?.companyName,
+    };
+
     if (document.category === 'bee_certificate' && metadata.expiry_date) {
       const isExpired = new Date(metadata.expiry_date) < now;
-      const status = isExpired ? 'action_required' : 'compliant';
-      
-      await prisma.complianceItem.upsert({
-        where: {
-          clientId_category_name: {
-            clientId: document.clientId,
-            category: 'BEE',
-            name: 'B-BBEE Certificate'
-          }
-        },
-        update: {
-          status,
-          dueDate: new Date(metadata.expiry_date),
-          lastChecked: now,
-        },
-        create: {
-          clientId: document.clientId,
-          tenantId: tenantId,
-          category: 'BEE',
-          name: 'B-BBEE Certificate',
-          status,
-          dueDate: new Date(metadata.expiry_date),
-          lastChecked: now,
-        }
+      await upsertObligation({
+        clientId: document.clientId,
+        tenantId,
+        category: 'BEE',
+        name: 'Certificate Expiry',
+        status: isExpired ? 'action_required' : 'compliant',
+        dueDate: new Date(metadata.expiry_date),
+        ...clientMeta,
       });
     } else if ((document.category === 'tax_certificate' || document.category === 'tax_clearance') && metadata.expiry_date) {
       const isExpired = new Date(metadata.expiry_date) < now;
-      const status = isExpired ? 'action_required' : 'compliant';
-
-      await prisma.complianceItem.upsert({
-        where: {
-          clientId_category_name: {
-            clientId: document.clientId,
-            category: 'SARS',
-            name: 'Tax Clearance'
-          }
-        },
-        update: {
-          status,
-          dueDate: new Date(metadata.expiry_date),
-          lastChecked: now,
-        },
-        create: {
-          clientId: document.clientId,
-          tenantId: tenantId,
-          category: 'SARS',
-          name: 'Tax Clearance',
-          status,
-          dueDate: new Date(metadata.expiry_date),
-          lastChecked: now,
-        }
+      await upsertObligation({
+        clientId: document.clientId,
+        tenantId,
+        category: 'SARS',
+        name: 'Income Tax',
+        status: isExpired ? 'action_required' : 'compliant',
+        dueDate: new Date(metadata.expiry_date),
+        ...clientMeta,
       });
     } else if (document.category === 'cor_document' && metadata.registration_date) {
       // Annual Returns are due within 30 days after the anniversary of the registration date
       const regParts = metadata.registration_date.split('/');
-      // Handle both DD/MM/YYYY and YYYY-MM-DD
       let regDateStr = metadata.registration_date;
       if (regParts.length === 3 && regParts[0].length === 2) {
         regDateStr = `${regParts[2]}-${regParts[1]}-${regParts[0]}`;
       }
       const regDate = new Date(regDateStr);
-      
+
       if (!isNaN(regDate.getTime())) {
         const currentYear = now.getFullYear();
         let nextAnniversary = new Date(currentYear, regDate.getMonth(), regDate.getDate());
-        
-        // If the anniversary has passed by more than 30 days, the NEXT due date is next year
+
         const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
         if (now.getTime() - nextAnniversary.getTime() > thirtyDaysInMs) {
           nextAnniversary = new Date(currentYear + 1, regDate.getMonth(), regDate.getDate());
         }
-        
-        const nextDueDate = new Date(nextAnniversary.getTime() + thirtyDaysInMs);
-        
-        // Check if we are currently inside the 30-day filing window
-        const isInsideWindow = now >= nextAnniversary && now <= nextDueDate;
-        const status = isInsideWindow ? 'action_required' : 'compliant';
 
-        await prisma.complianceItem.upsert({
-          where: {
-            clientId_category_name: {
-              clientId: document.clientId,
-              category: 'CIPC',
-              name: 'Annual Returns'
-            }
-          },
-          update: {
-            status,
-            dueDate: nextDueDate,
-            lastChecked: now,
-          },
-          create: {
-            clientId: document.clientId,
-            tenantId: tenantId,
-            category: 'CIPC',
-            name: 'Annual Returns',
-            status,
-            dueDate: nextDueDate,
-            lastChecked: now,
-          }
+        const nextDueDate = new Date(nextAnniversary.getTime() + thirtyDaysInMs);
+        const isInsideWindow = now >= nextAnniversary && now <= nextDueDate;
+
+        await upsertObligation({
+          clientId: document.clientId,
+          tenantId,
+          category: 'CIPC',
+          name: 'Annual Returns',
+          status: isInsideWindow ? 'action_required' : 'compliant',
+          dueDate: nextDueDate,
+          ...clientMeta,
         });
       }
     }

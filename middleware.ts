@@ -42,8 +42,9 @@ export const config = {
      * - /api/uploadthing (UploadThing API callback)
      * - /api/webhooks/twilio (Public Twilio WhatsApp webhook)
      * - /api/whatsapp/webhook (Deprecated Meta stub — keep public so it can return 410)
+     * - /api/cron/* (Secured by CRON_SECRET bearer token)
      * - _next/static, _next/image, favicon.ico, etc.
      */
-    '/((?!$|login|signup|forgot-password|reset-password|onboard|api/auth|api/onboard|api/uploadthing|api/webhooks|api/whatsapp/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!$|login|signup|forgot-password|reset-password|onboard|api/auth|api/onboard|api/uploadthing|api/webhooks|api/whatsapp/webhook|api/cron|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -7,7 +7,7 @@ import { useConfirm } from '@/contexts/ConfirmContext';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc, ComplianceItem, ClientWorkflow, WorkflowTemplate, WorkflowStepProgress } from '@/types';
-import { checkDocumentMatch } from '@/lib/workflowEngine';
+import { checkDocumentMatch } from '@/lib/documentMatch';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import { UploadDropzone } from "@/lib/uploadthing";

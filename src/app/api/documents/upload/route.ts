@@ -6,6 +6,12 @@ import path from 'path';
 import { logAuditAction } from '@/lib/auditLogger';
 import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import { resolveObligation } from '@/lib/compliance-catalog';
+import {
+  emitComplianceStatusChanged,
+  nextDueAfterCompliant,
+  notifyComplianceStakeholders,
+} from '@/lib/compliance-monitor';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -156,60 +162,95 @@ export async function POST(request: NextRequest) {
 
     // --- COMPLIANCE AUTOMATION (fire-and-forget — does NOT block response) ---
     const mapping: Record<string, { cat: string; name: string }> = {
-      'vat_certificate': { cat: 'SARS', name: 'VAT' },
-      'bee_certificate': { cat: 'BEE', name: 'Certificate Expiry' },
-      'tax_certificate': { cat: 'SARS', name: 'Income Tax' },
-      'cor_document':    { cat: 'CIPC', name: 'Annual Returns' }
+      vat_certificate: { cat: 'SARS', name: 'VAT' },
+      bee_certificate: { cat: 'BEE', name: 'Certificate Expiry' },
+      tax_certificate: { cat: 'SARS', name: 'Income Tax' },
+      cor_document: { cat: 'CIPC', name: 'Annual Returns' },
     };
 
     if (category && mapping[category]) {
-      const match = mapping[category];
-      // No await — runs in background after response is sent
-      db.complianceItem.findFirst({
-        where: {
-          tenantId,
-          clientId: client_id,
-          category: match.cat,
-          name: match.name,
-          status: { in: ['action_required', 'critical'] }
-        }
-      }).then(itemToUpdateRaw => {
-        const itemToUpdate = itemToUpdateRaw as { id: string; notes: string | null } | null;
-        if (!itemToUpdate) return;
-        return db.complianceItem.update({
-          where: { id: itemToUpdate.id },
-          data: {
-            status: 'compliant',
-            lastChecked: new Date(),
-            notes: (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') +
-              `Status automatically updated via document upload: ${document?.name}`,
-            documents: {
-              connect: { id: document?.id }
-            }
-          }
-        });
-      }).then(() => {
-        // Notify consultant if uploaded by a client
-        if (user.role === 'client') {
-          return db.client.findUnique({
-            where: { id: client_id },
-            select: { companyName: true, assignedConsultantId: true }
-          }).then(clientDataRaw => {
-            const clientData = clientDataRaw as { companyName: string; assignedConsultantId: string | null } | null;
-            if (clientData?.assignedConsultantId) {
-              return db.notification.create({
-                data: {
-                  userId: clientData.assignedConsultantId,
-                  title: 'Document Uploaded (Proof)',
-                  message: `Client "${clientData.companyName}" uploaded a document "${name || 'Uploaded Document'}" for ${match.cat} - ${match.name}.`,
-                  type: 'success',
-                  link: `/dashboard/clients/${client_id}?tab=compliance`
-                }
-              });
-            }
+      const match = resolveObligation(mapping[category].cat, mapping[category].name);
+      void (async () => {
+        try {
+          const itemToUpdate = await prisma.complianceItem.findFirst({
+            where: {
+              tenantId,
+              clientId: client_id,
+              category: match.category,
+              name: match.name,
+              status: { in: ['action_required', 'critical'] },
+            },
           });
+          if (!itemToUpdate) return;
+
+          const previousStatus = itemToUpdate.status;
+          const rolled = nextDueAfterCompliant(
+            match.category,
+            match.name,
+            itemToUpdate.dueDate
+          );
+
+          const updated = await prisma.complianceItem.update({
+            where: { id: itemToUpdate.id },
+            data: {
+              status: 'compliant',
+              lastChecked: new Date(),
+              dueDate: rolled,
+              notes:
+                (itemToUpdate.notes ? itemToUpdate.notes + '\n\n' : '') +
+                `Status automatically updated via document upload: ${document?.name}`,
+              documents: { connect: { id: document?.id } },
+            },
+          });
+
+          const like = {
+            id: updated.id,
+            clientId: updated.clientId,
+            tenantId: updated.tenantId,
+            category: updated.category,
+            name: updated.name,
+            status: updated.status,
+            dueDate: updated.dueDate,
+          };
+
+          await emitComplianceStatusChanged(
+            like,
+            previousStatus,
+            (userId as string) || 'system',
+            user.role || 'system'
+          );
+
+          const clientData = await prisma.client.findUnique({
+            where: { id: client_id },
+            select: { companyName: true, assignedConsultantId: true },
+          });
+
+          await notifyComplianceStakeholders(
+            like,
+            {
+              title: `Compliance updated: ${updated.name}`,
+              message: `${clientData?.companyName || 'Client'} — ${updated.category} / ${updated.name} marked compliant via document upload.`,
+              type: 'success',
+              dedupeKey: 'upload-compliant',
+            },
+            clientData?.assignedConsultantId
+          );
+
+          if (user.role === 'client' && clientData?.assignedConsultantId) {
+            await prisma.notification.create({
+              data: {
+                userId: clientData.assignedConsultantId,
+                title: 'Document Uploaded (Proof)',
+                message: `Client "${clientData.companyName}" uploaded a document "${name || 'Uploaded Document'}" for ${match.category} - ${match.name}.`,
+                type: 'success',
+                link: `/dashboard/clients/${client_id}?tab=compliance`,
+              },
+            });
+          }
+        } catch (err) {
+          console.error('Compliance auto-update or notification failed (non-critical):', err);
         }
-      }).catch(err => console.error('Compliance auto-update or notification failed (non-critical):', err));
+      })();
     }
     // --- END COMPLIANCE AUTOMATION ---
 

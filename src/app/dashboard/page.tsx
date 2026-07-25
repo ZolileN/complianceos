@@ -33,12 +33,20 @@ interface ComplianceStats {
   critical: number;
 }
 
+interface PortfolioStats {
+  clients_compliant: number;
+  clients_need_action: number;
+  clients_critical: number;
+  critical_deadlines_this_week: number;
+}
+
 interface Stats {
   clients: number;
   tasks: number;
   documents: number;
   overdue: number;
   compliance?: ComplianceStats;
+  portfolio?: PortfolioStats;
 }
 
 interface RecentClient {
@@ -197,8 +205,8 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-7">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <section className="flex w-full flex-col items-start justify-between gap-4 text-left sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1 text-left">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <span className="size-1.5 rounded-full bg-teal-600" />
             Operations overview
@@ -210,13 +218,47 @@ export default function DashboardPage() {
             Here&apos;s the current state of your client operations and compliance workload.
           </p>
         </div>
-        <Button asChild variant="primary">
+        <Button asChild variant="primary" className="shrink-0">
           <Link href="/dashboard/clients/new">
             <Plus />
             New client
           </Link>
         </Button>
       </section>
+
+      {stats.portfolio && (
+        <section className="grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              label: 'Clients compliant',
+              value: stats.portfolio.clients_compliant,
+              hint: 'All active obligations clear',
+            },
+            {
+              label: 'Clients need action',
+              value: stats.portfolio.clients_need_action,
+              hint: 'Open action-required items',
+            },
+            {
+              label: 'Critical deadlines this week',
+              value: stats.portfolio.critical_deadlines_this_week,
+              hint: 'Overdue or due within 7 days',
+            },
+          ].map((row) => (
+            <Card key={row.label}>
+              <CardContent className="p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  {row.label}
+                </div>
+                <div className="mt-1 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
+                  {row.value}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--text-secondary)]">{row.hint}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+      )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => {
