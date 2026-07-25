@@ -315,7 +315,7 @@ export default function DashboardPage() {
                 {complianceIssues.slice(0, 6).map((issue) => (
                   <Link
                     key={issue.id}
-                    href={`/dashboard/clients/${issue.client_id}`}
+                    href={`/dashboard/clients/${issue.client_id}?tab=compliance&item=${issue.id}`}
                     className="group flex items-center justify-between gap-4 py-3.5"
                   >
                     <div className="flex min-w-0 items-center gap-3">

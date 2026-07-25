@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
                 title: 'Document Uploaded (Proof)',
                 message: `Client "${clientData.companyName}" uploaded a document "${name || 'Uploaded Document'}" for ${match.category} - ${match.name}.`,
                 type: 'success',
-                link: `/dashboard/clients/${client_id}?tab=compliance`,
+                link: `/dashboard/clients/${client_id}?tab=compliance&item=${updated.id}`,
               },
             });
           }

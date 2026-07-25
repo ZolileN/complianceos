@@ -6,16 +6,11 @@ import { logAuditAction } from '@/lib/auditLogger';
 import { sendVerificationCode, normaliseToE164, stripWhatsAppPrefix } from '@/lib/twilio';
 
 /**
- * OTP is skipped when:
- * - TWILIO_SKIP_OTP=true, or
- * - NODE_ENV=development (local sandbox testing)
- *
- * Force OTP even in development with TWILIO_REQUIRE_OTP=true.
+ * OTP is skipped only when TWILIO_SKIP_OTP=true (sandbox/trial testing).
+ * Production and local default both require OTP unless that flag is set.
  */
 function shouldSkipOtp(): boolean {
-  if (process.env.TWILIO_REQUIRE_OTP === 'true') return false;
-  if (process.env.TWILIO_SKIP_OTP === 'true') return true;
-  return process.env.NODE_ENV === 'development';
+  return process.env.TWILIO_SKIP_OTP === 'true';
 }
 
 /**
@@ -58,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (skipOtp) {
       console.log(
-        `[WhatsApp connect] OTP skipped (TWILIO_SKIP_OTP=${process.env.TWILIO_SKIP_OTP}, NODE_ENV=${process.env.NODE_ENV})`
+        `[WhatsApp connect] OTP skipped (TWILIO_SKIP_OTP=${process.env.TWILIO_SKIP_OTP})`
       );
 
       await prisma.tenant.update({
