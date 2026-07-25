@@ -1,13 +1,21 @@
 /**
  * Shared platform-admin (PraxisAdmin) authorization helpers.
  * Master tenants: praxisone / mlk-computer-consulting administrators.
+ *
+ * Edge note: middleware must import constants from
+ * `@/lib/platform-admin-constants` — this file pulls NextAuth/Node APIs.
  */
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { isPlatformAdmin } from '@/lib/platform-admin-constants';
 
-export const PLATFORM_ADMIN_SLUGS = ['praxisone', 'mlk-computer-consulting'] as const;
+export {
+  PLATFORM_ADMIN_SLUGS,
+  isPlatformAdmin,
+  isPlatformAdminSlug,
+} from '@/lib/platform-admin-constants';
 
 export type PlatformAdminUser = {
   id: string;
@@ -16,19 +24,6 @@ export type PlatformAdminUser = {
   tenantId?: string | null;
   tenantSlug?: string | null;
 };
-
-export function isPlatformAdminSlug(slug: string | null | undefined): boolean {
-  return !!slug && (PLATFORM_ADMIN_SLUGS as readonly string[]).includes(slug);
-}
-
-export function isPlatformAdmin(user: {
-  role?: string | null;
-  tenantSlug?: string | null;
-} | null | undefined): boolean {
-  return (
-    user?.role === 'administrator' && isPlatformAdminSlug(user.tenantSlug)
-  );
-}
 
 /** Session user if they are a platform admin; otherwise null. */
 export async function getPlatformAdminSession(): Promise<PlatformAdminUser | null> {
