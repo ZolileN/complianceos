@@ -51,8 +51,8 @@ Ensure you have the following installed:
     *   `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID`
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
-    *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP during Twilio sandbox/trial testing).
-    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`; Vercel Cron sends `Authorization: Bearer $CRON_SECRET`).
+    *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP **only** when this flag is set; for Twilio sandbox/trial testing. Leave unset in production).
+    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`). Set the same value in the Vercel project env; Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Schedules live in `vercel.json` (deadlines daily 06:00 UTC, skill-events every 5 minutes).
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

@@ -249,7 +249,7 @@ export async function PUT(
             title: `Compliance Action Needed: ${updated.name}`,
             message: `Status updated to "${updated.status.replace('_', ' ')}" for ${updated.category} - ${updated.name}. Notes: ${updated.notes || 'None'}`,
             type: updated.status === 'critical' ? 'error' : 'warning',
-            link: `/dashboard`,
+            link: `/dashboard/clients/${clientId}?tab=compliance&item=${updated.id}`,
           },
         });
       }

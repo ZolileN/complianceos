@@ -156,20 +156,66 @@ export function nextDueAfterCompliant(
   return rollForwardDueDate(category, name, previousDue);
 }
 
+const STATUS_SEVERITY: Record<string, number> = {
+  critical: 4,
+  action_required: 3,
+  compliant: 2,
+  not_applicable: 1,
+};
+
+function worseStatus(a: string, b: string): string {
+  return (STATUS_SEVERITY[a] ?? 0) >= (STATUS_SEVERITY[b] ?? 0) ? a : b;
+}
+
 /**
- * Rename legacy alias rows onto canonical names when safe.
+ * Prefer the earliest due date (most urgent). If only one side has a due date, keep it.
  */
-export async function migrateAliasComplianceItems(): Promise<{ renamed: number; skipped: number }> {
+function mergeDueDate(
+  a: Date | null | undefined,
+  b: Date | null | undefined
+): Date | null {
+  if (a && b) return a.getTime() <= b.getTime() ? a : b;
+  return a ?? b ?? null;
+}
+
+/**
+ * Rename legacy alias rows onto canonical names.
+ * When a canonical row already exists, merge alias → canonical (worst status,
+ * earliest due date, combined notes) and delete the alias.
+ */
+export async function migrateAliasComplianceItems(): Promise<{
+  renamed: number;
+  merged: number;
+  skipped: number;
+}> {
   const items = await prisma.complianceItem.findMany({
-    select: { id: true, clientId: true, tenantId: true, category: true, name: true },
+    select: {
+      id: true,
+      clientId: true,
+      tenantId: true,
+      category: true,
+      name: true,
+      status: true,
+      dueDate: true,
+      notes: true,
+      lastChecked: true,
+    },
   });
 
   let renamed = 0;
+  let merged = 0;
   let skipped = 0;
 
   for (const item of items) {
     const resolved = resolveObligation(item.category, item.name);
     if (resolved.category === item.category && resolved.name === item.name) continue;
+
+    // Alias row may already have been deleted in an earlier iteration of this pass
+    const stillExists = await prisma.complianceItem.findUnique({
+      where: { id: item.id },
+      select: { id: true },
+    });
+    if (!stillExists) continue;
 
     const conflict = await prisma.complianceItem.findUnique({
       where: {
@@ -182,7 +228,56 @@ export async function migrateAliasComplianceItems(): Promise<{ renamed: number; 
     });
 
     if (conflict) {
-      skipped++;
+      if (conflict.id === item.id) continue;
+
+      const status = worseStatus(conflict.status, item.status);
+      const dueDate = mergeDueDate(conflict.dueDate, item.dueDate);
+      const notesParts = [conflict.notes, item.notes]
+        .map((n) => (n || '').trim())
+        .filter(Boolean);
+      const notes = notesParts.length
+        ? [...new Set(notesParts)].join(' | ')
+        : conflict.notes;
+
+      const lastChecked =
+        conflict.lastChecked && item.lastChecked
+          ? conflict.lastChecked.getTime() >= item.lastChecked.getTime()
+            ? conflict.lastChecked
+            : item.lastChecked
+          : conflict.lastChecked ?? item.lastChecked ?? null;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.complianceItem.update({
+          where: { id: conflict.id },
+          data: {
+            status,
+            dueDate,
+            notes,
+            lastChecked,
+          },
+        });
+
+        // Preserve notification deep links when the alias row is removed.
+        const linkedNotifications = await tx.notification.findMany({
+          where: { link: { contains: `item=${item.id}` } },
+          select: { id: true, link: true },
+        });
+        for (const notification of linkedNotifications) {
+          if (!notification.link) continue;
+          await tx.notification.update({
+            where: { id: notification.id },
+            data: {
+              link: notification.link.replace(
+                `item=${item.id}`,
+                `item=${conflict.id}`
+              ),
+            },
+          });
+        }
+
+        await tx.complianceItem.delete({ where: { id: item.id } });
+      });
+      merged++;
       continue;
     }
 
@@ -193,7 +288,7 @@ export async function migrateAliasComplianceItems(): Promise<{ renamed: number; 
     renamed++;
   }
 
-  return { renamed, skipped };
+  return { renamed, merged, skipped };
 }
 
 export type DeadlineCheckResult = {
@@ -202,7 +297,7 @@ export type DeadlineCheckResult = {
   escalatedAction: number;
   notified: number;
   approachingEvents: number;
-  aliases: { renamed: number; skipped: number };
+  aliases: { renamed: number; merged: number; skipped: number };
 };
 
 /**

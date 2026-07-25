@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Client, Task, Document as Doc, ComplianceItem, ClientWorkflow, WorkflowTemplate, WorkflowStepProgress } from '@/types';
 import { checkDocumentMatch } from '@/lib/documentMatch';
@@ -26,9 +26,10 @@ interface AuditLogHistoryItem {
 
 type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows';
 
-export default function ClientDetailPage() {
+function ClientDetailPageContent() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, tenant } = useAuth();
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -39,6 +40,8 @@ export default function ClientDetailPage() {
   const [complianceItems, setComplianceItems] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeViewDoc, setActiveViewDoc] = useState<Doc | null>(null);
+  const [deepLinkedItemId, setDeepLinkedItemId] = useState<string | null>(null);
+  const deepLinkHandledRef = useRef(false);
 
   // Compliance update states
   const [editingItem, setEditingItem] = useState<ComplianceItem | null>(null);
@@ -113,6 +116,60 @@ export default function ClientDetailPage() {
     }
     load();
   }, [tenant, id]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    const itemId = searchParams.get('item');
+
+    if (
+      requestedTab &&
+      ['overview', 'documents', 'compliance', 'tasks', 'workflows'].includes(requestedTab)
+    ) {
+      setTab(requestedTab as TabType);
+    }
+    if (itemId) {
+      setTab('compliance');
+      if (itemId !== deepLinkedItemId) {
+        deepLinkHandledRef.current = false;
+      }
+      setDeepLinkedItemId(itemId);
+    } else {
+      setDeepLinkedItemId(null);
+    }
+  }, [deepLinkedItemId, searchParams]);
+
+  useEffect(() => {
+    if (!deepLinkedItemId || deepLinkHandledRef.current || complianceItems.length === 0) {
+      return;
+    }
+
+    const item = complianceItems.find((candidate) => candidate.id === deepLinkedItemId);
+    if (!item) return;
+
+    deepLinkHandledRef.current = true;
+    setTab('compliance');
+
+    // Staff land directly in the issue editor; clients land on the highlighted issue.
+    if (user?.role !== 'client') {
+      setEditingItem(item);
+      setEditStatus(item.status);
+      setEditDueDate(item.due_date ? item.due_date.substring(0, 10) : '');
+      setEditNotes(item.notes || '');
+      setSelectedDocIds(item.documents ? item.documents.map((doc) => doc.id) : []);
+      setLoadingHistory(true);
+      fetch(`/api/compliance/${item.id}/history`)
+        .then((response) => (response.ok ? response.json() : { data: [] }))
+        .then((json) => setItemHistory(json.data || []))
+        .catch((error) => console.error(error))
+        .finally(() => setLoadingHistory(false));
+    }
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(`compliance-item-${item.id}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, [complianceItems, deepLinkedItemId, user?.role]);
 
   const statusBadge = (s: string) => {
     const m: Record<string, string> = { 
@@ -407,7 +464,26 @@ export default function ClientDetailPage() {
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                   {categoryItems.map(item => (
-                    <div key={item.id} style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid var(--border-primary)' }}>
+                    <div
+                      id={`compliance-item-${item.id}`}
+                      key={item.id}
+                      style={{
+                        padding: 16,
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        border:
+                          deepLinkedItemId === item.id
+                            ? '2px solid var(--accent)'
+                            : '1px solid var(--border-primary)',
+                        boxShadow:
+                          deepLinkedItemId === item.id
+                            ? '0 0 0 4px var(--accent-muted)'
+                            : undefined,
+                      }}
+                    >
                       <div>
                         <div className="flex-between" style={{ marginBottom: 10, alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
@@ -888,5 +964,19 @@ export default function ClientDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ClientDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-center" style={{ minHeight: '50vh' }}>
+          <span className="spinner" style={{ width: 40, height: 40 }} />
+        </div>
+      }
+    >
+      <ClientDetailPageContent />
+    </Suspense>
   );
 }
