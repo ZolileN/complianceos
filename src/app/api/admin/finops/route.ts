@@ -4,13 +4,7 @@ import {
   isPlatformAdminResponse,
   requirePlatformAdmin,
 } from '@/lib/platform-admin';
-
-const PLAN_LIMITS: Record<string, number> = {
-  starter: 1000,
-  growth: 10000,
-  professional: 50000,
-  enterprise: 250000,
-};
+import { getPlanDefinition, TENANT_PLANS } from '@/lib/plans';
 
 export async function GET() {
   const admin = await requirePlatformAdmin();
@@ -47,8 +41,8 @@ export async function GET() {
 
     const usage = tenants
       .map((t) => {
-        const planKey = t.plan.toLowerCase();
-        const limit = PLAN_LIMITS[planKey] || 1000;
+        const def = getPlanDefinition(t.plan);
+        const limit = def.messagesPerMonthSoft;
         const messages = t._count.messages;
         return {
           id: t.id,
@@ -58,7 +52,7 @@ export async function GET() {
           isActive: t.isActive,
           messagesMonth: messages,
           limit,
-          utilization: Math.min(100, Math.round((messages / limit) * 100)),
+          utilization: Math.min(100, Math.round((messages / Math.max(limit, 1)) * 100)),
           documents: t._count.documents,
           users: t._count.users,
           clients: t._count.clients,
@@ -67,11 +61,11 @@ export async function GET() {
       .sort((a, b) => b.messagesMonth - a.messagesMonth);
 
     const topTenantRow = usage[0];
+    const starterLimit = getPlanDefinition('starter').messagesPerMonthSoft;
     const topTenant = topTenantRow
       ? {
           name: topTenantRow.name,
           plan: topTenantRow.plan,
-          /** @deprecated use messagesMonth — kept for UI compat */
           tokens: topTenantRow.messagesMonth,
           messagesMonth: topTenantRow.messagesMonth,
           limit: topTenantRow.limit,
@@ -82,25 +76,28 @@ export async function GET() {
           plan: 'starter',
           tokens: 0,
           messagesMonth: 0,
-          limit: 1000,
+          limit: starterLimit,
           limitEnforced: false,
         };
 
-    const starterTenants = usage.filter(
-      (t) => t.plan.toLowerCase() === 'starter'
-    );
+    const starterTenants = usage.filter((t) => t.plan.toLowerCase() === 'starter');
     const topStarterRow = starterTenants[0];
     const topStarter = topStarterRow
       ? {
           name: topStarterRow.name,
           tokens: topStarterRow.messagesMonth,
           messagesMonth: topStarterRow.messagesMonth,
-          limit: 1000,
+          limit: starterLimit,
         }
-      : { name: 'No active starter tenants', tokens: 0, messagesMonth: 0, limit: 1000 };
+      : {
+          name: 'No active starter tenants',
+          tokens: 0,
+          messagesMonth: 0,
+          limit: starterLimit,
+        };
 
     const byPlan = Object.fromEntries(
-      Object.keys(PLAN_LIMITS).map((plan) => [
+      TENANT_PLANS.map((plan) => [
         plan,
         usage.filter((t) => t.plan.toLowerCase() === plan).length,
       ])

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage, normaliseToE164 } from '@/lib/twilio';
+import {
+  assertClientCapacity,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 // ── GET /api/onboard/[slug] ───────────────────────────────────────────────────
 // Public endpoint: returns the tenant's display name so the onboarding
@@ -84,6 +91,32 @@ export async function POST(
       { error: 'A client with this company name has already been registered with this firm.' },
       { status: 409 }
     );
+  }
+
+  try {
+    await assertClientCapacity(tenant.id);
+  } catch (err) {
+    if (err instanceof PlanLimitError) {
+      return NextResponse.json(
+        {
+          error:
+            'This firm has reached its client limit for the current plan. Please contact the firm directly.',
+          code: err.code,
+        },
+        { status: 402 }
+      );
+    }
+    if (err instanceof ReadOnlyError) {
+      return NextResponse.json(
+        {
+          error:
+            'This firm is temporarily unable to accept new onboarding submissions. Please contact the firm.',
+          code: err.code,
+        },
+        { status: 403 }
+      );
+    }
+    throw err;
   }
 
   // ── Create client record ──────────────────────────────────────────────────

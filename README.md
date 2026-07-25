@@ -53,9 +53,11 @@ Ensure you have the following installed:
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
     *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP **only** when this flag is set; for Twilio sandbox/trial testing. Leave unset in production).
-    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`). Set the same value in the Vercel project env.
+    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines`, `/api/cron/skill-events`, and `/api/cron/trial-expiry`). Set the same value in the Vercel project env.
         *   **Compliance deadlines:** Vercel Cron in `vercel.json` — daily `0 6 * * *` (Hobby-safe). Vercel sends `Authorization: Bearer $CRON_SECRET`.
+        *   **Trial expiry:** Vercel Cron daily `0 7 * * *` — moves expired trials to `past_due` (read-only).
         *   **Skill events:** external [cron-job.org](https://cron-job.org) every 5 minutes → `GET https://praxis.mlkcomputer.com/api/cron/skill-events` with header `Authorization: Bearer $CRON_SECRET` (Vercel Hobby only allows once-per-day crons).
+    *   Billing (optional until go-live): `BILLING_PROVIDER`, `STITCH_CLIENT_ID`, `STITCH_CLIENT_SECRET`, `STITCH_REDIRECT_URI`, `OZOW_SITE_CODE`, `OZOW_PRIVATE_KEY`, `OZOW_API_KEY`. Plan limits live in `src/lib/plans.ts`.
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

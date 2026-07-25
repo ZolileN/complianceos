@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/compliance-deadlines",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/trial-expiry",
+      "schedule": "0 7 * * *"
     }
   ]
 }

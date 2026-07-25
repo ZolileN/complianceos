@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, MessageSquare, Settings2, UserRound } from 'lucide-react';
+import { Building2, CreditCard, MessageSquare, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import CompanyProfileTab from '@/components/settings/CompanyProfileTab';
 import WhatsAppTab from '@/components/settings/WhatsAppTab';
 import PersonalProfileTab from '@/components/settings/PersonalProfileTab';
+import BillingPlanTab from '@/components/settings/BillingPlanTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { getOnboardingUrl } from '@/lib/appUrl';
 import type {
@@ -23,10 +24,19 @@ function SettingsPageContent() {
 
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const billingParam = searchParams.get('billing');
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'whatsapp' | 'personal'>('personal');
+  const [activeTab, setActiveTab] = useState<
+    'profile' | 'whatsapp' | 'personal' | 'billing'
+  >('personal');
 
   const isAdminOrOps = user?.role === 'administrator' || user?.role === 'operations_manager';
+
+  useEffect(() => {
+    if (billingParam === 'success') toast('Payment received — subscription activated', 'success');
+    if (billingParam === 'cancelled') toast('Checkout cancelled', 'info');
+    if (billingParam === 'error') toast('Payment could not be completed', 'error');
+  }, [billingParam, toast]);
 
   useEffect(() => {
     if (user) {
@@ -38,12 +48,14 @@ function SettingsPageContent() {
           setActiveTab('personal');
         } else if (tabParam === 'whatsapp') {
           setActiveTab('whatsapp');
+        } else if (tabParam === 'billing' || billingParam) {
+          setActiveTab('billing');
         } else {
           setActiveTab('profile');
         }
       }
     }
-  }, [user, tabParam]);
+  }, [user, tabParam, billingParam]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -362,6 +374,7 @@ function SettingsPageContent() {
       ? [
           { id: 'profile' as const, label: 'Company profile', icon: <Building2 className="size-3.5" /> },
           { id: 'whatsapp' as const, label: 'WhatsApp', icon: <MessageSquare className="size-3.5" /> },
+          { id: 'billing' as const, label: 'Plan & billing', icon: <CreditCard className="size-3.5" /> },
         ]
       : []),
     { id: 'personal' as const, label: 'Personal profile', icon: <UserRound className="size-3.5" /> },
@@ -433,6 +446,10 @@ function SettingsPageContent() {
           onVerifyOtp={handleVerifyOtp}
           onDisconnect={handleDisconnect}
         />
+      )}
+
+      {activeTab === 'billing' && isAdminOrOps && (
+        <BillingPlanTab onToast={toast} />
       )}
 
       {activeTab === 'personal' && personal && (

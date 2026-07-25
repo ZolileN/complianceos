@@ -4,19 +4,18 @@
 
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import {
+  DEFAULT_SIGNUP_PLAN,
+  isTenantPlan,
+  type TenantPlan,
+} from '@/lib/plans';
+import { createTrialSubscriptionData } from '@/lib/entitlements';
 
-export const TENANT_PLANS = [
-  'starter',
-  'growth',
-  'professional',
-  'enterprise',
-] as const;
-
-export type TenantPlan = (typeof TENANT_PLANS)[number];
-
-export function isTenantPlan(value: string): value is TenantPlan {
-  return (TENANT_PLANS as readonly string[]).includes(value);
-}
+export {
+  TENANT_PLANS,
+  isTenantPlan,
+  type TenantPlan,
+} from '@/lib/plans';
 
 export function slugifyFirmName(firmName: string): string {
   return firmName
@@ -32,6 +31,8 @@ export type CreateTenantInput = {
   password: string;
   plan?: TenantPlan;
   settings?: Record<string, unknown>;
+  /** Skip trial (e.g. admin-provisioned paid workspace) */
+  startActive?: boolean;
 };
 
 export type CreateTenantResult = {
@@ -43,7 +44,8 @@ export async function createTenantWithAdmin(
   input: CreateTenantInput
 ): Promise<CreateTenantResult> {
   const { firmName, fullName, email, password } = input;
-  const plan = input.plan ?? 'starter';
+  const plan: TenantPlan =
+    input.plan && isTenantPlan(input.plan) ? input.plan : DEFAULT_SIGNUP_PLAN;
   const settings = JSON.stringify(input.settings ?? {});
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -62,6 +64,18 @@ export async function createTenantWithAdmin(
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const trial = createTrialSubscriptionData(plan);
+  const subscriptionData = input.startActive
+    ? {
+        plan,
+        status: 'active' as const,
+        trialStartsAt: null,
+        trialEndsAt: null,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: null,
+        provider: 'manual',
+      }
+    : trial;
 
   return prisma.$transaction(async (tx) => {
     const tenant = await tx.tenant.create({
@@ -70,6 +84,9 @@ export async function createTenantWithAdmin(
         slug,
         plan,
         settings,
+        subscription: {
+          create: subscriptionData,
+        },
       },
       select: { id: true, name: true, slug: true, plan: true },
     });
