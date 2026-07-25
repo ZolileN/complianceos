@@ -203,6 +203,10 @@ export default function DashboardPage() {
     },
   ];
 
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-7">
       <section className="flex w-full flex-col items-start justify-between gap-4 text-left sm:flex-row sm:items-end">
@@ -212,7 +216,7 @@ export default function DashboardPage() {
             Operations overview
           </div>
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
-            Good morning, {user?.name?.split(" ")[0] || "there"}
+            {greeting}, {user?.name?.split(" ")[0] || "there"}
           </h1>
           <p className="mt-1.5 text-sm text-slate-500">
             Here&apos;s the current state of your client operations and compliance workload.
