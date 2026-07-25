@@ -1,6 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import { PLATFORM_ADMIN_SLUGS } from "@/lib/platform-admin";
+import { PLATFORM_ADMIN_SLUGS } from "@/lib/platform-admin-constants";
 
 function isCronPath(pathname: string): boolean {
   return pathname === "/api/cron" || pathname.startsWith("/api/cron/");
