@@ -463,10 +463,25 @@ function ClientDetailPageContent() {
                   {category} Requirements
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                  {categoryItems.map(item => (
+                  {categoryItems.map(item => {
+                    const canEdit = user?.role !== 'client';
+                    return (
                     <div
                       id={`compliance-item-${item.id}`}
                       key={item.id}
+                      role={canEdit ? 'button' : undefined}
+                      tabIndex={canEdit ? 0 : undefined}
+                      onClick={canEdit ? () => handleEditCompliance(item) : undefined}
+                      onKeyDown={
+                        canEdit
+                          ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleEditCompliance(item);
+                              }
+                            }
+                          : undefined
+                      }
                       style={{
                         padding: 16,
                         background: 'var(--bg-secondary)',
@@ -482,6 +497,8 @@ function ClientDetailPageContent() {
                           deepLinkedItemId === item.id
                             ? '0 0 0 4px var(--accent-muted)'
                             : undefined,
+                        cursor: canEdit ? 'pointer' : 'default',
+                        transition: canEdit ? 'border-color 0.15s ease, box-shadow 0.15s ease' : undefined,
                       }}
                     >
                       <div>
@@ -523,13 +540,9 @@ function ClientDetailPageContent() {
                           Checked: {new Date(item.last_checked).toLocaleDateString('en-GB')}
                         </p>
                       </div>
-                      {user?.role !== 'client' && (
-                        <button onClick={() => handleEditCompliance(item)} className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 12 }}>
-                          ⚙️ Update Status
-                        </button>
-                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );
