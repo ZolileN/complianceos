@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { KeyRound, UserRound } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 interface PersonalData {
   id: string;
@@ -18,12 +28,10 @@ export default function AdminProfile() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Profile Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
 
-  // Password State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,8 +52,9 @@ export default function AdminProfile() {
         setName(data.name || '');
         setEmail(data.email || '');
         setContactNumber(data.contactNumber || '');
-      } catch (err: any) {
-        showToast(err.message || 'Error loading profile', 'error');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Error loading profile';
+        showToast(msg, 'error');
       } finally {
         setLoading(false);
       }
@@ -69,8 +78,9 @@ export default function AdminProfile() {
       if (!res.ok) throw new Error(data.error || 'Failed to save changes');
       showToast('Personal profile details updated successfully!', 'success');
       setPersonal(data.data);
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update details', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update details';
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -92,7 +102,7 @@ export default function AdminProfile() {
           email,
           contactNumber,
           currentPassword,
-          newPassword
+          newPassword,
         }),
       });
       const data = await res.json();
@@ -101,8 +111,9 @@ export default function AdminProfile() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to update password', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update password';
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -110,159 +121,138 @@ export default function AdminProfile() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+      <div className="mx-auto flex min-h-[50vh] max-w-[1500px] items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
+          <span className="spinner size-8" />
           <span>Loading account settings...</span>
         </div>
-        <style jsx>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 800 }}>
-      {/* Toast */}
+    <div className="mx-auto max-w-[1500px] space-y-6">
       {toast && (
-        <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          background: toast.type === 'success' ? '#10B981' : '#EF4444',
-          color: '#FFFFFF',
-          padding: '12px 20px',
-          borderRadius: 8,
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-          zIndex: 9999,
-          fontWeight: 600,
-          fontSize: '0.85rem'
-        }}>
+        <div
+          className={`fixed top-6 right-6 z-[9999] rounded-lg px-5 py-3 text-sm font-semibold text-white shadow-lg ${
+            toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'
+          }`}
+        >
           {toast.message}
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF' }}>Personal Profile</h1>
-        <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 4 }}>
-          Manage your platform administrator credentials, email notifications, and primary secure keys.
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <UserRound className="size-3.5" />
+          Account
+        </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+          Personal profile
+        </h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Manage your platform administrator credentials, email notifications, and primary secure
+          keys.
         </p>
-      </div>
+      </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
-        {/* Profile Info Form */}
-        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24 }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 16 }}>Profile Details</h2>
-          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Contact Number</label>
-              <input
-                type="tel"
-                value={contactNumber}
-                onChange={(e) => setContactNumber(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                placeholder="+27..."
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B', borderTop: '1px solid #1F1F1F', paddingTop: 16, marginTop: 8 }}>
-              <span>Role:</span>
-              <span style={{ color: '#5EEAD4', fontWeight: 600, textTransform: 'uppercase' }}>{personal?.role}</span>
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                background: '#5EEAD4',
-                color: '#000000',
-                border: 'none',
-                borderRadius: 6,
-                padding: '10px 16px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: 8
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Profile Details'}
-            </button>
-          </form>
-        </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile details</CardTitle>
+            <CardDescription>Your identity on the PraxisOne control plane.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSaveProfile} className="stack">
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input
+                  className="input"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  className="input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contact Number</label>
+                <input
+                  className="input"
+                  type="tel"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  placeholder="+27..."
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-4 text-xs text-slate-500">
+                <span>Role</span>
+                <Badge variant="info" className="uppercase">
+                  {personal?.role}
+                </Badge>
+              </div>
+              <Button type="submit" variant="primary" disabled={saving} className="mt-2 w-full">
+                {saving ? <span className="spinner" /> : 'Save profile details'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-        {/* Change Password Form */}
-        <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24 }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 16 }}>Security & Password</h2>
-          <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 14px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                background: 'transparent',
-                border: '1px solid #1F1F1F',
-                color: '#FFFFFF',
-                borderRadius: 6,
-                padding: '10px 16px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: 8
-              }}
-            >
-              {saving ? 'Updating...' : 'Update Password'}
-            </button>
-          </form>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound className="size-4" />
+              Security & password
+            </CardTitle>
+            <CardDescription>Rotate your administrator password.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="stack">
+              <div className="form-group">
+                <label className="form-label">Current Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm New Password</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" variant="outline" disabled={saving} className="mt-2 w-full">
+                {saving ? <span className="spinner" /> : 'Update password'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

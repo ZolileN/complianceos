@@ -1,7 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  Copy,
+  Gauge,
+  MessageSquare,
+  UsersRound,
+  Webhook,
+} from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { getOnboardingUrl } from '@/lib/appUrl';
 
 interface TenantItem {
@@ -42,7 +62,9 @@ export default function FleetOverview() {
   const [queueDepth, setQueueDepth] = useState<number>(0);
 
   // Card filter state
-  const [filterType, setFilterType] = useState<'all' | 'active' | 'suspended' | 'waba'>('all');
+  const [filterType, setFilterType] = useState<
+    'all' | 'active' | 'suspended' | 'whatsapp'
+  >('all');
   const stuckRef = useRef<HTMLDivElement>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -55,7 +77,7 @@ export default function FleetOverview() {
       const [tenantsRes, onboardingRes, diagnosticsRes] = await Promise.all([
         fetch('/api/admin/tenants'),
         fetch('/api/admin/onboarding'),
-        fetch('/api/admin/diagnostics')
+        fetch('/api/admin/diagnostics'),
       ]);
 
       const tenantsData = await tenantsRes.json();
@@ -80,7 +102,7 @@ export default function FleetOverview() {
       await fetchData();
     };
     init();
-    
+
     const interval = setInterval(async () => {
       try {
         const res = await fetch('/api/admin/diagnostics');
@@ -101,7 +123,7 @@ export default function FleetOverview() {
       const res = await fetch(`/api/admin/tenants/${tenantId}/toggle`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !currentStatus })
+        body: JSON.stringify({ isActive: !currentStatus }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update tenant status');
@@ -116,13 +138,17 @@ export default function FleetOverview() {
   };
 
   const handleForceRevoke = async (tenantId: string) => {
-    if (!confirm('Are you sure you want to force disconnect WhatsApp for this tenant? This resets their Twilio WhatsApp setup.')) {
+    if (
+      !confirm(
+        'Are you sure you want to force disconnect WhatsApp for this tenant? This resets their Twilio WhatsApp setup.'
+      )
+    ) {
       return;
     }
     setActionLoading(tenantId + '-revoke');
     try {
       const res = await fetch(`/api/admin/tenants/${tenantId}/revoke-token`, {
-        method: 'POST'
+        method: 'POST',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to revoke WhatsApp connection');
@@ -138,364 +164,428 @@ export default function FleetOverview() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
-          <span>Polling workspace status...</span>
-        </div>
-        <style jsx>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-sm text-[var(--text-secondary)]">
+        <span className="spinner size-8" />
+        <span>Polling workspace status...</span>
       </div>
     );
   }
 
   // Calculate metrics
   const totalTenants = tenants.length;
-  const activeTenants = tenants.filter(t => t.isActive).length;
+  const activeTenants = tenants.filter((tenant) => tenant.isActive).length;
   const suspendedTenants = totalTenants - activeTenants;
-  const whatsappConnected = tenants.filter(t => t.whatsappSetupComplete).length;
+  const whatsappConnected = tenants.filter((tenant) => tenant.whatsappSetupComplete).length;
   const pendingIntake = onboardingClients.length;
 
   // Filter tenants array
-  const filteredTenants = tenants.filter(t => {
-    if (filterType === 'active') return t.isActive;
-    if (filterType === 'suspended') return !t.isActive;
-    if (filterType === 'waba') return t.whatsappSetupComplete;
+  const filteredTenants = tenants.filter((tenant) => {
+    if (filterType === 'active') return tenant.isActive;
+    if (filterType === 'suspended') return !tenant.isActive;
+    if (filterType === 'whatsapp') return tenant.whatsappSetupComplete;
     return true;
   });
 
+  const filterLabel =
+    filterType === 'active'
+      ? 'Active'
+      : filterType === 'suspended'
+        ? 'Suspended'
+        : 'WhatsApp Linked';
+
+  const metrics = [
+    {
+      label: 'Total tenant workspaces',
+      value: totalTenants,
+      detail: 'Across the managed fleet',
+      icon: Building2,
+      iconClass: 'bg-teal-50 text-teal-700',
+      filter: 'all' as const,
+    },
+    {
+      label: 'Active workspaces',
+      value: activeTenants,
+      detail: 'Available to their teams',
+      icon: UsersRound,
+      iconClass: 'bg-emerald-50 text-emerald-700',
+      filter: 'active' as const,
+    },
+    {
+      label: 'Suspended workspaces',
+      value: suspendedTenants,
+      detail: 'Access currently paused',
+      icon: AlertTriangle,
+      iconClass: 'bg-amber-50 text-amber-700',
+      filter: 'suspended' as const,
+    },
+    {
+      label: 'WhatsApp connected',
+      value: whatsappConnected,
+      detail: `${whatsappConnected} of ${totalTenants} linked`,
+      icon: MessageSquare,
+      iconClass: 'bg-blue-50 text-blue-700',
+      filter: 'whatsapp' as const,
+    },
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Toast Notification */}
+    <div className="mx-auto max-w-[1500px] space-y-6">
       {toast && (
-        <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          background: toast.type === 'success' ? '#10B981' : '#EF4444',
-          color: '#FFFFFF',
-          padding: '12px 20px',
-          borderRadius: 8,
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-          zIndex: 9999,
-          fontWeight: 600,
-          fontSize: '0.85rem',
-          animation: 'slideIn 0.2s ease-out'
-        }}>
+        <div
+          className={`fixed top-6 right-6 z-[9999] rounded-lg border px-5 py-3 text-sm font-semibold shadow-lg ${
+            toast.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+        >
           {toast.message}
-          <style jsx>{`
-            @keyframes slideIn {
-              from { transform: translateY(-20px); opacity: 0; }
-              to { transform: translateY(0); opacity: 1; }
-            }
-          `}</style>
         </div>
       )}
 
-      {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-        {/* Card 1: Total Tenants */}
-        <div 
-          onClick={() => setFilterType('all')}
-          style={{ 
-            background: filterType === 'all' ? 'rgba(94, 234, 212, 0.03)' : '#050505', 
-            border: filterType === 'all' ? '1px solid #5EEAD4' : '1px solid #1F1F1F', 
-            borderRadius: 8, 
-            padding: 20,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Tenant Workspaces</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#FFFFFF', marginTop: 8 }}>{totalTenants}</div>
-        </div>
-
-        {/* Card 2: Active Tenants */}
-        <div 
-          onClick={() => setFilterType('active')}
-          style={{ 
-            background: filterType === 'active' ? 'rgba(16, 185, 129, 0.03)' : '#050505', 
-            border: filterType === 'active' ? '1px solid #10B981' : '1px solid #1F1F1F', 
-            borderRadius: 8, 
-            padding: 20,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Active Workspaces</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#10B981', marginTop: 8 }}>{activeTenants}</div>
-        </div>
-
-        {/* Card 3: Suspended Tenants */}
-        <div 
-          onClick={() => setFilterType('suspended')}
-          style={{ 
-            background: filterType === 'suspended' ? 'rgba(245, 158, 11, 0.03)' : '#050505', 
-            border: filterType === 'suspended' ? '1px solid #F59E0B' : '1px solid #1F1F1F', 
-            borderRadius: 8, 
-            padding: 20,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Suspended Workspaces</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F59E0B', marginTop: 8 }}>{suspendedTenants}</div>
-        </div>
-
-        {/* Card 4: WhatsApp */}
-        <div 
-          onClick={() => setFilterType('waba')}
-          style={{ 
-            background: filterType === 'waba' ? 'rgba(59, 130, 246, 0.03)' : '#050505', 
-            border: filterType === 'waba' ? '1px solid #3B82F6' : '1px solid #1F1F1F', 
-            borderRadius: 8, 
-            padding: 20,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp Connected</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#3B82F6', marginTop: 8 }}>{whatsappConnected} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: '#888888' }}>/ {totalTenants}</span></div>
-        </div>
-
-        {/* Card 5: Stuck Intake */}
-        <div 
-          onClick={() => stuckRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          style={{ 
-            background: '#050505', 
-            border: '1px solid #1F1F1F', 
-            borderRadius: 8, 
-            padding: 20,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.borderColor = '#EF4444'}
-          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1F1F1F'}
-        >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stuck Intake Lines</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#EF4444', marginTop: 8 }}>{pendingIntake}</div>
-        </div>
-
-        {/* Card 6: Webhook Queue Backlog */}
-        <Link href="/admin/webhooks" style={{ textDecoration: 'none', display: 'block' }}>
-          <div 
-            style={{ 
-              background: '#050505', 
-              border: '1px solid #1F1F1F', 
-              borderRadius: 8, 
-              padding: 20,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#38BDF8'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1F1F1F'}
-          >
-            <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Webhook Queue Backlog</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: queueDepth > 0 ? '#38BDF8' : '#34D399', marginTop: 8 }}>
-              {queueDepth}
-              <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#888888', marginLeft: 8 }}>payloads</span>
-            </div>
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <Gauge className="size-3.5" />
+            Control plane
           </div>
-        </Link>
-      </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+            Fleet overview
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Monitor workspace health, connectivity, and onboarding across the tenant fleet.
+          </p>
+        </div>
+      </section>
 
-      {/* Tenant Registry Section */}
-      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ padding: 20, borderBottom: '1px solid #1F1F1F', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {metrics.map((metric) => {
+          const Icon = metric.icon;
+          const selected = filterType === metric.filter;
+
+          return (
+            <Card
+              key={metric.label}
+              onClick={() => setFilterType(metric.filter)}
+              className={`cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                selected ? 'border-teal-500 ring-1 ring-teal-500/20' : ''
+              }`}
+            >
+              <CardContent className="p-5">
+                <div className="mb-5 flex items-start justify-between">
+                  <div
+                    className={`flex size-10 items-center justify-center rounded-lg ${metric.iconClass}`}
+                  >
+                    <Icon className="size-[18px]" />
+                  </div>
+                  <ArrowRight className="size-4 text-slate-300" />
+                </div>
+                <div className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+                  {metric.value}
+                </div>
+                <div className="mt-1 text-sm font-medium text-slate-700">{metric.label}</div>
+                <div className="mt-0.5 text-xs text-slate-400">{metric.detail}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        <Card
+          onClick={() => stuckRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          className="cursor-pointer transition-all hover:-translate-y-0.5 hover:border-red-300 hover:shadow-md"
+        >
+          <CardContent className="p-5">
+            <div className="mb-5 flex items-start justify-between">
+              <div className="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-700">
+                <AlertTriangle className="size-[18px]" />
+              </div>
+              <ArrowRight className="size-4 text-slate-300" />
+            </div>
+            <div className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+              {pendingIntake}
+            </div>
+            <div className="mt-1 text-sm font-medium text-slate-700">Stuck intake lines</div>
+            <div className="mt-0.5 text-xs text-slate-400">Onboarding requires review</div>
+          </CardContent>
+        </Card>
+
+        <Link href="/admin/webhooks" className="group">
+          <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-blue-300 group-hover:shadow-md">
+            <CardContent className="p-5">
+              <div className="mb-5 flex items-start justify-between">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                  <Webhook className="size-[18px]" />
+                </div>
+                <ArrowRight className="size-4 text-slate-300 transition-transform group-hover:translate-x-0.5" />
+              </div>
+              <div className="text-3xl font-semibold tracking-[-0.04em] text-slate-950">
+                {queueDepth}
+              </div>
+              <div className="mt-1 text-sm font-medium text-slate-700">
+                Webhook queue backlog
+              </div>
+              <div className="mt-0.5 text-xs text-slate-400">
+                {queueDepth === 1 ? '1 payload queued' : `${queueDepth} payloads queued`}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </section>
+
+      <Card className="overflow-hidden p-0">
+        <CardHeader className="flex-row items-start justify-between border-b border-[var(--border-primary)] px-5 pb-5">
           <div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
-              Master Tenant Registry {filterType !== 'all' && <span style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 400 }}>({filterType === 'active' ? 'Active' : filterType === 'suspended' ? 'Suspended' : 'WhatsApp Linked'} Filter Active)</span>}
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4 }}>Control status, subscription tiers, and WhatsApp configurations across the active fleet.</p>
+            <CardTitle className="text-base">
+              Master tenant registry
+              {filterType !== 'all' && (
+                <span className="ml-2 text-xs font-normal text-[var(--text-muted)]">
+                  ({filterLabel} filter active)
+                </span>
+              )}
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Control status, subscription tiers, and WhatsApp configurations across the active
+              fleet.
+            </CardDescription>
           </div>
           {filterType !== 'all' && (
-            <button 
-              onClick={() => setFilterType('all')}
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #1F1F1F', color: '#A3A3A3', borderRadius: 4, padding: '4px 8px', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Clear Filter
-            </button>
+            <Button variant="outline" size="sm" onClick={() => setFilterType('all')}>
+              Clear filter
+            </Button>
           )}
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: 1000, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
-            <thead>
-              <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Workspace Name & Slug</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Tier</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Members</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Clients</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Setup Date</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Status</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>WhatsApp</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px 0', color: '#888888', fontStyle: 'italic' }}>
-                    No workspaces match the current active filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredTenants.map(tenant => (
-                  <tr key={tenant.id} style={{ borderBottom: '1px solid #1F1F1F', background: tenant.isActive ? 'transparent' : 'rgba(245, 158, 11, 0.02)', transition: 'background 0.15s ease' }}>
-                    <td style={{ padding: '16px 20px' }}>
-                      <Link 
-                        href={`/admin/tenants/${tenant.id}`}
-                        style={{ 
-                          fontWeight: 600, 
-                          color: '#5EEAD4', 
-                          textDecoration: 'none', 
-                          cursor: 'pointer' 
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                        onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
-                      >
-                        {tenant.name}
-                      </Link>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        <span style={{ fontSize: '0.7rem', color: '#888888', fontFamily: 'monospace' }}>/onboard/{tenant.slug}</span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(getOnboardingUrl(tenant.slug));
-                            showToast('Onboarding URL copied to clipboard');
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#5EEAD4', cursor: 'pointer', fontSize: '0.7rem', padding: 0 }}
-                          title="Copy Onboarding URL"
-                        >
-                          [Copy]
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px 20px', textTransform: 'capitalize' }}>
-                      <span style={{ padding: '2px 6px', borderRadius: 4, background: tenant.plan === 'enterprise' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)', color: tenant.plan === 'enterprise' ? '#A78BFA' : '#60A5FA', fontSize: '0.7rem', fontWeight: 600 }}>
-                        {tenant.plan}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{tenant._count.users}</td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{tenant._count.clients}</td>
-                    <td style={{ padding: '16px 20px', color: '#888888' }}>{new Date(tenant.createdAt).toLocaleDateString('en-GB')}</td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: 9999,
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        background: tenant.isActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        color: tenant.isActive ? '#34D399' : '#F87171'
-                      }}>
-                        {tenant.isActive ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 20px' }}>
-                      {tenant.whatsappSetupComplete ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span style={{ color: '#34D399', fontWeight: 600, fontSize: '0.7rem' }}>● Linked</span>
-                          {tenant.whatsappPhoneNumber && (
-                            <span style={{ fontSize: '0.65rem', color: '#888888', fontFamily: 'monospace' }}>{tenant.whatsappPhoneNumber}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#64748B', fontSize: '0.7rem' }}>Unlinked</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                        <button
-                          onClick={() => handleToggleActive(tenant.id, tenant.isActive)}
-                          disabled={actionLoading !== null}
-                          style={{
-                            background: tenant.isActive ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                            border: `1px solid ${tenant.isActive ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                            color: tenant.isActive ? '#F59E0B' : '#34D399',
-                            padding: '6px 12px',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: '0.7rem',
-                            fontWeight: 600
-                          }}
-                        >
-                          {actionLoading === tenant.id + '-toggle' ? '...' : tenant.isActive ? 'Suspend' : 'Activate'}
-                        </button>
-                        {tenant.whatsappSetupComplete && (
-                          <button
-                            onClick={() => handleForceRevoke(tenant.id)}
-                            disabled={actionLoading !== null}
-                            style={{
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              border: '1px solid rgba(239, 68, 68, 0.2)',
-                              color: '#F87171',
-                              padding: '6px 12px',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontSize: '0.7rem',
-                              fontWeight: 600
-                            }}
-                          >
-                            {actionLoading === tenant.id + '-revoke' ? '...' : 'Force Disconnect'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Stuck Intake Deep-Dive Section */}
-      <div id="stuck-intake-section" ref={stuckRef} style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ padding: 20, borderBottom: '1px solid #1F1F1F' }}>
-          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>Client Intake Deep-Dive (Stuck in Onboarding)</h2>
-          <p style={{ fontSize: '0.75rem', color: '#888888', marginTop: 4 }}>Review client registrations that have not completed verification or are currently stuck in the `ONBOARDING` state block.</p>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          {onboardingClients.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#888888', fontSize: '0.8rem', fontStyle: 'italic' }}>
-              No onboarding client sessions are currently stuck. Fleet is healthy.
-            </div>
-          ) : (
-            <table style={{ width: 1000, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] border-collapse text-left">
               <thead>
-                <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Client Company Name</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Parent Tenant</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Email Address</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Contact Info</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Reg Number</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Intake Initiated</th>
-                  <th style={{ padding: '12px 20px', fontWeight: 600 }}>Status Block</th>
+                <tr className="bg-slate-50/80">
+                  {[
+                    'Workspace name & slug',
+                    'Tier',
+                    'Members',
+                    'Clients',
+                    'Setup date',
+                    'Status',
+                    'WhatsApp',
+                    'Actions',
+                  ].map((label) => (
+                    <th
+                      key={label}
+                      className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] ${
+                        label === 'Actions' ? 'text-right' : ''
+                      }`}
+                    >
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {onboardingClients.map(client => (
-                  <tr key={client.id} style={{ borderBottom: '1px solid #1F1F1F' }}>
-                    <td style={{ padding: '16px 20px', fontWeight: 600, color: '#FFFFFF' }}>{client.companyName}</td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ color: '#FFFFFF' }}>{client.tenant.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: '#888888' }}>{client.tenant.slug}</div>
-                    </td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{client.email || 'N/A'}</td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{client.phone || 'N/A'}</td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{client.registrationNumber || 'N/A'}</td>
-                    <td style={{ padding: '16px 20px', color: '#888888' }}>{new Date(client.createdAt).toLocaleDateString('en-GB')} {new Date(client.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444', fontSize: '0.7rem', fontWeight: 700 }}>
-                        ONBOARDING
-                      </span>
+                {filteredTenants.length === 0 ? (
+                  <tr className="border-t border-[var(--border-primary)]">
+                    <td
+                      colSpan={8}
+                      className="px-5 py-10 text-center text-sm italic text-[var(--text-muted)]"
+                    >
+                      No workspaces match the current active filter criteria.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredTenants.map((tenant) => (
+                    <tr
+                      key={tenant.id}
+                      className="border-t border-[var(--border-primary)] transition-colors hover:bg-slate-50/80"
+                    >
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/admin/tenants/${tenant.id}`}
+                          className="text-sm font-semibold text-teal-700 hover:underline"
+                        >
+                          {tenant.name}
+                        </Link>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span className="font-mono text-xs text-[var(--text-muted)]">
+                            /onboard/{tenant.slug}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(getOnboardingUrl(tenant.slug));
+                              showToast('Onboarding URL copied to clipboard');
+                            }}
+                            title="Copy Onboarding URL"
+                          >
+                            <Copy />
+                            Copy
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <Badge
+                          variant={tenant.plan === 'enterprise' ? 'info' : 'outline'}
+                          className="capitalize"
+                        >
+                          {tenant.plan}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-secondary)]">
+                        {tenant._count.users}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-secondary)]">
+                        {tenant._count.clients}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-muted)]">
+                        {new Date(tenant.createdAt).toLocaleDateString('en-GB')}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Badge variant={tenant.isActive ? 'success' : 'destructive'}>
+                          {tenant.isActive ? 'Active' : 'Suspended'}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-4">
+                        {tenant.whatsappSetupComplete ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <Badge variant="success">Linked</Badge>
+                            {tenant.whatsappPhoneNumber && (
+                              <span className="font-mono text-xs text-[var(--text-muted)]">
+                                {tenant.whatsappPhoneNumber}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="outline">Unlinked</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant={tenant.isActive ? 'outline' : 'primary'}
+                            size="sm"
+                            onClick={() => handleToggleActive(tenant.id, tenant.isActive)}
+                            disabled={actionLoading !== null}
+                          >
+                            {actionLoading === tenant.id + '-toggle'
+                              ? '...'
+                              : tenant.isActive
+                                ? 'Suspend'
+                                : 'Activate'}
+                          </Button>
+                          {tenant.whatsappSetupComplete && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleForceRevoke(tenant.id)}
+                              disabled={actionLoading !== null}
+                            >
+                              {actionLoading === tenant.id + '-revoke'
+                                ? '...'
+                                : 'Force disconnect'}
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card
+        id="stuck-intake-section"
+        ref={stuckRef}
+        className="scroll-mt-6 overflow-hidden p-0"
+      >
+        <CardHeader className="border-b border-[var(--border-primary)] px-5 pb-5">
+          <CardTitle className="text-base">Client intake deep-dive</CardTitle>
+          <CardDescription>
+            Review client registrations that have not completed verification or remain in
+            onboarding.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          {onboardingClients.length === 0 ? (
+            <div className="flex flex-col items-center px-6 py-12 text-center">
+              <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                <UsersRound className="size-5" />
+              </div>
+              <div className="text-sm font-semibold text-[var(--text-primary)]">
+                Fleet is healthy
+              </div>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                No onboarding client sessions are currently stuck.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1000px] border-collapse text-left">
+                <thead>
+                  <tr className="bg-slate-50/80">
+                    {[
+                      'Client company name',
+                      'Parent tenant',
+                      'Email address',
+                      'Contact info',
+                      'Reg number',
+                      'Intake initiated',
+                      'Status block',
+                    ].map((label) => (
+                      <th
+                        key={label}
+                        className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"
+                      >
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {onboardingClients.map((client) => (
+                    <tr
+                      key={client.id}
+                      className="border-t border-[var(--border-primary)]"
+                    >
+                      <td className="px-5 py-4 text-sm font-semibold text-[var(--text-primary)]">
+                        {client.companyName}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="text-sm text-[var(--text-primary)]">
+                          {client.tenant.name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-[var(--text-muted)]">
+                          {client.tenant.slug}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-secondary)]">
+                        {client.email || 'N/A'}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-secondary)]">
+                        {client.phone || 'N/A'}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-secondary)]">
+                        {client.registrationNumber || 'N/A'}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-[var(--text-muted)]">
+                        {new Date(client.createdAt).toLocaleDateString('en-GB')}{' '}
+                        {new Date(client.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Badge variant="warning">Onboarding</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

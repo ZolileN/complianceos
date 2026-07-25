@@ -30,7 +30,7 @@ export async function POST(
     });
 
     await logAdminAction(
-      'DISCONNECT_WABA',
+      'DISCONNECT_WHATSAPP',
       id,
       { tenantName: tenant.name, tenantSlug: tenant.slug }
     );

@@ -1,9 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { KeyRound, Plus, Trash2, UsersRound, X } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface TeamMember {
   id: string;
@@ -11,6 +16,21 @@ interface TeamMember {
   full_name: string;
   role: 'administrator' | 'operations_manager' | 'consultant' | 'client';
   created_at: string;
+}
+
+type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
+
+function roleVariant(role: string): BadgeVariant {
+  switch (role) {
+    case 'administrator':
+      return 'destructive';
+    case 'operations_manager':
+      return 'info';
+    case 'consultant':
+      return 'success';
+    default:
+      return 'outline';
+  }
 }
 
 export default function PlatformTeamPage() {
@@ -21,7 +41,6 @@ export default function PlatformTeamPage() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Modal / Form state
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -32,7 +51,6 @@ export default function PlatformTeamPage() {
     role: 'administrator' as 'administrator' | 'operations_manager' | 'consultant' | 'client',
   });
 
-  // Reset Password Modal state
   const [showResetModal, setShowResetModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [resetPassword, setResetPassword] = useState('');
@@ -80,7 +98,7 @@ export default function PlatformTeamPage() {
       toast('Platform team member added successfully');
       setForm({ name: '', email: '', password: '', role: 'administrator' });
       setShowAddModal(false);
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -94,7 +112,7 @@ export default function PlatformTeamPage() {
       message: `Are you sure you want to remove ${name} from the platform team? This action will immediately revoke their administrator/staff access.`,
       confirmText: 'Remove Member',
       cancelText: 'Cancel',
-      type: 'danger'
+      type: 'danger',
     });
     if (!ok) return;
 
@@ -109,7 +127,7 @@ export default function PlatformTeamPage() {
       }
 
       toast('Platform team member removed successfully');
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       toast((err as Error).message, 'error');
     }
@@ -143,144 +161,104 @@ export default function PlatformTeamPage() {
     }
   };
 
-  const roleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'administrator':
-        return '#F87171'; // light red
-      case 'operations_manager':
-        return '#60A5FA'; // light blue
-      case 'consultant':
-        return '#C084FC'; // light purple
-      default:
-        return '#888888';
-    }
-  };
-
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh', color: '#888888' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #5EEAD4', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+      <div className="mx-auto flex min-h-[50vh] max-w-[1500px] items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-sm text-[var(--text-muted)]">
+          <span className="spinner size-8" />
           <span>Loading platform team registry...</span>
         </div>
-        <style jsx>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1200 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#FFFFFF' }}>Platform Team Management</h1>
-          <p style={{ fontSize: '0.8rem', color: '#888888', marginTop: 4 }}>Manage internal staff accounts and access levels for the PraxisOne master tenant.</p>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <UsersRound className="size-3.5" />
+            Registry
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+            Platform team
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Manage internal staff accounts and access levels for the PraxisOne master tenant.
+          </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            background: '#5EEAD4',
-            border: 'none',
-            color: '#000000',
-            padding: '10px 20px',
-            borderRadius: 6,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            transition: 'opacity 0.15s ease'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
-          onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-        >
-          + Add Team Member
-        </button>
-      </div>
+        <Button variant="primary" onClick={() => setShowAddModal(true)}>
+          <Plus />
+          Add team member
+        </Button>
+      </section>
 
-      {/* Team Registry Card */}
-      <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
-              <tr style={{ background: '#0A0A0A', borderBottom: '1px solid #1F1F1F', color: '#888888' }}>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Full Name</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Email Address</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Role</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Setup Date</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                {['Full name', 'Email address', 'Role', 'Setup date', 'Actions'].map((label) => (
+                  <th
+                    key={label}
+                    className={`px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 uppercase ${
+                      label === 'Actions' ? 'text-right' : ''
+                    }`}
+                  >
+                    {label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '40px 0', color: '#888888', fontStyle: 'italic' }}>
+                  <td colSpan={5} className="px-4 py-12 text-center text-sm text-slate-500 italic">
                     No platform team members found.
                   </td>
                 </tr>
               ) : (
                 members.map((m) => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid #1F1F1F', transition: 'background 0.15s ease' }}>
-                    <td style={{ padding: '16px 20px', fontWeight: 600, color: '#FFFFFF' }}>{m.full_name}</td>
-                    <td style={{ padding: '16px 20px', color: '#A3A3A3' }}>{m.email}</td>
-                    <td style={{ padding: '16px 20px' }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          background: 'rgba(255,255,255,0.03)',
-                          color: roleBadgeColor(m.role),
-                          border: `1px solid ${roleBadgeColor(m.role)}33`
-                        }}
-                      >
-                        {m.role.replace('_', ' ')}
-                      </span>
+                  <tr key={m.id} className="border-b border-slate-100 last:border-0">
+                    <td className="px-4 py-3.5 text-sm font-semibold text-slate-900">
+                      {m.full_name}
                     </td>
-                    <td style={{ padding: '16px 20px', color: '#888888' }}>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">{m.email}</td>
+                    <td className="px-4 py-3.5">
+                      <Badge variant={roleVariant(m.role)} className="capitalize">
+                        {m.role.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">
                       {new Date(m.created_at).toLocaleDateString('en-GB')}
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <button
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             setSelectedMember(m);
                             setResetPassword('');
                             setResetError('');
                             setShowResetModal(true);
                           }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#5EEAD4',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            padding: 0
-                          }}
                         >
-                          Reset Password
-                        </button>
+                          <KeyRound />
+                          Reset password
+                        </Button>
                         {m.id === user?.id ? (
-                          <span style={{ fontSize: '0.75rem', color: '#64748B', fontStyle: 'italic', paddingRight: 4 }}>You</span>
+                          <span className="px-2 text-xs italic text-slate-400">You</span>
                         ) : (
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
                             onClick={() => handleDeleteMember(m.id, m.full_name)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#F87171',
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              padding: 0
-                            }}
                           >
+                            <Trash2 />
                             Remove
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -290,156 +268,191 @@ export default function PlatformTeamPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
-      {/* Add Member Modal */}
       {showAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
-            <button
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <Card className="relative w-full max-w-[500px]">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-3 right-3"
               onClick={() => setShowAddModal(false)}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
+              aria-label="Close"
             >
-              ✕
-            </button>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>Add Platform Team Member</h2>
-            <p style={{ color: '#888888', fontSize: '0.8rem', marginBottom: 20 }}>Provision a new administrative or staff account linked to the PraxisOne master tenant.</p>
+              <X />
+            </Button>
+            <CardContent className="pt-5">
+              <h2 className="mb-1 text-xl font-semibold text-slate-950">
+                Add platform team member
+              </h2>
+              <p className="mb-5 text-sm text-slate-500">
+                Provision a new administrative or staff account linked to the PraxisOne master
+                tenant.
+              </p>
 
-            {error && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, color: '#F87171', fontSize: '0.8rem' }}>
-                {error}
-              </div>
-            )}
+              {error && (
+                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
-            <form onSubmit={handleAddMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Full Name *</label>
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. Pepper Potts"
-                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                />
-              </div>
+              <form onSubmit={handleAddMember} className="stack">
+                <div className="form-group">
+                  <label className="form-label">Full Name *</label>
+                  <input
+                    className="input"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Pepper Potts"
+                  />
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                  placeholder="e.g. pepper@praxisone.com"
-                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address *</label>
+                  <input
+                    className="input"
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                    placeholder="e.g. pepper@praxisone.com"
+                  />
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Password *</label>
-                <input
-                  type="password"
-                  required
-                  value={form.password}
-                  onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
-                  placeholder="Minimum 6 characters"
-                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                />
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Password *</label>
+                  <input
+                    className="input"
+                    type="password"
+                    required
+                    value={form.password}
+                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                    placeholder="Minimum 6 characters"
+                  />
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>Platform Role *</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm(p => ({ ...p, role: e.target.value as 'administrator' | 'operations_manager' | 'consultant' | 'client' }))}
-                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                >
-                  <option value="administrator">Platform Administrator (Full Access)</option>
-                  <option value="operations_manager">Operations Manager</option>
-                  <option value="consultant">Consultant</option>
-                </select>
-              </div>
+                <div className="form-group">
+                  <label className="form-label">Platform Role *</label>
+                  <select
+                    className="select"
+                    value={form.role}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        role: e.target.value as
+                          | 'administrator'
+                          | 'operations_manager'
+                          | 'consultant'
+                          | 'client',
+                      }))
+                    }
+                  >
+                    <option value="administrator">Platform Administrator (Full Access)</option>
+                    <option value="operations_manager">Operations Manager</option>
+                    <option value="consultant">Consultant</option>
+                  </select>
+                </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  style={{ background: 'transparent', border: '1px solid #1F1F1F', color: '#FFFFFF', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ background: '#5EEAD4', border: 'none', color: '#000000', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                >
-                  {submitting ? 'Creating...' : 'Create Account'}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={submitting}>
+                    {submitting ? <span className="spinner" /> : 'Create account'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Reset Password Modal */}
       {showResetModal && selectedMember && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#050505', border: '1px solid #1F1F1F', borderRadius: 8, padding: 24, width: '100%', maxWidth: 500, position: 'relative' }}>
-            <button
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+          }}
+        >
+          <Card className="relative w-full max-w-[500px]">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-3 right-3"
               onClick={() => {
                 setShowResetModal(false);
                 setSelectedMember(null);
               }}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: '1.2rem' }}
+              aria-label="Close"
             >
-              ✕
-            </button>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#FFFFFF', marginBottom: 8 }}>Reset Password</h2>
-            <p style={{ color: '#888888', fontSize: '0.8rem', marginBottom: 20 }}>
-              Enter a new password for platform team member <strong>{selectedMember.full_name}</strong> ({selectedMember.email}).
-            </p>
+              <X />
+            </Button>
+            <CardContent className="pt-5">
+              <h2 className="mb-1 text-xl font-semibold text-slate-950">Reset password</h2>
+              <p className="mb-5 text-sm text-slate-500">
+                Enter a new password for platform team member{' '}
+                <strong>{selectedMember.full_name}</strong> ({selectedMember.email}).
+              </p>
 
-            {resetError && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, color: '#F87171', fontSize: '0.8rem' }}>
-                {resetError}
-              </div>
-            )}
+              {resetError && (
+                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {resetError}
+                </div>
+              )}
 
-            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888888' }}>New Password *</label>
-                <input
-                  type="password"
-                  required
-                  value={resetPassword}
-                  onChange={(e) => setResetPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                  autoFocus
-                  style={{ background: '#000000', border: '1px solid #1F1F1F', borderRadius: 6, padding: '10px 12px', color: '#FFFFFF', fontSize: '0.85rem' }}
-                />
-              </div>
+              <form onSubmit={handleResetPassword} className="stack">
+                <div className="form-group">
+                  <label className="form-label">New Password *</label>
+                  <input
+                    className="input"
+                    type="password"
+                    required
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    autoFocus
+                  />
+                </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowResetModal(false);
-                    setSelectedMember(null);
-                  }}
-                  style={{ background: 'transparent', border: '1px solid #1F1F1F', color: '#FFFFFF', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={resetSubmitting}
-                  style={{ background: '#5EEAD4', border: 'none', color: '#000000', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                >
-                  {resetSubmitting ? 'Resetting...' : 'Reset Password'}
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowResetModal(false);
+                      setSelectedMember(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" disabled={resetSubmitting}>
+                    {resetSubmitting ? <span className="spinner" /> : 'Reset password'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
