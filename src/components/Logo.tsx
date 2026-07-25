@@ -6,9 +6,10 @@ interface LogoProps {
   className?: string;
   size?: 'xs' | 'sm' | 'md' | 'lg' | number;
   showText?: boolean;
+  tone?: 'light' | 'dark';
 }
 
-export default function Logo({ className, size = 'md', showText = false }: LogoProps) {
+export default function Logo({ className, size = 'md', showText = false, tone = 'dark' }: LogoProps) {
   const sizeMap = {
     xs: 18,
     sm: 24,
@@ -17,6 +18,8 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
   };
   
   const widthHeight = typeof size === 'number' ? size : sizeMap[size] || 32;
+  const brandColor = tone === 'light' ? '#0f766e' : '#5EEAD4';
+  const wordmarkColor = tone === 'light' ? '#172033' : '#ffffff';
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className={className}>
@@ -39,7 +42,7 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
              V 155 
              A 20 20 0 0 1 155 175 
              H 80"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="16"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -52,14 +55,14 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
              A 25 25 0 0 1 145 85
              A 25 25 0 0 1 120 110
              H 75"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="16"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
           d="M 75 60 V 140"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="16"
           strokeLinecap="round"
         />
@@ -68,13 +71,13 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
         {/* Arrow 1 (Topmost/rightmost) */}
         <path
           d="M 35 165 L 115 85"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="12"
           strokeLinecap="round"
         />
         <path
           d="M 95 85 H 115 V 105"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="12"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -83,13 +86,13 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
         {/* Arrow 2 (Middle) */}
         <path
           d="M 20 180 L 90 110"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="12"
           strokeLinecap="round"
         />
         <path
           d="M 70 110 H 90 V 130"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="12"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -98,7 +101,7 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
         {/* Arrow 3 (Bottommost/leftmost) */}
         <path
           d="M 5 195 L 65 135"
-          stroke="#5EEAD4"
+          stroke={brandColor}
           strokeWidth="12"
           strokeLinecap="round"
         />
@@ -111,8 +114,8 @@ export default function Logo({ className, size = 'md', showText = false }: LogoP
         />
       </svg>
       {showText && (
-        <span style={{ fontWeight: 800, fontSize: '1.25rem', color: '#fff', letterSpacing: '-0.025em', display: 'flex', alignItems: 'center' }}>
-          Praxis<span style={{ color: '#5EEAD4' }}>One</span>
+        <span style={{ fontWeight: 750, fontSize: '1.15rem', color: wordmarkColor, letterSpacing: '-0.035em', display: 'flex', alignItems: 'center' }}>
+          Praxis<span style={{ color: brandColor }}>One</span>
         </span>
       )}
     </div>

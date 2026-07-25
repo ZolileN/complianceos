@@ -8,3 +8,4 @@
 
 ## General
 - Rely on environment variables defined in `.env.local` for all configuration IDs and secrets.
+- Always show me implementation plan before each phase, then walkthrough when done.

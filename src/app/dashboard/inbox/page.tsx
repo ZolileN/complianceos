@@ -1,18 +1,41 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import {
+  Download,
+  FileText,
+  MessageSquareText,
+  Plug,
+  Send,
+  Settings,
+} from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import type { Conversation, Message } from '@/types';
-import Link from 'next/link';
 
 function getRelativeDateText(msgDateStr: string) {
   const today = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
   if (msgDateStr === today) return 'Today';
   if (msgDateStr === yesterday) return 'Yesterday';
-  return new Date(msgDateStr).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(msgDateStr).toLocaleDateString([], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function clientName(conversation?: Conversation | null) {
+  return (conversation?.client as unknown as { company_name?: string })?.company_name;
+}
+
+function clientId(conversation?: Conversation | null) {
+  return (conversation?.client as unknown as { id?: string })?.id;
 }
 
 export default function InboxPage() {
@@ -29,18 +52,16 @@ export default function InboxPage() {
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Check WhatsApp connection status
   useEffect(() => {
     if (!tenant) return;
     fetch('/api/settings/whatsapp/status')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setWhatsappConnected(data.connected);
       })
       .catch(() => setWhatsappConnected(false));
   }, [tenant]);
 
-  // Load conversations — correct effect pattern
   useEffect(() => {
     if (!tenant) return;
     let cancelled = false;
@@ -50,10 +71,15 @@ export default function InboxPage() {
         const res = await fetch('/api/conversations');
         const { data } = await res.json();
         if (!cancelled) setConversations(data || []);
-      } catch (err) { console.error(err); }
-      finally { if (!cancelled) setLoading(false); }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tenant, convoRefreshKey]);
 
   const lastConvoRef = useRef<string | null>(null);
@@ -70,16 +96,15 @@ export default function InboxPage() {
           setMessages((prev) => {
             const isNewConvo = lastConvoRef.current !== activeConvo;
             const hasNewMessage = data && data.length > prev.length;
-            const lastMessageIsOutbound = data && data.length > 0 && data[data.length - 1].direction === 'outbound';
-            
+            const lastMessageIsOutbound =
+              data && data.length > 0 && data[data.length - 1].direction === 'outbound';
+
             let shouldScroll = false;
             if (isNewConvo || lastMessageIsOutbound) {
               shouldScroll = true;
             } else if (hasNewMessage) {
-              // Check if user is near the bottom
               if (chatContainerRef.current) {
                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-                // If within 250px of the bottom, auto-scroll
                 if (scrollHeight - scrollTop - clientHeight < 250) {
                   shouldScroll = true;
                 }
@@ -87,27 +112,30 @@ export default function InboxPage() {
                 shouldScroll = true;
               }
             }
-            
+
             if (shouldScroll) {
               setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ block: 'end' });
               }, 50);
             }
-            
+
             lastConvoRef.current = activeConvo;
             return data || [];
           });
         }
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error(err);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [activeConvo, msgRefreshKey]);
 
-  // 5-second polling
   useEffect(() => {
     const interval = setInterval(() => {
-      setConvoRefreshKey(k => k + 1);
-      if (activeConvo) setMsgRefreshKey(k => k + 1);
+      setConvoRefreshKey((k) => k + 1);
+      if (activeConvo) setMsgRefreshKey((k) => k + 1);
     }, 5000);
     return () => clearInterval(interval);
   }, [activeConvo]);
@@ -121,14 +149,18 @@ export default function InboxPage() {
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: convo?.whatsapp_number, message: newMessage, conversation_id: activeConvo }),
+        body: JSON.stringify({
+          to: convo?.whatsapp_number,
+          message: newMessage,
+          conversation_id: activeConvo,
+        }),
       });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || 'Failed to send message');
       }
       setNewMessage('');
-      setMsgRefreshKey(k => k + 1);
+      setMsgRefreshKey((k) => k + 1);
       toast('Message sent', 'success');
     } catch (err) {
       toast((err as Error).message || 'Failed to send message', 'error');
@@ -140,8 +172,8 @@ export default function InboxPage() {
   const activeConversation = conversations.find((c) => c.id === activeConvo);
 
   const handleSaveToDocuments = async (url: string, name: string, category: string) => {
-    const clientId = (activeConversation?.client as unknown as { id: string })?.id;
-    if (!clientId) {
+    const linkedClientId = clientId(activeConversation);
+    if (!linkedClientId) {
       toast('No client associated with this conversation', 'error');
       return;
     }
@@ -153,9 +185,9 @@ export default function InboxPage() {
           url: `/api/whatsapp/media/${url}`,
           name: name || 'WhatsApp Media',
           type: 'application/octet-stream',
-          client_id: clientId,
-          category: category
-        })
+          client_id: linkedClientId,
+          category: category,
+        }),
       });
       if (!res.ok) throw new Error('Failed to save to documents');
       toast('Saved to Documents successfully', 'success');
@@ -167,96 +199,130 @@ export default function InboxPage() {
   const formatTime = (ts: string) => {
     const d = new Date(ts);
     const now = new Date();
-    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">WhatsApp Inbox</h1>
-          <p className="page-subtitle">{conversations.length} conversations</p>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <MessageSquareText className="size-3.5" />
+          Omnichannel
         </div>
-      </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Inbox</h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          {conversations.length}{' '}
+          {conversations.length === 1 ? 'conversation' : 'conversations'} across WhatsApp
+        </p>
+      </section>
 
       {loading ? (
-        <div className="skeleton" style={{ height: 500 }} />
+        <div className="skeleton h-[500px] rounded-xl" />
       ) : whatsappConnected === false ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-icon">🔌</div>
-            <h3>WhatsApp Integration Required</h3>
-            <p style={{ maxWidth: 450, margin: '0 auto 20px' }}>
-              Connect your firm&apos;s WhatsApp Business account to start messaging your clients directly from PraxisOne.
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+              <Plug className="size-5" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-950">
+              WhatsApp integration required
+            </h2>
+            <p className="max-w-md text-sm leading-6 text-slate-500">
+              Connect your firm&apos;s WhatsApp Business number to start messaging clients
+              directly from PraxisOne.
             </p>
-            <div>
-              <Link href="/dashboard/settings" className="btn btn-primary">
-                ⚙️ Set Up WhatsApp Business
+            <Button asChild variant="primary" className="mt-2">
+              <Link href="/dashboard/settings">
+                <Settings />
+                Set up WhatsApp
               </Link>
-            </div>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
       ) : conversations.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-icon">💬</div>
-            <h3>No conversations yet</h3>
-            <p>
-              When clients message you on WhatsApp, their conversations will appear here automatically.
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <MessageSquareText className="size-5" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-950">No conversations yet</h2>
+            <p className="max-w-md text-sm leading-6 text-slate-500">
+              When clients message you on WhatsApp, their conversations appear here
+              automatically.
             </p>
-            <div style={{
-              marginTop: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-              maxWidth: 380,
-              textAlign: 'left'
-            }}>
-              <div style={{ padding: '12px 16px', background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.1rem', marginTop: 1 }}>1️⃣</span>
-                <span>Go to <strong style={{ color: 'var(--text-primary)' }}>Clients</strong> and share your invite link — clients fill in their details and are added to your workspace automatically.</span>
+            <div className="mt-4 flex w-full max-w-md flex-col gap-2.5 text-left">
+              <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-800">1. Share an invite</span>
+                <span className="mt-1 block">
+                  Go to Clients and share your invite link so clients can self-onboard.
+                </span>
               </div>
-              <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.1rem', marginTop: 1 }}>2️⃣</span>
-                <span>Once a client sends you a WhatsApp message, the conversation will appear here and link to their profile automatically.</span>
+              <div className="rounded-lg border border-teal-100 bg-teal-50/70 px-4 py-3 text-sm text-slate-600">
+                <span className="font-semibold text-slate-800">2. Wait for the first message</span>
+                <span className="mt-1 block">
+                  Once a client messages you, the thread links to their profile here.
+                </span>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="inbox-layout" style={{ height: 'calc(100vh - 220px)' }}>
           <div className="conversation-list">
             <div className="conversation-list-header">
-              <input className="input" placeholder="Search conversations..." style={{ fontSize: '0.85rem' }} readOnly title="Search coming soon" />
+              <input
+                className="input"
+                placeholder="Search conversations..."
+                style={{ fontSize: '0.85rem' }}
+                readOnly
+                title="Search coming soon"
+              />
             </div>
-            {conversations.map((c) => (
-              <div key={c.id} className={`conversation-item ${activeConvo === c.id ? 'active' : ''}`} onClick={() => setActiveConvo(c.id)}>
-                <div className="conversation-avatar">{(c.client as unknown as { company_name: string })?.company_name?.[0] || c.whatsapp_number.slice(-2)}</div>
-                <div className="conversation-info">
-                  <div className="conversation-name">{(c.client as unknown as { company_name: string })?.company_name || c.whatsapp_number}</div>
-                  <div className="conversation-preview">{c.whatsapp_number}</div>
+            {conversations.map((c) => {
+              const name = clientName(c) || c.whatsapp_number;
+              return (
+                <div
+                  key={c.id}
+                  className={`conversation-item ${activeConvo === c.id ? 'active' : ''}`}
+                  onClick={() => setActiveConvo(c.id)}
+                >
+                  <div className="conversation-avatar">
+                    {clientName(c)?.[0] || c.whatsapp_number.slice(-2)}
+                  </div>
+                  <div className="conversation-info">
+                    <div className="conversation-name">{name}</div>
+                    <div className="conversation-preview">{c.whatsapp_number}</div>
+                  </div>
+                  <span className="conversation-time">
+                    {c.last_message_at ? formatTime(c.last_message_at) : ''}
+                  </span>
                 </div>
-                <span className="conversation-time">{c.last_message_at ? formatTime(c.last_message_at) : ''}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="chat-panel" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
             {!activeConvo ? (
-              <div className="flex-center" style={{ flex: 1, color: 'var(--text-muted)' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: 12, opacity: 0.3 }}>💬</div>
-                  <p>Select a conversation</p>
-                </div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
+                <MessageSquareText className="size-8 opacity-40" />
+                <p className="text-sm">Select a conversation</p>
               </div>
             ) : (
               <>
                 <div className="chat-header">
-                  <div className="conversation-avatar">{(activeConversation?.client as unknown as { company_name: string })?.company_name?.[0] || '?'}</div>
+                  <div className="conversation-avatar">
+                    {clientName(activeConversation)?.[0] || '?'}
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{(activeConversation?.client as unknown as { company_name: string })?.company_name || activeConversation?.whatsapp_number}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{activeConversation?.whatsapp_number}</div>
+                    <div className="text-sm font-semibold text-slate-900">
+                      {clientName(activeConversation) || activeConversation?.whatsapp_number}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {activeConversation?.whatsapp_number}
+                    </div>
                   </div>
                 </div>
                 <div className="chat-messages" ref={chatContainerRef}>
@@ -264,126 +330,164 @@ export default function InboxPage() {
                     const mData = m as unknown as { messageType?: string; mediaUrl?: string };
                     const messageType = mData.messageType || m.message_type;
                     const mediaUrl = mData.mediaUrl || m.media_url;
-                    
+
                     const prevMsg = index > 0 ? messages[index - 1] : null;
                     const msgDateStr = new Date(m.created_at).toDateString();
-                    const prevDateStr = prevMsg ? new Date(prevMsg.created_at).toDateString() : null;
+                    const prevDateStr = prevMsg
+                      ? new Date(prevMsg.created_at).toDateString()
+                      : null;
                     const showDateBadge = msgDateStr !== prevDateStr;
-                    
-                    let dateBadgeText = msgDateStr;
-                    if (showDateBadge) {
-                      dateBadgeText = getRelativeDateText(msgDateStr);
-                    }
-                    
+                    const dateBadgeText = showDateBadge
+                      ? getRelativeDateText(msgDateStr)
+                      : msgDateStr;
+
                     return (
                       <React.Fragment key={m.id}>
                         {showDateBadge && (
-                          <div style={{ textAlign: 'center', margin: '12px 0' }}>
-                            <span style={{ background: '#182229', color: '#8696a0', fontSize: '0.75rem', padding: '5px 12px', borderRadius: 8, boxShadow: '0 1px 0.5px rgba(11,20,26,.13)' }}>
+                          <div className="my-3 text-center">
+                            <span className="inline-block rounded-full border border-[var(--border-primary)] bg-[var(--bg-card)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] shadow-sm">
                               {dateBadgeText}
                             </span>
                           </div>
                         )}
-                        <div className={`message-bubble ${m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'}`}>
-                        {messageType === 'image' && mediaUrl ? (
-                          <div style={{ marginBottom: 4 }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                              src={`/api/whatsapp/media/${mediaUrl}`} 
-                              alt={m.content || 'Image'} 
-                              style={{ maxWidth: '100%', borderRadius: 8, maxHeight: 300, objectFit: 'contain', backgroundColor: 'rgba(0,0,0,0.1)' }} 
-                            />
-                            {m.content && <div style={{ marginTop: 4 }}>{m.content}</div>}
-                            <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.8rem', opacity: 0.8 }}>
-                              <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                                ↓ Download Image
-                              </a>
-                              <select 
-                                style={{ 
-                                  background: 'var(--bg-elevated)', 
-                                  border: '1px solid var(--border-primary)', 
-                                  color: 'var(--text-primary)', 
-                                  borderRadius: 'var(--radius-sm)',
-                                  cursor: 'pointer', 
-                                  padding: '2px 8px', 
-                                  fontSize: '0.75rem',
-                                  outline: 'none'
+                        <div
+                          className={`message-bubble ${
+                            m.direction === 'inbound' ? 'message-inbound' : 'message-outbound'
+                          }`}
+                        >
+                          {messageType === 'image' && mediaUrl ? (
+                            <div className="mb-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`/api/whatsapp/media/${mediaUrl}`}
+                                alt={m.content || 'Image'}
+                                style={{
+                                  maxWidth: '100%',
+                                  borderRadius: 8,
+                                  maxHeight: 300,
+                                  objectFit: 'contain',
+                                  backgroundColor: 'rgba(0,0,0,0.04)',
                                 }}
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Image', e.target.value);
-                                    e.target.value = '';
-                                  }
-                                }}
-                              >
-                                <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>💾 Save to...</option>
-                                {DOCUMENT_CATEGORIES.map(c => (
-                                  <option key={c.value} value={c.value} style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
-                                    {c.label}
-                                  </option>
-                                ))}
-                              </select>
+                              />
+                              {m.content && <div className="mt-1">{m.content}</div>}
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs opacity-80">
+                                <a
+                                  href={`/api/whatsapp/media/${mediaUrl}`}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 underline"
+                                  style={{ color: 'inherit' }}
+                                >
+                                  <Download className="size-3.5" />
+                                  Download
+                                </a>
+                                <select
+                                  className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleSaveToDocuments(
+                                        mediaUrl,
+                                        m.content || 'WhatsApp Image',
+                                        e.target.value
+                                      );
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                >
+                                  <option value="">Save to...</option>
+                                  {DOCUMENT_CATEGORIES.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
-                          </div>
-                        ) : messageType === 'document' && mediaUrl ? (
-                          <div style={{ marginBottom: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '1.5rem' }}>📄</span>
-                              <span>{m.content || 'Document'}</span>
+                          ) : messageType === 'document' && mediaUrl ? (
+                            <div className="mb-1">
+                              <div className="flex items-center gap-2">
+                                <FileText className="size-5 shrink-0" />
+                                <span>{m.content || 'Document'}</span>
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs opacity-80">
+                                <a
+                                  href={`/api/whatsapp/media/${mediaUrl}`}
+                                  download
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 underline"
+                                  style={{ color: 'inherit' }}
+                                >
+                                  <Download className="size-3.5" />
+                                  Download
+                                </a>
+                                <select
+                                  className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-card)] px-2 py-1 text-xs text-[var(--text-secondary)] outline-none"
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleSaveToDocuments(
+                                        mediaUrl,
+                                        m.content || 'WhatsApp Document',
+                                        e.target.value
+                                      );
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                >
+                                  <option value="">Save to...</option>
+                                  {DOCUMENT_CATEGORIES.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: 8, fontSize: '0.8rem', opacity: 0.8 }}>
-                              <a href={`/api/whatsapp/media/${mediaUrl}`} download target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
-                                ↓ Download Document
-                              </a>
-                              <select 
-                                style={{ 
-                                  background: 'var(--bg-elevated)', 
-                                  border: '1px solid var(--border-primary)', 
-                                  color: 'var(--text-primary)', 
-                                  borderRadius: 'var(--radius-sm)',
-                                  cursor: 'pointer', 
-                                  padding: '2px 8px', 
-                                  fontSize: '0.75rem',
-                                  outline: 'none'
-                                }}
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleSaveToDocuments(mediaUrl, m.content || 'WhatsApp Document', e.target.value);
-                                    e.target.value = '';
-                                  }
-                                }}
-                              >
-                                <option value="" style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>💾 Save to...</option>
-                                {DOCUMENT_CATEGORIES.map(c => (
-                                  <option key={c.value} value={c.value} style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
-                                    {c.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>{m.content}</div>
-                        )}
-                        <div className="message-meta">
-                          <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          {m.direction === 'outbound' && (
-                            <svg viewBox="0 0 16 15" width="16" height="15" fill="#53bdeb" style={{ marginLeft: 2 }}>
-                              <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
-                            </svg>
+                          ) : (
+                            <div>{m.content}</div>
                           )}
+                          <div className="message-meta">
+                            <span>
+                              {new Date(m.created_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            {m.direction === 'outbound' && (
+                              <svg
+                                viewBox="0 0 16 15"
+                                width="16"
+                                height="15"
+                                fill="#0f766e"
+                                style={{ marginLeft: 2 }}
+                              >
+                                <path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
+                              </svg>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </React.Fragment>
-                  );
+                      </React.Fragment>
+                    );
                   })}
                   <div ref={messagesEndRef} />
                 </div>
                 <form className="chat-composer" onSubmit={sendMessage}>
-                  <input className="input" placeholder="Type a message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} />
-                  <button type="submit" className="btn btn-primary" disabled={sending || !newMessage.trim()}>
-                    {sending ? <span className="spinner" /> : '➤'}
-                  </button>
+                  <input
+                    className="input"
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="icon"
+                    disabled={sending || !newMessage.trim()}
+                    aria-label="Send message"
+                  >
+                    {sending ? <span className="spinner" /> : <Send />}
+                  </Button>
                 </form>
               </>
             )}

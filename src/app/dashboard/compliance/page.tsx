@@ -3,6 +3,16 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  List,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ComplianceItem {
   id: string;
@@ -57,6 +67,19 @@ function CompliancePageContent() {
   }
 
   const filteredItems = items.filter(item => filter === 'all' || item.status === filter);
+  const summary = {
+    compliant: items.filter(item => item.status === 'compliant').length,
+    actionRequired: items.filter(item => item.status === 'action_required').length,
+    critical: items.filter(item => item.status === 'critical').length,
+    dueThisWeek: items.filter(item => {
+      if (!item.dueDate) return false;
+      const due = new Date(item.dueDate);
+      const today = new Date();
+      const week = new Date();
+      week.setDate(today.getDate() + 7);
+      return due >= today && due <= week;
+    }).length,
+  };
 
   // Grouping for Timeline View
   const now = new Date();
@@ -101,45 +124,75 @@ function CompliancePageContent() {
   ];
 
   return (
-    <div>
-      <div className="page-header" style={{ marginBottom: 32 }}>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <div className="page-header" style={{ marginBottom: 0 }}>
         <div>
-          <h1 className="page-title">Global Compliance Alerts</h1>
-          <p className="page-subtitle">A centralized view of all compliance items across your clients.</p>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <ShieldCheck className="size-3.5" />
+            Portfolio monitoring
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Compliance</h1>
+          <p className="mt-1.5 text-sm text-slate-500">Deadlines, evidence and risk across every client.</p>
         </div>
         
         {/* Table vs Timeline View Toggle */}
-        <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' }}>
-          <button 
-            className={`btn btn-sm ${viewMode === 'table' ? 'btn-primary' : 'btn-ghost'}`} 
+        <div className="flex rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] p-1 shadow-sm">
+          <Button
+            variant={viewMode === 'table' ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => setViewMode('table')}
-            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
           >
-            📋 Table View
-          </button>
-          <button 
-            className={`btn btn-sm ${viewMode === 'timeline' ? 'btn-primary' : 'btn-ghost'}`} 
+            <List />
+            Table
+          </Button>
+          <Button
+            variant={viewMode === 'timeline' ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => setViewMode('timeline')}
-            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
           >
-            ⏳ Timeline View
-          </button>
+            <Clock3 />
+            Timeline
+          </Button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <button className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('all')}>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Compliant', value: summary.compliant, icon: CheckCircle2, iconClass: 'bg-emerald-50 text-emerald-700' },
+          { label: 'Action required', value: summary.actionRequired, icon: AlertTriangle, iconClass: 'bg-amber-50 text-amber-700' },
+          { label: 'Critical', value: summary.critical, icon: ShieldAlert, iconClass: 'bg-red-50 text-red-700' },
+          { label: 'Due this week', value: summary.dueThisWeek, icon: Clock3, iconClass: 'bg-blue-50 text-blue-700' },
+        ].map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <Card key={metric.label}>
+              <CardContent className="flex items-center justify-between p-5">
+                <div>
+                  <div className="text-2xl font-semibold tracking-tight text-slate-950">{metric.value}</div>
+                  <div className="mt-1 text-sm text-slate-500">{metric.label}</div>
+                </div>
+                <div className={`flex size-10 items-center justify-center rounded-lg ${metric.iconClass}`}>
+                  <Icon className="size-[18px]" />
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant={filter === 'all' ? 'primary' : 'outline'} size="sm" onClick={() => setFilter('all')}>
           All Items
-        </button>
-        <button className={`btn ${filter === 'action_required' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('action_required')}>
-          ⚠️ Action Required
-        </button>
-        <button className={`btn ${filter === 'critical' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('critical')}>
-          🚨 Critical Deadlines
-        </button>
-        <button className={`btn ${filter === 'compliant' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setFilter('compliant')}>
-          ✅ Compliant
-        </button>
+        </Button>
+        <Button variant={filter === 'action_required' ? 'primary' : 'outline'} size="sm" onClick={() => setFilter('action_required')}>
+          Action Required
+        </Button>
+        <Button variant={filter === 'critical' ? 'primary' : 'outline'} size="sm" onClick={() => setFilter('critical')}>
+          Critical Deadlines
+        </Button>
+        <Button variant={filter === 'compliant' ? 'primary' : 'outline'} size="sm" onClick={() => setFilter('compliant')}>
+          Compliant
+        </Button>
       </div>
 
       {viewMode === 'table' ? (

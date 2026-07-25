@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Admin Sidebar */}
       <aside style={{ width: 260, borderRight: '1px solid #1F1F1F', background: '#000000', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: 24, borderBottom: '1px solid #1F1F1F', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Logo size={24} showText={true} />
+          <Logo size={24} showText={true} tone="dark" />
           <span style={{ background: 'rgba(94, 234, 212, 0.1)', color: '#5EEAD4', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: '0.05em' }}>PROD ADMIN</span>
         </div>
         <nav style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>

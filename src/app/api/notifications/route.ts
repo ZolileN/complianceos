@@ -21,34 +21,18 @@ export async function GET() {
       take: 50,
     });
 
+    // First visit for a user with an empty inbox: seed a single welcome notice.
+    // Real event notifications (uploads, compliance, etc.) are created elsewhere.
     if (notifications.length === 0) {
-      await prisma.notification.createMany({
-        data: [
-          {
-            userId,
-            title: 'Welcome to complianceOS! 🎉',
-            message: 'Start by completing your personal profile and security setup.',
-            type: 'success',
-            link: '/dashboard/settings?tab=personal',
-            read: false,
-          },
-          {
-            userId,
-            title: 'Action Required: SARS Compliance ⚠️',
-            message: 'A compliance verification check for client tax status is pending.',
-            type: 'warning',
-            link: '/dashboard/compliance',
-            read: false,
-          },
-          {
-            userId,
-            title: 'New Task Assigned 📋',
-            message: 'You have been assigned to verify FICA document uploads.',
-            type: 'info',
-            link: '/dashboard/tasks',
-            read: false,
-          }
-        ]
+      await prisma.notification.create({
+        data: {
+          userId,
+          title: 'Welcome to PraxisOne',
+          message: 'Start by completing your personal profile and security setup.',
+          type: 'success',
+          link: '/dashboard/settings?tab=personal',
+          read: false,
+        },
       });
 
       notifications = await prisma.notification.findMany({
