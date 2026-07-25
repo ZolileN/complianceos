@@ -1,20 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { AdminLogger } from '@/lib/admin-logs';
+import {
+  isPlatformAdminResponse,
+  requirePlatformAdmin,
+} from '@/lib/platform-admin';
 import { logAdminAction } from '@/lib/admin-audit';
+import { AdminLogger } from '@/lib/admin-logs';
 import { pushTenantLog } from '@/lib/redis';
 
+/**
+ * PUT /api/admin/tenants/[id]/toggle
+ * Suspend / activate a tenant. Bumps all user sessionVersions so JWTs die.
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { role?: string; tenantSlug?: string } | undefined;
-  if (!session || user?.role !== 'administrator' || !['praxisone', 'mlk-computer-consulting'].includes(user?.tenantSlug as string)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const admin = await requirePlatformAdmin();
+  if (isPlatformAdminResponse(admin)) return admin;
 
   try {
     const { id } = await params;
@@ -25,19 +28,41 @@ export async function PUT(
       return NextResponse.json({ error: 'isActive must be a boolean' }, { status: 400 });
     }
 
-    const tenant = await prisma.tenant.update({
+    const existing = await prisma.tenant.findUnique({
       where: { id },
-      data: { isActive }
+      select: { id: true, name: true, slug: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+
+    // Protect master control-plane tenants from suspension
+    if (!isActive && ['praxisone', 'mlk-computer-consulting'].includes(existing.slug)) {
+      return NextResponse.json(
+        { error: 'Cannot suspend a platform master tenant' },
+        { status: 403 }
+      );
+    }
+
+    const tenant = await prisma.$transaction(async (tx) => {
+      const updated = await tx.tenant.update({
+        where: { id },
+        data: { isActive },
+      });
+      // Invalidate all sessions for this tenant when suspending (or clearing on activate is fine too)
+      await tx.user.updateMany({
+        where: { tenantId: id },
+        data: { sessionVersion: { increment: 1 } },
+      });
+      return updated;
     });
 
-    // Central Platform Admin Logging (Postgres)
     await logAdminAction(
       isActive ? 'ACTIVATE_TENANT' : 'SUSPEND_TENANT',
       id,
       { tenantName: tenant.name, tenantSlug: tenant.slug }
     );
 
-    // Isolated Tenant Streaming Log (Redis)
     await pushTenantLog(
       id,
       `Tenant status updated to ${isActive ? 'ACTIVE' : 'SUSPENDED'}`,

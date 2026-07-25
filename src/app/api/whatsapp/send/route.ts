@@ -3,12 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { sendWhatsAppMessage } from '@/lib/twilio';
+import { emitSkillEvent } from '@/lib/skill-triggers';
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const tenantId = (session.user as { tenantId: string }).tenantId;
+  const user = session.user as { tenantId: string; id: string; role: string };
+  const tenantId = user.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
   const { to, message, conversation_id } = await request.json();
@@ -37,6 +39,14 @@ export async function POST(request: NextRequest) {
         where: { id: conversation_id },
         data: { lastMessageAt: new Date() }
       });
+    }
+
+    if (tenantId && user.id) {
+      emitSkillEvent(tenantId, 'message.sent', user.id, user.role || 'client', {
+        to,
+        conversationId: conversation_id || null,
+        messageId: waMessageId,
+      }).catch((err) => console.error('Skill event emission failed:', err));
     }
 
     return NextResponse.json({ success: true, message_id: waMessageId });

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GitBranch, Rocket, X } from 'lucide-react';
+import { GitBranch, Pencil, Rocket, Trash2, X } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -159,6 +159,10 @@ export default function WorkflowsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTemplate, setActiveTemplate] = useState<WorkflowTemplate | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editActive, setEditActive] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user && user.role !== 'administrator' && user.role !== 'operations_manager') {
@@ -207,6 +211,55 @@ export default function WorkflowsPage() {
 
   const getCategoryInfo = (cat: string) =>
     WORKFLOW_CATEGORIES.find((c) => c.value === cat) || WORKFLOW_CATEGORIES[6];
+
+  const openTemplate = (tpl: WorkflowTemplate) => {
+    setActiveTemplate(tpl);
+    setEditName(tpl.name);
+    setEditActive((tpl as WorkflowTemplate & { isActive?: boolean }).isActive ?? tpl.is_active ?? true);
+  };
+
+  const saveTemplate = async () => {
+    if (!activeTemplate) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/workflows/${activeTemplate.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim(), isActive: editActive }),
+      });
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || 'Failed to update template');
+      }
+      toast('Template updated', 'success');
+      setActiveTemplate(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      toast((err as Error).message || 'Failed to update template', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteTemplate = async () => {
+    if (!activeTemplate) return;
+    if (!confirm(`Delete or deactivate "${activeTemplate.name}"?`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/workflows/${activeTemplate.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to delete template');
+      }
+      toast(json.message || 'Template removed', 'success');
+      setActiveTemplate(null);
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      toast((err as Error).message || 'Failed to delete template', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
@@ -262,7 +315,7 @@ export default function WorkflowsPage() {
               <Card
                 key={tpl.id}
                 className="cursor-pointer transition-colors hover:border-teal-600/30"
-                onClick={() => setActiveTemplate(tpl)}
+                onClick={() => openTemplate(tpl)}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3">
@@ -351,7 +404,56 @@ export default function WorkflowsPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
+                <div className="mb-3 text-[0.7rem] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
+                  Edit template
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-[var(--text-secondary)]">
+                      Name
+                    </label>
+                    <input
+                      className="input w-full"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
+                    <input
+                      type="checkbox"
+                      checked={editActive}
+                      onChange={(e) => setEditActive(e.target.checked)}
+                    />
+                    Active template
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      disabled={saving || !editName.trim()}
+                      onClick={saveTemplate}
+                    >
+                      <Pencil className="size-3.5" />
+                      {saving ? 'Saving...' : 'Save changes'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={deleting}
+                      onClick={deleteTemplate}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="size-3.5" />
+                      {deleting ? 'Removing...' : 'Delete / deactivate'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {activeTemplate.steps?.map((step, index) => {
                 let docs: string[] = [];
                 try {

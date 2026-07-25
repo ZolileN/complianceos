@@ -7,20 +7,7 @@ interface AdminLog {
 }
 
 class AdminLogger {
-  private static logs: AdminLog[] = [
-    {
-      id: 'init-1',
-      timestamp: new Date(Date.now() - 600000).toISOString(),
-      type: 'system',
-      message: 'System control plane initialized'
-    },
-    {
-      id: 'init-2',
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-      type: 'system',
-      message: 'Strict RBAC Middleware activated on /admin'
-    }
-  ];
+  private static logs: AdminLog[] = [];
 
   static log(type: 'system' | 'webhook' | 'finops', message: string, payload?: unknown) {
     const newLog: AdminLog = {

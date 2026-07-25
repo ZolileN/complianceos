@@ -47,9 +47,12 @@ model User {
   image         String?
   password      String?   // Added for credentials provider
   role          String    @default("consultant") // administrator, operations_manager, consultant, client
+  isActive      Boolean   @default(true) // platform/tenant can disable login without deleting
   contactNumber String?
   resetToken        String?
   resetTokenExpires DateTime?
+  // Bumped when sessions must be invalidated (disable, suspend, force logout)
+  sessionVersion Int      @default(0)
   
   tenantId      String?
   tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -306,7 +309,7 @@ model Conversation {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   whatsappNumber  String
-  status          String   @default("open") // open, closed, pending
+  status          String   @default("open") // open, closed, pending, archived
   
   assignedTo      String?
   assignee        User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
@@ -394,6 +397,15 @@ enum AdminActionType {
   DISCONNECT_WHATSAPP
   VACUUM_DATABASE
   DELETE_TENANT
+  CREATE_TENANT
+  UPDATE_TENANT_PLAN
+  DISABLE_USER
+  ENABLE_USER
+  UPDATE_USER_ROLE
+  FORCE_LOGOUT
+  COMPLETE_ONBOARDING
+  REJECT_ONBOARDING
+  REASSIGN_ONBOARDING
 }
 
 model AdminAuditLog {

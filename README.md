@@ -53,7 +53,9 @@ Ensure you have the following installed:
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
     *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP **only** when this flag is set; for Twilio sandbox/trial testing. Leave unset in production).
-    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`). Set the same value in the Vercel project env; Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Schedules live in `vercel.json` (deadlines daily 06:00 UTC, skill-events every 5 minutes).
+    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines` and `/api/cron/skill-events`). Set the same value in the Vercel project env.
+        *   **Compliance deadlines:** Vercel Cron in `vercel.json` — daily `0 6 * * *` (Hobby-safe). Vercel sends `Authorization: Bearer $CRON_SECRET`.
+        *   **Skill events:** external [cron-job.org](https://cron-job.org) every 5 minutes → `GET https://praxis.mlkcomputer.com/api/cron/skill-events` with header `Authorization: Bearer $CRON_SECRET` (Vercel Hobby only allows once-per-day crons).
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

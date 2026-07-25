@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { Prisma } from '@prisma/client';
 import { logAuditAction } from '@/lib/auditLogger';
+import { emitSkillEvent } from '@/lib/skill-triggers';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -119,6 +120,13 @@ export async function POST(request: NextRequest) {
       entityId: task.id,
       details: { title: task.title, status: task.status },
     });
+
+    emitSkillEvent(tenantId, 'task.created', currentUser.id, currentUser.role, {
+      taskId: task.id,
+      title: task.title,
+      status: task.status,
+      clientId: task.clientId,
+    }).catch((err) => console.error('Skill event emission failed:', err));
 
     return NextResponse.json({ data: task }, { status: 201 });
   } catch (error: unknown) {

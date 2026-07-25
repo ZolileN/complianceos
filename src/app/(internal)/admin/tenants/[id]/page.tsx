@@ -32,8 +32,12 @@ interface UserItem {
   name: string | null;
   email: string;
   role: string;
+  isActive: boolean;
   createdAt: string;
 }
+
+const TENANT_PLANS = ['starter', 'growth', 'professional', 'enterprise'] as const;
+const USER_ROLES = ['administrator', 'operations_manager', 'consultant', 'client'] as const;
 
 interface ClientItem {
   id: string;
@@ -51,6 +55,7 @@ interface TenantDetail {
   slug: string;
   plan: string;
   isActive: boolean;
+  settings?: string | null;
   whatsappSetupComplete: boolean;
   whatsappPhoneNumber: string | null;
   email: string | null;
@@ -60,6 +65,12 @@ interface TenantDetail {
   createdAt: string;
   users: UserItem[];
   clients: ClientItem[];
+  _count?: {
+    conversations: number;
+    documents: number;
+    tasks: number;
+    complianceItems?: number;
+  };
 }
 
 interface InspectorEntity {
@@ -165,21 +176,112 @@ export default function TenantProfile() {
   const [inspectionEntity, setInspectionEntity] = useState<InspectorEntity | null>(null);
   const [copiedId, setCopiedId] = useState(false);
 
+  // Plan & settings editor
+  const [editPlan, setEditPlan] = useState('');
+  const [planSaving, setPlanSaving] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  // Member action loading
+  const [userActionLoading, setUserActionLoading] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchTenantDetail = async () => {
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to retrieve tenant details');
+      setTenant(data.data);
+      setEditPlan(data.data.plan);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTenantDetail = async () => {
-      try {
-        const res = await fetch(`/api/admin/tenants/${id}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to retrieve tenant details');
-        setTenant(data.data);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchTenantDetail();
   }, [id]);
+
+  const parseSettings = (settings?: string | null): Record<string, unknown> => {
+    if (!settings) return {};
+    try {
+      return JSON.parse(settings) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  };
+
+  const whatsappEnabled = tenant
+    ? parseSettings(tenant.settings).whatsapp_enabled !== false
+    : true;
+
+  const handleSavePlan = async () => {
+    if (!tenant || editPlan === tenant.plan) return;
+    setPlanSaving(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: editPlan }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update plan');
+      showToast('Plan updated successfully');
+      await fetchTenantDetail();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to update plan', 'error');
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
+  const handleToggleWhatsappSetting = async () => {
+    setSettingsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { whatsapp_enabled: !whatsappEnabled } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update settings');
+      showToast(`WhatsApp feature ${!whatsappEnabled ? 'enabled' : 'disabled'}`);
+      await fetchTenantDetail();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to update settings', 'error');
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleUserUpdate = async (
+    userId: string,
+    payload: { isActive?: boolean; role?: string; forceLogout?: boolean }
+  ) => {
+    const actionKey = `${userId}-${Object.keys(payload).join('-')}`;
+    setUserActionLoading(actionKey);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update user');
+      showToast('User updated successfully');
+      await fetchTenantDetail();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to update user', 'error');
+    } finally {
+      setUserActionLoading(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -236,8 +338,20 @@ export default function TenantProfile() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
+      {toast && (
+        <div
+          className={`fixed top-6 right-6 z-[9999] rounded-lg border px-5 py-3 text-sm font-semibold shadow-lg ${
+            toast.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
+
       {/* Top Header Navigation */}
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
         <div className="flex items-start gap-3">
           <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0">
             <Link href="/admin" aria-label="Back to Fleet Overview">
@@ -269,6 +383,47 @@ export default function TenantProfile() {
             </p>
           </div>
         </div>
+
+        <Card className="w-full shrink-0 lg:w-auto lg:min-w-[280px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xs font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+              Plan &amp; Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2">
+              <select
+                value={editPlan}
+                onChange={(e) => setEditPlan(e.target.value)}
+                className="input h-9 flex-1 text-sm"
+              >
+                {TENANT_PLANS.map((p) => (
+                  <option key={p} value={p}>
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                onClick={handleSavePlan}
+                disabled={planSaving || editPlan === tenant.plan}
+              >
+                {planSaving ? '...' : 'Save'}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-[var(--text-secondary)]">WhatsApp enabled</span>
+              <Button
+                variant={whatsappEnabled ? 'outline' : 'primary'}
+                size="sm"
+                onClick={handleToggleWhatsappSetting}
+                disabled={settingsSaving}
+              >
+                {settingsSaving ? '...' : whatsappEnabled ? 'Disable' : 'Enable'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* POPIA Privacy Shield Alert Banner */}
@@ -294,7 +449,7 @@ export default function TenantProfile() {
       </Card>
 
       {/* Tenant Metadata Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-xs font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
@@ -369,6 +524,28 @@ export default function TenantProfile() {
             ))}
           </CardContent>
         </Card>
+
+        {tenant._count && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+                Aggregate Counts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                ['Conversations', tenant._count.conversations],
+                ['Documents', tenant._count.documents],
+                ['Tasks', tenant._count.tasks],
+              ].map(([label, val]) => (
+                <div key={label as string} className="flex justify-between gap-4 text-sm">
+                  <span className="text-[var(--text-secondary)]">{label}</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{val}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Directory Selector tabs */}
@@ -394,14 +571,16 @@ export default function TenantProfile() {
       {activeTab === 'members' ? (
         <Card className="overflow-hidden p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left">
+            <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]/80">
-                  {['Name', 'Email Address', 'System Permission Role', 'Joined Date'].map(
+                  {['Name', 'Email Address', 'Role', 'Status', 'Joined Date', 'Actions'].map(
                     (label) => (
                       <th
                         key={label}
-                        className="px-4 py-3 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase"
+                        className={`px-4 py-3 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase ${
+                          label === 'Actions' ? 'text-right' : ''
+                        }`}
                       >
                         {label}
                       </th>
@@ -413,7 +592,7 @@ export default function TenantProfile() {
                 {tenant.users.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={6}
                       className="px-4 py-10 text-center text-sm text-[var(--text-secondary)] italic"
                     >
                       No workspace members registered.
@@ -438,6 +617,7 @@ export default function TenantProfile() {
                                 'System Permission Role': user.role
                                   .replace('_', ' ')
                                   .toUpperCase(),
+                                Status: user.isActive ? 'Active' : 'Disabled',
                                 'Joined Date': new Date(user.createdAt).toLocaleDateString(
                                   'en-GB'
                                 ),
@@ -457,8 +637,58 @@ export default function TenantProfile() {
                           {user.role.replace('_', ' ')}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3.5">
+                        <Badge variant={user.isActive ? 'success' : 'destructive'}>
+                          {user.isActive ? 'Active' : 'Disabled'}
+                        </Badge>
+                      </td>
                       <td className="px-4 py-3.5 text-sm text-[var(--text-secondary)]">
                         {new Date(user.createdAt).toLocaleDateString('en-GB')}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          <Button
+                            variant={user.isActive ? 'outline' : 'primary'}
+                            size="sm"
+                            disabled={userActionLoading !== null}
+                            onClick={() =>
+                              handleUserUpdate(user.id, { isActive: !user.isActive })
+                            }
+                          >
+                            {userActionLoading === `${user.id}-isActive`
+                              ? '...'
+                              : user.isActive
+                                ? 'Disable'
+                                : 'Enable'}
+                          </Button>
+                          <select
+                            value={user.role}
+                            onChange={(e) =>
+                              handleUserUpdate(user.id, { role: e.target.value })
+                            }
+                            disabled={userActionLoading !== null}
+                            className="input h-8 max-w-[140px] px-2 text-xs"
+                          >
+                            {USER_ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {r.replace('_', ' ')}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={userActionLoading !== null}
+                            onClick={() => {
+                              if (!confirm(`Force logout ${user.email}?`)) return;
+                              handleUserUpdate(user.id, { forceLogout: true });
+                            }}
+                          >
+                            {userActionLoading === `${user.id}-forceLogout`
+                              ? '...'
+                              : 'Logout'}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))

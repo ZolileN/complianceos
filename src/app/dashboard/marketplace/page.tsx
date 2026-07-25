@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { Activity, Brain, CheckCircle2, Store, Zap } from 'lucide-react';
+
+import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
 import IntelligenceTab from './IntelligenceTab';
 
 /* ── Types ── */
@@ -192,35 +195,48 @@ export default function MarketplacePage() {
 
   return (
     <>
-      {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">⚡ Skill Marketplace</h1>
-          <p className="page-subtitle">Install AI-powered skills to automate your business workflows</p>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Zap className="size-6 text-[var(--accent)]" />
+            Skill Marketplace
+          </h1>
+          <p className="page-subtitle">
+            Install skills to automate document, WhatsApp, and compliance workflows.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div className="marketplace-stat-badge">
-            <span className="marketplace-stat-value">{skills.length}</span>
-            <span className="marketplace-stat-label">Skills</span>
-          </div>
-          <div className="marketplace-stat-badge">
-            <span className="marketplace-stat-value">{skills.filter((s) => s.installed).length}</span>
-            <span className="marketplace-stat-label">Installed</span>
-          </div>
-          <div className="marketplace-stat-badge">
-            <span className="marketplace-stat-value">{executions.length}</span>
-            <span className="marketplace-stat-label">Executions</span>
-          </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Badge variant="outline">{skills.length} skills</Badge>
+          <Badge variant="success">
+            {skills.filter((s) => s.installed).length} installed
+          </Badge>
+          <Badge variant="info">{executions.length} executions</Badge>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="tabs">
-        {(['discover', 'installed', 'executions', 'intelligence'] as const).map((tab) => (
-          <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
-            {tab === 'discover' ? '🏪 Discover' : tab === 'installed' ? '✅ Installed' : tab === 'executions' ? '📊 Executions' : '🧠 Intelligence'}
-          </button>
-        ))}
+        {(
+          [
+            { id: 'discover', label: 'Discover', icon: Store },
+            { id: 'installed', label: 'Installed', icon: CheckCircle2 },
+            { id: 'executions', label: 'Executions', icon: Activity },
+            { id: 'intelligence', label: 'Intelligence', icon: Brain },
+          ] as const
+        ).map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon className="size-3.5" />
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'intelligence' && (
@@ -250,7 +266,7 @@ export default function MarketplacePage() {
           {/* Business Packs */}
           {activeTab === 'discover' && packs.length > 0 && (
             <section style={{ marginBottom: 40 }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16 }}>🎁 Industry Packs</h2>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16 }}>Industry packs</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
                 {packs.map((pack) => (
                   <div key={pack.id} className="card card-hover marketplace-pack-card">

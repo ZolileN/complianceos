@@ -1,127 +1,168 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Brain, Sparkles, Wand2 } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+
+type Suggestion = {
+  id: string;
+  title: string;
+  description: string;
+  triggerEvent: string;
+  suggestedSteps: string;
+  status: string;
+};
 
 export default function IntelligenceTab() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
 
-  const fetchSuggestions = async () => {
-    try {
-      const res = await fetch('/api/skills/analyze', { method: 'POST' }); 
-      const data = await res.json();
-      if (data.data) {
-        setSuggestions(data.data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setAnalyzing(false);
-    }
-  };
-
-  const handleRunAnalysis = () => {
-    setAnalyzing(true);
-    setLoading(true);
-    fetchSuggestions();
-  };
+  const loadPending = useCallback(async () => {
+    const res = await fetch('/api/skills/suggestions?status=pending');
+    const data = await res.json();
+    if (data.data) setSuggestions(data.data);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
-    
-    const loadInitial = async () => {
+    (async () => {
       try {
-        const res = await fetch('/api/skills/analyze', { method: 'POST' }); 
-        const data = await res.json();
-        if (mounted && data.data) {
-          setSuggestions(data.data);
-        }
+        await loadPending();
       } catch (err) {
         console.error(err);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
+    })();
+    return () => {
+      mounted = false;
     };
-    
-    loadInitial();
-    
-    return () => { mounted = false; };
-  }, []);
+  }, [loadPending]);
+
+  const handleRunAnalysis = async () => {
+    setAnalyzing(true);
+    setLoading(true);
+    try {
+      await fetch('/api/skills/analyze', { method: 'POST' });
+      await loadPending();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAnalyzing(false);
+      setLoading(false);
+    }
+  };
 
   const dismiss = async (id: string) => {
-    // For MVP we just remove from state
-    setSuggestions(suggestions.filter(s => s.id !== id));
+    setSuggestions((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await fetch('/api/skills/suggestions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'dismissed' }),
+      });
+    } catch (err) {
+      console.error(err);
+      await loadPending();
+    }
   };
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-6" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 4 }}>🧠 Behavioral Intelligence</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>AI-suggested automations based on your recent activity patterns.</p>
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-[var(--text-primary)]">
+            <Brain className="size-5 text-[var(--accent)]" />
+            Behavioral Intelligence
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            Heuristic suggestions from trigger coverage gaps in your installed skills.
+          </p>
         </div>
-        <button 
-          onClick={handleRunAnalysis} 
-          disabled={analyzing}
-          className="btn btn-primary"
-        >
-          {analyzing ? 'Analyzing...' : 'Run Analysis'}
-        </button>
+        <Button onClick={handleRunAnalysis} disabled={analyzing}>
+          {analyzing ? 'Analyzing…' : 'Run analysis'}
+        </Button>
       </div>
 
-      {loading && !analyzing ? (
+      {loading ? (
         <div className="flex-center" style={{ minHeight: '30vh' }}>
           <span className="spinner" style={{ width: 30, height: 30 }} />
         </div>
       ) : suggestions.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">✨</div>
-          <h3>No suggestions right now</h3>
-          <p>We need more activity to detect patterns. Try creating tasks or uploading documents!</p>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <Sparkles className="size-8 text-[var(--text-muted)]" />
+            <h3 className="font-semibold text-[var(--text-primary)]">No suggestions right now</h3>
+            <p className="max-w-md text-sm text-[var(--text-muted)]">
+              Run analysis after installing skills, or create more client activity so coverage gaps
+              can be detected.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-          {suggestions.map(s => (
-            <div key={s.id} className="card card-hover" style={{ position: 'relative', overflow: 'hidden', padding: 20 }}>
-              <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                 <button onClick={() => dismiss(s.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}>Dismiss</button>
-              </div>
-              <h3 style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8, color: 'var(--accent)', paddingRight: 40 }}>{s.title}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>{s.description}</p>
-              
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 6, padding: 12, marginBottom: 16, fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>Trigger: <span style={{ color: '#3b82f6' }}>{s.triggerEvent}</span></div>
-                <div style={{ color: 'var(--text-muted)' }}>Steps:</div>
-                <ul style={{ paddingLeft: 16, color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {JSON.parse(s.suggestedSteps).map((step: any, i: number) => (
-                    <li key={i}>{step.name} <span style={{ opacity: 0.6 }}>({step.stepType})</span></li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={{ display: 'flex' }}>
-                <Link href={`/dashboard/marketplace/builder`} className="btn btn-primary" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}>
-                  Automate This
-                </Link>
-              </div>
-            </div>
-          ))}
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+          {suggestions.map((s) => {
+            let steps: Array<{ name: string; stepType: string }> = [];
+            try {
+              steps = JSON.parse(s.suggestedSteps);
+            } catch {
+              steps = [];
+            }
+            return (
+              <Card key={s.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-base">{s.title}</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => dismiss(s.id)}>
+                      Dismiss
+                    </Button>
+                  </div>
+                  <CardDescription>{s.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Badge variant="info">{s.triggerEvent}</Badge>
+                  </div>
+                  <ul className="space-y-1 text-sm text-[var(--text-secondary)]">
+                    {steps.map((step, i) => (
+                      <li key={i}>
+                        {step.name}{' '}
+                        <span className="text-[var(--text-muted)]">({step.stepType})</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button asChild className="w-full">
+                    <Link href={`/dashboard/marketplace/builder?suggestion=${s.id}`}>
+                      <Wand2 className="size-4" />
+                      Automate this
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
-      
-      <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid var(--border-primary)', textAlign: 'center' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>Build from Scratch</h3>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>Know exactly what you need? Build a custom skill.</p>
-        <Link href="/dashboard/marketplace/builder" className="btn btn-ghost" style={{ border: '1px solid var(--border-primary)', textDecoration: 'none' }}>
-          Open Builder UI
-        </Link>
+
+      <div className="mt-12 border-t border-[var(--border-primary)] pt-8 text-center">
+        <h3 className="mb-2 text-base font-semibold">Build from scratch</h3>
+        <p className="mb-4 text-sm text-[var(--text-muted)]">
+          Design a custom skill without a suggestion.
+        </p>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/marketplace/builder">Open builder</Link>
+        </Button>
       </div>
     </section>
   );
