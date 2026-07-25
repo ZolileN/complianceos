@@ -48,6 +48,7 @@ Ensure you have the following installed:
 2.  Set up your environment variables. You will need:
     *   `DATABASE_URL` (PostgreSQL connection string)
     *   `NEXTAUTH_SECRET` and `NEXTAUTH_URL`
+    *   `NEXT_PUBLIC_APP_URL` (public origin for onboarding/invite links — production: `https://praxis.mlkcomputer.com`)
     *   `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID`
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).

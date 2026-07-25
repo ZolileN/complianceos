@@ -5,6 +5,7 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import crypto from 'crypto';
 import { logAuditAction } from '@/lib/auditLogger';
 import { sendTeamInviteEmail } from '@/lib/email';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -94,16 +95,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 1. Prioritize your custom target domain, fall back to production vercel url, then fallback to local
-    const rawDomain = process.env.NEXT_PUBLIC_APP_URL || 
-                      (process.env.VERCEL_ENV === 'production' ? 'praxis.mlkcomputer.com' : process.env.VERCEL_URL) || 
-                      'localhost:3000';
-
-    // 2. Safely normalize the protocol loop
-    let appUrl = rawDomain;
-    if (!appUrl.startsWith('http')) {
-      appUrl = appUrl.includes('localhost') ? `http://${appUrl}` : `https://${appUrl}`;
-    }
+    // Public origin for invite links (NEXT_PUBLIC_APP_URL → production domain)
+    const appUrl = getAppBaseUrl();
 
     const inviteUrl = `${appUrl}/accept-invite?token=${token}&email=${encodeURIComponent(email)}`;
 

@@ -9,6 +9,7 @@ import CompanyProfileTab from '@/components/settings/CompanyProfileTab';
 import WhatsAppTab from '@/components/settings/WhatsAppTab';
 import PersonalProfileTab from '@/components/settings/PersonalProfileTab';
 import { Card, CardContent } from '@/components/ui/card';
+import { getOnboardingUrl } from '@/lib/appUrl';
 import type {
   CompanyData,
   PersonalData,
@@ -340,7 +341,7 @@ function SettingsPageContent() {
 
   const copyOnboardingLink = () => {
     if (!company) return;
-    const link = `${window.location.origin}/onboard/${company.slug}`;
+    const link = getOnboardingUrl(company.slug);
     navigator.clipboard.writeText(link);
     toast('Client onboarding link copied to clipboard!', 'success');
   };
@@ -354,9 +355,7 @@ function SettingsPageContent() {
     );
   }
 
-  const onboardingUrl = company
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/onboard/${company.slug}`
-    : '';
+  const onboardingUrl = company ? getOnboardingUrl(company.slug) : '';
 
   const settingsTabs = [
     ...(isAdminOrOps

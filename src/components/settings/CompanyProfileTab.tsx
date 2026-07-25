@@ -43,7 +43,7 @@ export default function CompanyProfileTab({
             <label className="form-label">Firm URL Slug / Workspace Address</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                praxisone.com/onboard/
+                praxis.mlkcomputer.com/onboard/
               </span>
               <input
                 type="text"

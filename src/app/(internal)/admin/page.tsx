@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { getOnboardingUrl } from '@/lib/appUrl';
 
 interface TenantItem {
   id: string;
@@ -359,7 +360,7 @@ export default function FleetOverview() {
                         <span style={{ fontSize: '0.7rem', color: '#888888', fontFamily: 'monospace' }}>/onboard/{tenant.slug}</span>
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/onboard/${tenant.slug}`);
+                            navigator.clipboard.writeText(getOnboardingUrl(tenant.slug));
                             showToast('Onboarding URL copied to clipboard');
                           }}
                           style={{ background: 'none', border: 'none', color: '#5EEAD4', cursor: 'pointer', fontSize: '0.7rem', padding: 0 }}
