@@ -19,8 +19,9 @@ export async function GET() {
         plan: true,
         isActive: true,
         createdAt: true,
-        whatsappPhoneNumberId: true,
+        whatsappPhoneNumber: true,
         whatsappSetupComplete: true,
+        whatsappProvider: true,
         _count: {
           select: {
             users: true,

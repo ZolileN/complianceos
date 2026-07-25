@@ -92,8 +92,7 @@ model Tenant {
   isActive  Boolean  @default(true)
   settings  String   @default("{}") // SQLite doesn't support JSON, use String
   
-  whatsappPhoneNumberId  String?
-  whatsappAccessToken    String?
+  whatsappProvider       String    @default("twilio") // Twilio WhatsApp
   whatsappSetupComplete  Boolean   @default(false)
   whatsappVerifiedName   String?
   whatsappPhoneNumber    String?

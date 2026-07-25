@@ -7,7 +7,7 @@ ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline 
 *   **Multi-Tenant Architecture:** Strict data isolation utilizing NextAuth and Prisma to ensure operations managers, consultants, and clients only access authorized data.
 *   **Automated OCR Pipeline:** Server-side PDF text extraction automatically processes uploaded regulatory documents (like COR14.3 and Tax Certificates), updates client profiles, and resolves pending compliance alerts upon staff approval.
 *   **SLA-Driven Workflows:** Customizable, multi-step workflow engines allow operations managers to define and track client onboarding and service processes against strict Service Level Agreements.
-*   **Omnichannel Inbox:** Direct integration with the Meta Graph API allows consultants to send and receive WhatsApp messages directly from the platform without exposing personal numbers.
+*   **Omnichannel Inbox:** Twilio WhatsApp integration lets consultants send and receive messages from the platform without exposing personal numbers.
 *   **Comprehensive Audit Trail:** An immutable ledger that tracks every significant state mutation (`CREATE`, `UPDATE`, `DELETE`) performed across the platform for full administrative transparency.
 
 ## 🛠 Tech Stack
@@ -26,7 +26,7 @@ ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline 
 *   `src/app/dashboard/*`: Contains all frontend views for the administrative application (e.g., clients, documents, compliance, workflows, inbox).
 *   `src/app/api/*`: The serverless backend composed of Next.js Route Handlers.
 *   `src/components/*`: Reusable UI components.
-*   `src/lib/*`: Core utility functions, including the WhatsApp API integration (`whatsapp.ts`) and Audit Logger (`auditLogger.ts`).
+*   `src/lib/*`: Core utility functions, including Twilio WhatsApp (`twilio.ts`) and Audit Logger (`auditLogger.ts`).
 *   `prisma/schema.prisma`: The central database schema defining all relations and models.
 
 ## ⚙️ Getting Started
@@ -48,7 +48,9 @@ Ensure you have the following installed:
     *   `DATABASE_URL` (PostgreSQL connection string)
     *   `NEXTAUTH_SECRET` and `NEXTAUTH_URL`
     *   `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID`
-    *   `WHATSAPP_API_TOKEN` and related Meta Graph API keys.
+    *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
+    *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
+    *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP during Twilio sandbox/trial testing).
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash
@@ -83,7 +85,7 @@ To log in as a platform administrator and access the PraxisAdmin control plane:
 2.  **Access the Control Plane:**
     *   Go to `/admin` in your web browser.
     *   This is the entry point for the **PraxisAdmin Internal Platform OS**, featuring:
-        *   **Fleet Registry (`/admin`)**: Suspension controls and Meta credentials resets.
+        *   **Fleet Registry (`/admin`)**: Suspension controls and WhatsApp disconnects.
         *   **FinOps Metering (`/admin/webhooks`)**: Live webhook logs, payload inspection, and token capacity meters.
         *   **Infrastructure Controls (`/admin/infrastructure`)**: Resource usage monitoring and background PG vacuum triggers.
         *   **Isolated Debug Console (`/admin/console`)**: Interactive shell diagnostic commands.

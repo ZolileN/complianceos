@@ -40,9 +40,10 @@ export const config = {
      * - /api/auth/* (NextAuth routes and register)
      * - /api/onboard/* (public onboarding API — no auth required)
      * - /api/uploadthing (UploadThing API callback)
-     * - /api/whatsapp/webhook (Public webhook)
+     * - /api/webhooks/twilio (Public Twilio WhatsApp webhook)
+     * - /api/whatsapp/webhook (Deprecated Meta stub — keep public so it can return 410)
      * - _next/static, _next/image, favicon.ico, etc.
      */
-    '/((?!$|login|signup|forgot-password|reset-password|onboard|api/auth|api/onboard|api/uploadthing|api/whatsapp/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!$|login|signup|forgot-password|reset-password|onboard|api/auth|api/onboard|api/uploadthing|api/webhooks|api/whatsapp/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

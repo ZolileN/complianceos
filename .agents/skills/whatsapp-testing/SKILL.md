@@ -1,80 +1,74 @@
-# WhatsApp Embedded Signup Verification Skill
+# WhatsApp Twilio Connection Verification Skill
 
 ## Metadata
-- **Name:** whatsapp-signup-verifier
-- **Description:** Automates the testing and verification of the Next.js WhatsApp Embedded Signup routes, ensuring correct Meta OAuth flow, payload parsing, and state updates.
+- **Name:** whatsapp-twilio-verifier
+- **Description:** Verifies Twilio WhatsApp connect/verify routes, webhook ingest, and tenant resolution.
 - **Author:** PraxisOne AI Agent
-- **Version:** 1.0.0
+- **Version:** 2.0.0
 
 ## Context
-This project uses the Meta Embedded Signup flow to connect a tenant's WhatsApp Business Account. The critical routes are:
-- `POST /api/settings/whatsapp/connect`: Receives the OAuth code from `FB.login()`, exchanges it for an access token, and retrieves the WABA ID and Phone Number ID.
-- `GET /api/settings/whatsapp/status`: Returns the current connection status of the tenant.
-- `POST /api/whatsapp/webhook`: Listens for incoming WhatsApp messages and status updates from Meta.
+PraxisOne connects tenant WhatsApp numbers via Twilio Verify OTP (not Meta Embedded Signup).
+
+Critical routes:
+- `POST /api/settings/whatsapp/connect` — accepts `{ phoneNumber }`, sends OTP via Twilio Verify
+- `POST /api/settings/whatsapp/verify` — accepts `{ code }`, completes setup on success
+- `GET /api/settings/whatsapp/status` — connection status for the current tenant
+- `POST /api/webhooks/twilio` — inbound WhatsApp messages from Twilio
 
 ## Prerequisites
-Before executing verification, ensure the following environment variables are set in `.env` or `.env.local`:
-- `WHATSAPP_APP_ID`
-- `WHATSAPP_APP_SECRET`
-- `NEXT_PUBLIC_APP_URL`
-- A valid PostgreSQL database connection (Neon).
+Environment variables in `.env.local`:
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_WHATSAPP_NUMBER`
+- `TWILIO_VERIFY_SERVICE_SID`
+- `TWILIO_WEBHOOK_URL` (public URL used for signature validation)
+- `DATABASE_URL`
+- `NEXTAUTH_SECRET` / `NEXTAUTH_URL`
 
-## Verification Steps (Agent Instructions)
+## Verification Steps
 
-### Step 1: Health Check and Status Verification
-Check if the system correctly reports the current (unconnected) status.
+### Step 1: Status check
 ```bash
-# Start the local development server in the background if not running
-npm run dev &
-sleep 5
-
-# Fetch the status (Requires an active session cookie or mock header if authentication is enforced)
-curl -X GET "http://localhost:3000/api/settings/whatsapp/status" -H "Cookie: next-auth.session-token=<mock-token>"
+curl -X GET "http://localhost:3000/api/settings/whatsapp/status" \
+  -H "Cookie: next-auth.session-token=<session-token>"
 ```
-**Expected Outcome:** A 200 OK response with `{"status": "disconnected"}` or `{"connected": false}`.
+Expected: `{"connected":false,...}` (or true if already linked).
 
-### Step 2: Simulate OAuth Payload (Integration Test)
-Since the `FB.login()` popup cannot be automated seamlessly in a headless terminal, we will simulate the frontend payload being sent to the connect route.
-```typescript
-// script: test-whatsapp-connect.ts
-import fetch from 'node-fetch';
-
-async function testConnection() {
-  const payload = {
-    code: "mock_oauth_code_from_meta",
-    phone_number_id: "1234567890",
-    waba_id: "0987654321"
-  };
-
-  const response = await fetch("http://localhost:3000/api/settings/whatsapp/connect", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Cookie": "next-auth.session-token=<mock-token>"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await response.json();
-  console.log("Connect Response:", data);
-}
-
-testConnection();
-```
-*Agent Action:* Run `npx tsx test-whatsapp-connect.ts` and monitor the output.
-**Expected Outcome:** The API should attempt to reach Meta. If it fails due to a mock code, ensure it gracefully returns a 400 or 500 error outlining "Meta Graph API Error" rather than a catastrophic server crash.
-
-### Step 3: Webhook Verification Validation
-Verify that the Next.js API route successfully processes Meta's `hub.challenge` verification requests.
+### Step 2: Connect (send OTP)
 ```bash
-# Meta sends a GET request to verify the webhook
-curl -X GET "http://localhost:3000/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=your_verify_token&hub.challenge=11223344"
+curl -X POST "http://localhost:3000/api/settings/whatsapp/connect" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=<session-token>" \
+  -d '{"phoneNumber":"+27821234567"}'
 ```
-**Expected Outcome:** The server MUST return exactly `11223344` as plain text (HTTP 200) for Meta to validate the webhook.
+Expected: success with OTP pending status. Invalid Twilio config should return a clear 500, not a crash.
 
-## Troubleshooting & Remediation
-- **If `/connect` returns a CORS error:** Ensure the route handlers are properly wrapped or that the Next.js config allows headers from the frontend domain.
-- **If Prisma throws a schema error:** Ensure the `Tenant` or `Client` model has the appropriate fields (`whatsappAccountId`, `whatsappToken`) applied in the database schema.
+### Step 3: Verify OTP
+```bash
+curl -X POST "http://localhost:3000/api/settings/whatsapp/verify" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=<session-token>" \
+  -d '{"code":"123456"}'
+```
+Expected: `connected: true` on approved code; 400 on invalid/expired code.
+
+### Step 4: Twilio webhook ingest
+```bash
+curl -X POST "http://localhost:3000/api/webhooks/twilio" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "From=whatsapp%3A%2B27821234567&To=whatsapp%3A%2B14155238886&Body=hello&MessageSid=SMtest123&NumMedia=0"
+```
+Notes:
+- Without a valid `X-Twilio-Signature` (when `TWILIO_AUTH_TOKEN` is set), expect 403.
+- For local smoke tests without signature checks, temporarily unset `TWILIO_AUTH_TOKEN` or set a matching `TWILIO_WEBHOOK_URL` + signature.
+- Unknown receiver numbers must **not** fall back to an arbitrary tenant.
+
+### Step 5: Deprecated Meta endpoint
+```bash
+curl -X GET "http://localhost:3000/api/whatsapp/webhook"
+curl -X POST "http://localhost:3000/api/whatsapp/webhook"
+```
+Expected: HTTP 410 Gone for both.
 
 ## Final Review
-After running the suite, the agent should query Prisma (`npx tsx -e "..."`) to ensure that database state gracefully reverted or logged the failed connection attempt properly, preventing dirty state.
+Confirm tenant row has `whatsappSetupComplete=true`, `whatsappProvider=twilio`, and `whatsappPhoneNumber` set after a successful verify.

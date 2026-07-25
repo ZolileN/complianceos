@@ -10,8 +10,9 @@ interface TenantItem {
   plan: string;
   isActive: boolean;
   createdAt: string;
-  whatsappPhoneNumberId: string | null;
+  whatsappPhoneNumber: string | null;
   whatsappSetupComplete: boolean;
+  whatsappProvider: string | null;
   _count: {
     users: number;
     clients: number;
@@ -114,7 +115,7 @@ export default function FleetOverview() {
   };
 
   const handleForceRevoke = async (tenantId: string) => {
-    if (!confirm('Are you sure you want to force disconnect Meta/WhatsApp configurations for this tenant? This action will reset their WhatsApp Business API setup.')) {
+    if (!confirm('Are you sure you want to force disconnect WhatsApp for this tenant? This resets their Twilio WhatsApp setup.')) {
       return;
     }
     setActionLoading(tenantId + '-revoke');
@@ -123,8 +124,8 @@ export default function FleetOverview() {
         method: 'POST'
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to revoke token');
-      showToast('Meta connection successfully revoked and reset!');
+      if (!res.ok) throw new Error(data.error || 'Failed to revoke WhatsApp connection');
+      showToast('WhatsApp connection successfully revoked and reset!');
       fetchData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Operation failed';
@@ -152,7 +153,7 @@ export default function FleetOverview() {
   const totalTenants = tenants.length;
   const activeTenants = tenants.filter(t => t.isActive).length;
   const suspendedTenants = totalTenants - activeTenants;
-  const metaConnected = tenants.filter(t => t.whatsappSetupComplete).length;
+  const whatsappConnected = tenants.filter(t => t.whatsappSetupComplete).length;
   const pendingIntake = onboardingClients.length;
 
   // Filter tenants array
@@ -241,7 +242,7 @@ export default function FleetOverview() {
           <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#F59E0B', marginTop: 8 }}>{suspendedTenants}</div>
         </div>
 
-        {/* Card 4: Meta WABA */}
+        {/* Card 4: WhatsApp */}
         <div 
           onClick={() => setFilterType('waba')}
           style={{ 
@@ -253,8 +254,8 @@ export default function FleetOverview() {
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meta WABA Mapped</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#3B82F6', marginTop: 8 }}>{metaConnected} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: '#888888' }}>/ {totalTenants}</span></div>
+          <div style={{ fontSize: '0.75rem', color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>WhatsApp Connected</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#3B82F6', marginTop: 8 }}>{whatsappConnected} <span style={{ fontSize: '0.9rem', fontWeight: 400, color: '#888888' }}>/ {totalTenants}</span></div>
         </div>
 
         {/* Card 5: Stuck Intake */}
@@ -326,7 +327,7 @@ export default function FleetOverview() {
                 <th style={{ padding: '12px 20px', fontWeight: 600 }}>Clients</th>
                 <th style={{ padding: '12px 20px', fontWeight: 600 }}>Setup Date</th>
                 <th style={{ padding: '12px 20px', fontWeight: 600 }}>Status</th>
-                <th style={{ padding: '12px 20px', fontWeight: 600 }}>Meta Integration</th>
+                <th style={{ padding: '12px 20px', fontWeight: 600 }}>WhatsApp</th>
                 <th style={{ padding: '12px 20px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -392,8 +393,8 @@ export default function FleetOverview() {
                       {tenant.whatsappSetupComplete ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                           <span style={{ color: '#34D399', fontWeight: 600, fontSize: '0.7rem' }}>● Linked</span>
-                          {tenant.whatsappPhoneNumberId && (
-                            <span style={{ fontSize: '0.65rem', color: '#888888', fontFamily: 'monospace' }}>WABA: {tenant.whatsappPhoneNumberId}</span>
+                          {tenant.whatsappPhoneNumber && (
+                            <span style={{ fontSize: '0.65rem', color: '#888888', fontFamily: 'monospace' }}>{tenant.whatsappPhoneNumber}</span>
                           )}
                         </div>
                       ) : (

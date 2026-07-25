@@ -22,37 +22,34 @@ export async function POST(
     const tenant = await prisma.tenant.update({
       where: { id },
       data: {
-        whatsappAccessToken: null,
-        whatsappPhoneNumberId: null,
         whatsappSetupComplete: false,
         whatsappVerifiedName: null,
-        whatsappPhoneNumber: null
+        whatsappPhoneNumber: null,
+        whatsappProvider: 'twilio',
       }
     });
 
-    // Central Platform Admin Logging (Postgres)
     await logAdminAction(
       'DISCONNECT_WABA',
       id,
       { tenantName: tenant.name, tenantSlug: tenant.slug }
     );
 
-    // Isolated Tenant Streaming Log (Redis)
     await pushTenantLog(
       id,
-      `Meta WhatsApp WABA credentials revoked`,
+      `Twilio WhatsApp connection revoked`,
       'system'
     );
 
     AdminLogger.log(
       'system',
-      `Forced Meta credentials revocation for Tenant "${tenant.name}" (${tenant.slug})`,
+      `Forced WhatsApp disconnect for Tenant "${tenant.name}" (${tenant.slug})`,
       { tenantId: id }
     );
 
     return NextResponse.json({ success: true, data: tenant });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to revoke token';
+    const msg = error instanceof Error ? error.message : 'Failed to revoke WhatsApp connection';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

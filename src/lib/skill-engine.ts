@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { pushTenantLog } from '@/lib/redis';
+import { completePrompt, parseLLMJson } from '@/lib/llm';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -107,7 +108,8 @@ async function executeStep(
 }
 
 /**
- * LLM Call Step — sends a prompt to the configured LLM provider
+ * LLM Call Step — sends a prompt to the configured OpenAI-compatible provider.
+ * Set OPENAI_API_KEY for real calls, or SKILL_LLM_SIMULATE=true for local stubs.
  */
 async function executeLLMStep(
   config: StepConfig,
@@ -115,8 +117,7 @@ async function executeLLMStep(
   previousOutput: Record<string, unknown>
 ): Promise<{ output: Record<string, unknown>; tokensUsed: number }> {
   const prompt = config.prompt || '';
-  
-  // Interpolate variables from context and previous output
+
   const interpolated = prompt
     .replace(/\{\{input\.([\w.]+)\}\}/g, (_, key: string) => {
       return String(context.input[key] ?? '');
@@ -125,17 +126,18 @@ async function executeLLMStep(
       return String(previousOutput[key] ?? '');
     });
 
-  // For now, simulate LLM execution
-  // In production, this would call OpenAI/Anthropic
-  const simulatedTokens = Math.ceil(interpolated.length / 4);
-  
+  const completion = await completePrompt(interpolated);
+  const parsed = parseLLMJson(completion.text);
+
   return {
     output: {
-      result: `[LLM Response] Processed: "${interpolated.substring(0, 100)}..."`,
+      ...parsed,
+      result: parsed.result ?? completion.text,
       prompt_length: interpolated.length,
-      model: 'gpt-4o-mini',
+      model: completion.model,
+      simulated: completion.simulated,
     },
-    tokensUsed: simulatedTokens,
+    tokensUsed: completion.tokensUsed,
   };
 }
 
@@ -147,18 +149,46 @@ async function executeAPIStep(
   previousOutput: Record<string, unknown>
 ): Promise<{ output: Record<string, unknown>; tokensUsed: number }> {
   const endpoint = config.endpoint || '';
-  
+
   if (!endpoint) {
-    return { output: { error: 'No endpoint configured' }, tokensUsed: 0 };
+    throw new Error('api_call step has no endpoint configured');
   }
 
-  // In production, make the actual HTTP call
-  // For now, simulate the response
+  const method = String(config.method || 'GET').toUpperCase();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(typeof config.headers === 'object' && config.headers
+      ? (config.headers as Record<string, string>)
+      : {}),
+  };
+
+  const init: RequestInit = { method, headers };
+  if (method !== 'GET' && method !== 'HEAD') {
+    init.body = JSON.stringify(config.body ?? previousOutput);
+  }
+
+  const response = await fetch(endpoint, init);
+  const contentType = response.headers.get('content-type') || '';
+  let body: unknown;
+  if (contentType.includes('application/json')) {
+    body = await response.json().catch(() => null);
+  } else {
+    body = await response.text().catch(() => '');
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `api_call failed (${response.status}) for ${endpoint}: ${
+        typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200)
+      }`
+    );
+  }
+
   return {
     output: {
-      result: `[API Response] Called: ${endpoint}`,
-      status: 200,
-      previousData: previousOutput,
+      result: body,
+      status: response.status,
+      endpoint,
     },
     tokensUsed: 0,
   };
@@ -170,26 +200,78 @@ async function executeAPIStep(
 async function executeDatabaseStep(
   config: StepConfig,
   context: SkillExecutionContext,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _previousOutput: Record<string, unknown>
+  previousOutput: Record<string, unknown>
 ): Promise<{ output: Record<string, unknown>; tokensUsed: number }> {
   const query = config.query || '';
-  
-  // Supported queries: client_lookup, document_search, etc.
-  if (query === 'client_lookup' && context.input['email']) {
+
+  if (query === 'client_lookup') {
+    const email = context.input['email'] ?? previousOutput['email'];
+    const phone = context.input['phone'] ?? previousOutput['phone'];
     const client = await prisma.client.findFirst({
       where: {
         tenantId: context.tenantId,
-        email: String(context.input['email']),
+        OR: [
+          ...(email ? [{ email: String(email) }] : []),
+          ...(phone ? [{ phone: String(phone) }, { whatsappNumber: String(phone) }] : []),
+        ],
       },
     });
     return { output: { client: client || null, found: !!client }, tokensUsed: 0 };
   }
 
-  return {
-    output: { result: `[DB Query] Executed: ${query}`, tenantId: context.tenantId },
-    tokensUsed: 0,
-  };
+  if (query === 'update_document_metadata') {
+    const documentId = String(
+      context.input['documentId'] ?? previousOutput['documentId'] ?? ''
+    );
+    if (!documentId) {
+      throw new Error('update_document_metadata requires documentId in input');
+    }
+
+    const metadata: Record<string, unknown> = { ...previousOutput };
+    if (metadata.document_type === undefined && metadata.result !== undefined) {
+      metadata.document_type = metadata.result;
+    }
+    delete metadata.simulated;
+    delete metadata.model;
+    delete metadata.prompt_length;
+
+    const document = await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        ocrMetadata: JSON.stringify(metadata),
+        ocrStatus: 'completed',
+      },
+    });
+
+    return {
+      output: { documentId: document.id, updated: true, metadata },
+      tokensUsed: 0,
+    };
+  }
+
+  if (query === 'document_search') {
+    const clientId = String(context.input['clientId'] ?? previousOutput['clientId'] ?? '');
+    const documents = await prisma.document.findMany({
+      where: {
+        tenantId: context.tenantId,
+        ...(clientId ? { clientId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        ocrStatus: true,
+        createdAt: true,
+      },
+    });
+    return { output: { documents, count: documents.length }, tokensUsed: 0 };
+  }
+
+  throw new Error(
+    `Unsupported database_query "${query}". Supported: client_lookup, update_document_metadata, document_search`
+  );
 }
 
 /**
