@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Plus, UserPlus, X } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Director } from '@/types';
 
 export default function NewClientPage() {
@@ -75,20 +79,28 @@ export default function NewClientPage() {
   };
 
   return (
-    <div style={{ maxWidth: 700 }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">New Client</h1>
-          <p className="page-subtitle">Add a new client to your practice</p>
+    <div className="mx-auto max-w-[700px] space-y-6">
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <UserPlus className="size-3.5" />
+          Portfolio
         </div>
-      </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">New client</h1>
+        <p className="mt-1.5 text-sm text-slate-500">Add a new client to your practice</p>
+      </section>
 
-      {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: 20, color: 'var(--red)', fontSize: '0.85rem' }}>{error}</div>}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 20 }}>Company Details</h3>
-          <div className="stack">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Company details</CardTitle>
+          </CardHeader>
+          <CardContent className="stack">
             <div className="form-group">
               <label className="form-label">Company Name *</label>
               <input className="input" required value={form.company_name} onChange={(e) => updateForm('company_name', e.target.value)} placeholder="Stark Industries (Pty) Ltd" />
@@ -107,12 +119,14 @@ export default function NewClientPage() {
               <label className="form-label">VAT Number</label>
               <input className="input" value={form.vat_number} onChange={(e) => updateForm('vat_number', e.target.value)} placeholder="4012345678" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 20 }}>Contact Details</h3>
-          <div className="stack">
+        <Card>
+          <CardHeader>
+            <CardTitle>Contact details</CardTitle>
+          </CardHeader>
+          <CardContent className="stack">
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Email</label>
@@ -131,12 +145,14 @@ export default function NewClientPage() {
               <label className="form-label">Address</label>
               <textarea className="input" style={{ minHeight: '80px', resize: 'vertical' }} value={form.address} onChange={(e) => updateForm('address', e.target.value)} placeholder="Physical or Registered Address" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 20 }}>Assignment & Status</h3>
-          <div className="stack">
+        <Card>
+          <CardHeader>
+            <CardTitle>Assignment & status</CardTitle>
+          </CardHeader>
+          <CardContent className="stack">
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Assigned Consultant</label>
@@ -164,17 +180,20 @@ export default function NewClientPage() {
                 </select>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="card" style={{ marginBottom: 24 }}>
-          <div className="flex-between" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Directors</h3>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDirectors([...directors, { name: '', id_number: '', email: '', phone: '' }])}>+ Add Director</button>
-          </div>
-          <div className="stack">
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle>Directors</CardTitle>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDirectors([...directors, { name: '', id_number: '', email: '', phone: '' }])}>
+              <Plus />
+              Add director
+            </Button>
+          </CardHeader>
+          <CardContent className="stack">
             {directors.map((d, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+              <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
                 <div className="form-group">
                   <label className="form-label">Name</label>
                   <input className="input" value={d.name} onChange={(e) => updateDirector(i, 'name', e.target.value)} placeholder="e.g. James Rhodes" />
@@ -183,24 +202,26 @@ export default function NewClientPage() {
                   <label className="form-label">ID Number</label>
                   <input className="input" value={d.id_number} onChange={(e) => updateDirector(i, 'id_number', e.target.value)} placeholder="ID number" />
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mb-0.5 text-red-600 hover:text-red-700"
                   onClick={() => setDirectors(directors.filter((_, idx) => idx !== i))}
-                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--red)', borderRadius: 'var(--radius-md)', width: 36, height: 40, cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}
                   title="Remove director"
                 >
-                  ✕
-                </button>
+                  <X />
+                </Button>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => router.back()}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? <span className="spinner" /> : 'Create Client'}
-          </button>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? <span className="spinner" /> : 'Create client'}
+          </Button>
         </div>
       </form>
     </div>

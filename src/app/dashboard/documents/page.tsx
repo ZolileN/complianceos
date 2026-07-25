@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, FolderOpen, Upload, X } from 'lucide-react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Document as Doc } from '@/types';
-import { UploadDropzone } from "@/lib/uploadthing";
+import { UploadDropzone } from '@/lib/uploadthing';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
-import "@uploadthing/react/styles.css";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import '@uploadthing/react/styles.css';
 
 const PAGE_LIMIT = 20;
 
@@ -151,92 +156,197 @@ export default function DocumentsPage() {
   const totalPages = Math.ceil(totalCount / PAGE_LIMIT);
 
   return (
-    <div>
-      <div className="page-header">
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h1 className="page-title">Documents</h1>
-          <p className="page-subtitle">{totalCount} files stored</p>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+            <FolderOpen className="size-3.5" />
+            Files
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Documents</h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {totalCount} {totalCount === 1 ? 'file' : 'files'} stored
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowUpload(true)}>📤 Upload</button>
-      </div>
+        <Button variant="primary" onClick={() => setShowUpload(true)}>
+          <Upload />
+          Upload
+        </Button>
+      </section>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        <button className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setFilter('all'); setPage(1); }}>All</button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={filter === 'all' ? 'primary' : 'secondary'}
+          onClick={() => {
+            setFilter('all');
+            setPage(1);
+          }}
+        >
+          All
+        </Button>
         {DOCUMENT_CATEGORIES.map((c) => (
-          <button key={c.value} className={`btn btn-sm ${filter === c.value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setFilter(c.value); setPage(1); }}>
+          <Button
+            key={c.value}
+            size="sm"
+            variant={filter === c.value ? 'primary' : 'secondary'}
+            onClick={() => {
+              setFilter(c.value);
+              setPage(1);
+            }}
+          >
             {c.icon} {c.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {loading ? (
-        <div className="stack">{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 60 }} />)}</div>
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton h-14" />
+          ))}
+        </div>
       ) : documents.length === 0 ? (
-        <div className="card"><div className="empty-state"><div className="empty-icon">📁</div><h3>No documents</h3><p>Upload documents to get started</p></div></div>
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <FolderOpen className="size-5" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-950">No documents</h2>
+            <p className="text-sm text-slate-500">Upload documents to get started</p>
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr><th>Name</th><th>Client</th><th>Category</th><th>Size</th><th>Uploaded</th><th>Actions</th></tr>
-              </thead>
-              <tbody>
-                {documents.map((d) => (
-                  <tr key={d.id}>
-                    <td>
-                      <span style={{ marginRight: 8 }}>{getCatIcon(d.category)}</span>
-                      <button 
-                        onClick={() => setActiveViewDoc(d)}
-                        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', fontWeight: 500, color: 'inherit', textAlign: 'left' }}
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    {['Name', 'Client', 'Category', 'Size', 'Uploaded', 'Actions'].map((label) => (
+                      <th
+                        key={label}
+                        className="px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 uppercase"
                       >
-                        {d.name}
-                      </button>
-                      {d.version > 1 && (
-                        <span className="badge badge-secondary" style={{ marginLeft: 8, fontSize: '0.7rem', padding: '2px 6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', color: 'var(--text-secondary)', borderRadius: 4 }}>
-                          v{d.version}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{(d.client as unknown as { company_name: string })?.company_name || '—'}</td>
-                    <td><span className="badge badge-blue">{d.category.replace('_', ' ')}</span></td>
-                    <td style={{ color: 'var(--text-muted)' }}>{formatSize(d.file_size)}</td>
-                    <td style={{ color: 'var(--text-muted)' }}>{new Date(d.created_at).toLocaleDateString('en-GB')}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px' }} onClick={() => setActiveViewDoc(d)}>View</button>
-                        <a href={d.file_path} download={d.name} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', textDecoration: 'none' }}>Download</a>
-                        <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', color: 'var(--red)' }} onClick={() => handleDeleteDoc(d.id)}>Delete</button>
-                      </div>
-                    </td>
+                        {label}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {documents.map((d) => (
+                    <tr key={d.id} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-3.5">
+                        <span className="mr-2">{getCatIcon(d.category)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveViewDoc(d)}
+                          className="text-sm font-medium text-slate-900 hover:text-teal-700"
+                        >
+                          {d.name}
+                        </button>
+                        {d.version > 1 && (
+                          <Badge variant="outline" className="ml-2">
+                            v{d.version}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-slate-500">
+                        {(d.client as unknown as { company_name: string })?.company_name || '—'}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Badge variant="info" className="capitalize">
+                          {d.category.replace('_', ' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-slate-500">
+                        {formatSize(d.file_size)}
+                      </td>
+                      <td className="px-4 py-3.5 text-sm text-slate-500">
+                        {new Date(d.created_at).toLocaleDateString('en-GB')}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setActiveViewDoc(d)}>
+                            View
+                          </Button>
+                          <Button asChild variant="ghost" size="sm">
+                            <a
+                              href={d.file_path}
+                              download={d.name}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Download
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteDoc(d.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="pagination">
-              <span className="pagination-info">
-                Showing {((page - 1) * PAGE_LIMIT) + 1}–{Math.min(page * PAGE_LIMIT, totalCount)} of {totalCount}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-sm text-slate-500">
+                Showing {(page - 1) * PAGE_LIMIT + 1}–{Math.min(page * PAGE_LIMIT, totalCount)} of{' '}
+                {totalCount}
               </span>
-              <div className="pagination-controls">
-                <button className="pagination-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</button>
-                <span className="pagination-page">{page} / {totalPages}</span>
-                <button className="pagination-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>›</button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft />
+                </Button>
+                <span className="text-sm text-slate-600">
+                  {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight />
+                </Button>
               </div>
             </div>
           )}
         </>
       )}
 
-      {/* Upload Modal */}
       {showUpload && (
         <div className="modal-overlay" onClick={() => setShowUpload(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Upload Document</h2>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowUpload(false)}>✕</button>
+              <h2 className="modal-title">Upload document</h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowUpload(false)}
+                aria-label="Close"
+              >
+                <X />
+              </Button>
             </div>
             <div className="modal-body stack">
               <div className="form-group">

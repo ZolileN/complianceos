@@ -1,6 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ScrollText } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface AuditLog {
   id: string;
@@ -15,6 +19,16 @@ interface AuditLog {
     email: string | null;
     role: string;
   };
+}
+
+type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
+
+function actionVariant(action: string): BadgeVariant {
+  if (action === 'CREATE') return 'success';
+  if (action === 'UPDATE') return 'info';
+  if (action === 'DELETE') return 'destructive';
+  if (action === 'UPLOAD') return 'warning';
+  return 'outline';
 }
 
 export default function AuditLogsPage() {
@@ -39,91 +53,104 @@ export default function AuditLogsPage() {
     void fetchLogs();
   }, []);
 
-  const getActionColor = (action: string) => {
-    if (action === 'CREATE') return '#10B981';
-    if (action === 'UPDATE') return '#3B82F6';
-    if (action === 'DELETE') return '#EF4444';
-    if (action === 'UPLOAD') return '#F59E0B';
-    return 'var(--text-secondary)';
-  };
-
-  if (loading) return <div className="flex-center" style={{ minHeight: '60vh' }}><span className="spinner"></span></div>;
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[1500px] space-y-4">
+        <div className="skeleton h-10 w-56" />
+        <div className="skeleton h-64 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
-    <div className="dashboard-content">
-      <header className="dashboard-header" style={{ marginBottom: 24 }}>
-        <div>
-          <h1 className="dashboard-title">Audit Logs</h1>
-          <p className="dashboard-subtitle">Track system activity, user actions, and changes.</p>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <section>
+        <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+          <ScrollText className="size-3.5" />
+          Security
         </div>
-      </header>
+        <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Audit logs</h1>
+        <p className="mt-1.5 text-sm text-slate-500">
+          Track system activity, user actions, and changes.
+        </p>
+      </section>
 
-      {error && <div className="error-message" style={{ marginBottom: 24 }}>{error}</div>}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
-      <div className="card">
+      <Card className="overflow-hidden p-0">
         {logs.length === 0 ? (
-          <div className="empty-state">
-            <span className="empty-icon">📊</span>
-            <h3>No audit logs found</h3>
-            <p>System activity will appear here as users interact with the platform.</p>
-          </div>
+          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <ScrollText className="size-5" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-950">No audit logs found</h2>
+            <p className="max-w-sm text-sm text-slate-500">
+              System activity will appear here as users interact with the platform.
+            </p>
+          </CardContent>
         ) : (
-          <div className="table-responsive">
-            <table className="table">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] border-collapse text-left">
               <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>Entity Type</th>
-                  <th>Details</th>
+                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  {['Timestamp', 'User', 'Action', 'Entity type', 'Details'].map((label) => (
+                    <th
+                      key={label}
+                      className="px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 uppercase"
+                    >
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => {
-                  let detailsParsed = {};
+                  let detailsParsed: Record<string, unknown> = {};
                   try {
                     detailsParsed = JSON.parse(log.details);
-                  } catch {}
+                  } catch {
+                    detailsParsed = {};
+                  }
 
                   return (
-                    <tr key={log.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                    <tr key={log.id} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-slate-500">
                         {new Date(log.createdAt).toLocaleString()}
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div className="avatar">{log.user.name?.charAt(0) || '?'}</div>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
+                            {log.user.name?.charAt(0) || '?'}
+                          </div>
                           <div>
-                            <p style={{ fontWeight: 600, margin: 0 }}>{log.user.name || 'Unknown'}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{log.user.email}</p>
+                            <p className="m-0 text-sm font-semibold text-slate-900">
+                              {log.user.name || 'Unknown'}
+                            </p>
+                            <p className="m-0 text-xs text-slate-500">{log.user.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span style={{ 
-                          padding: '4px 8px', 
-                          borderRadius: 4, 
-                          fontSize: '0.75rem', 
-                          fontWeight: 700,
-                          backgroundColor: `${getActionColor(log.action)}20`,
-                          color: getActionColor(log.action)
-                        }}>
-                          {log.action}
-                        </span>
+                      <td className="px-4 py-3.5">
+                        <Badge variant={actionVariant(log.action)}>{log.action}</Badge>
                       </td>
-                      <td style={{ fontWeight: 500 }}>{log.entityType}</td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <td className="px-4 py-3.5 text-sm font-medium text-slate-700">
+                        {log.entityType}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex flex-col gap-1">
                           {Object.keys(detailsParsed).length === 0 ? (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>-</span>
+                            <span className="text-xs text-slate-500">—</span>
                           ) : (
                             Object.entries(detailsParsed).map(([key, value]) => (
-                              <div key={key} style={{ fontSize: '0.75rem' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                              <div key={key} className="text-xs">
+                                <span className="font-semibold capitalize text-slate-500">
                                   {key.replace(/([A-Z])/g, ' $1').trim()}:
                                 </span>{' '}
-                                <span>{String(value)}</span>
+                                <span className="text-slate-700">{String(value)}</span>
                               </div>
                             ))
                           )}
@@ -136,7 +163,7 @@ export default function AuditLogsPage() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
