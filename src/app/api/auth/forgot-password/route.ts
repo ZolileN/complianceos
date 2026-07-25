@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,17 +37,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 1. Prioritize your custom target domain, fall back to production vercel url, then fallback to local
-    const rawDomain = process.env.NEXT_PUBLIC_APP_URL || 
-                      (process.env.VERCEL_ENV === 'production' ? 'praxis.mlkcomputer.com' : process.env.VERCEL_URL) || 
-                      'localhost:3000';
-
-    // 2. Safely normalize the protocol loop
-    let appUrl = rawDomain;
-    if (!appUrl.startsWith('http')) {
-      appUrl = appUrl.includes('localhost') ? `http://${appUrl}` : `https://${appUrl}`;
-    }
-    
+    const appUrl = getAppBaseUrl();
     const resetUrl = `${appUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email || '')}`;
 
     console.log(`[PASSWORD RESET DEV PREVIEW] Reset url for ${user.email}: ${resetUrl}`);

@@ -10,6 +10,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getOnboardingUrl } from '@/lib/appUrl';
 import type { Client } from '@/types';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
@@ -52,7 +53,7 @@ export default function ClientsPage() {
 
   const handleCopyInviteLink = async () => {
     if (!tenantSlug) return;
-    const url = `${window.location.origin}/onboard/${tenantSlug}`;
+    const url = getOnboardingUrl(tenantSlug);
     try {
       await navigator.clipboard.writeText(url);
       toast('Invite link copied to clipboard! Share it with your clients.', 'success');
