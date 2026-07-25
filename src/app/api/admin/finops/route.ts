@@ -71,10 +71,20 @@ export async function GET() {
       ? {
           name: topTenantRow.name,
           plan: topTenantRow.plan,
+          /** @deprecated use messagesMonth — kept for UI compat */
           tokens: topTenantRow.messagesMonth,
+          messagesMonth: topTenantRow.messagesMonth,
           limit: topTenantRow.limit,
+          limitEnforced: false,
         }
-      : { name: 'No active tenants', plan: 'starter', tokens: 0, limit: 1000 };
+      : {
+          name: 'No active tenants',
+          plan: 'starter',
+          tokens: 0,
+          messagesMonth: 0,
+          limit: 1000,
+          limitEnforced: false,
+        };
 
     const starterTenants = usage.filter(
       (t) => t.plan.toLowerCase() === 'starter'
@@ -84,9 +94,10 @@ export async function GET() {
       ? {
           name: topStarterRow.name,
           tokens: topStarterRow.messagesMonth,
+          messagesMonth: topStarterRow.messagesMonth,
           limit: 1000,
         }
-      : { name: 'No active starter tenants', tokens: 0, limit: 1000 };
+      : { name: 'No active starter tenants', tokens: 0, messagesMonth: 0, limit: 1000 };
 
     const byPlan = Object.fromEntries(
       Object.keys(PLAN_LIMITS).map((plan) => [
