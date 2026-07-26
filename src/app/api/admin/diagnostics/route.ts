@@ -4,15 +4,47 @@ import {
   isPlatformAdminResponse,
   requirePlatformAdmin,
 } from '@/lib/platform-admin';
-import { getQueueDepth, redis } from '@/lib/redis';
+import { getQueueDepth, getRedisConfigStatus, redis } from '@/lib/redis';
 
-async function pingRedis(): Promise<{ ok: boolean; latencyMs: number | null }> {
+async function pingRedis(): Promise<{
+  ok: boolean;
+  latencyMs: number | null;
+  configured: boolean;
+  backend: string;
+  detail: string;
+  error?: string;
+}> {
+  const config = getRedisConfigStatus();
+  if (!config.configured) {
+    return {
+      ok: false,
+      latencyMs: null,
+      configured: false,
+      backend: config.backend,
+      detail: config.detail,
+      error: 'not_configured',
+    };
+  }
+
   const start = Date.now();
   try {
     const pong = await redis.ping();
-    return { ok: pong === 'PONG', latencyMs: Date.now() - start };
-  } catch {
-    return { ok: false, latencyMs: null };
+    return {
+      ok: pong === 'PONG',
+      latencyMs: Date.now() - start,
+      configured: true,
+      backend: config.backend,
+      detail: config.detail,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      latencyMs: null,
+      configured: true,
+      backend: config.backend,
+      detail: config.detail,
+      error: err instanceof Error ? err.message : 'Redis ping failed',
+    };
   }
 }
 

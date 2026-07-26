@@ -19,7 +19,14 @@ type DiagnosticsResponse = {
   health: {
     overall: 'healthy' | 'degraded';
     checkedAt: string;
-    redis: { ok: boolean; latencyMs: number | null };
+    redis: {
+      ok: boolean;
+      latencyMs: number | null;
+      configured?: boolean;
+      backend?: string;
+      detail?: string;
+      error?: string;
+    };
     database: { ok: boolean; latencyMs: number | null; tenantCount: number };
     process: {
       uptimeSeconds: number;
@@ -39,6 +46,17 @@ type DiagnosticsResponse = {
     openTasks: number;
   };
 };
+
+function redisStatusLabel(redis?: DiagnosticsResponse['health']['redis']): string {
+  if (!redis) return 'Unavailable';
+  if (redis.ok) {
+    const latency = redis.latencyMs != null ? ` · ${redis.latencyMs}ms` : '';
+    const backend = redis.backend ? ` · ${redis.backend}` : '';
+    return `Connected${latency}${backend}`;
+  }
+  if (redis.configured === false) return 'Not configured';
+  return 'Unavailable';
+}
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -108,8 +126,13 @@ export default function InfrastructureTuning() {
 
       setDiagnostics(data);
       const ts = data.health.checkedAt;
+      const redisPart = data.health.redis.ok
+        ? `ok (${data.health.redis.latencyMs ?? '?'}ms, ${data.health.redis.backend ?? 'redis'})`
+        : data.health.redis.configured === false
+          ? `not_configured (${data.health.redis.detail ?? 'missing env'})`
+          : `fail (${data.health.redis.error ?? data.health.redis.detail ?? '?'})`;
       addConsoleLog(
-        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${data.health.redis.ok ? 'ok' : 'fail'} (${data.health.redis.latencyMs ?? '?'}ms), db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms)`
+        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${redisPart}, db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms)`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Diagnostics fetch failed';
@@ -223,15 +246,19 @@ export default function InfrastructureTuning() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
-                  <div className="flex items-center gap-2">
-                    <StatusDot ok={health?.redis.ok ?? false} />
-                    <span className="font-medium">Redis</span>
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <StatusDot ok={health?.redis.ok ?? false} />
+                      <span className="font-medium">Redis</span>
+                    </div>
+                    <span className="text-slate-600">{redisStatusLabel(health?.redis)}</span>
                   </div>
-                  <span className="text-slate-600">
-                    {health?.redis.ok ? 'Connected' : 'Unavailable'}
-                    {health?.redis.latencyMs != null && ` · ${health.redis.latencyMs}ms`}
-                  </span>
+                  {!health?.redis.ok && health?.redis.detail && (
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      {health.redis.detail}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
                   <div className="flex items-center gap-2">

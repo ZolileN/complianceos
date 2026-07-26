@@ -135,13 +135,14 @@ export async function processSkillEventQueue(): Promise<number> {
   // Use dynamic import to avoid circular dependency
   const { executeSkill } = await import('@/lib/skill-engine');
 
-  // Process up to 10 events per batch
+  // Process up to 10 events per batch.
+  // Use non-blocking rpop so Vercel/Upstash REST (and cron) do not hold open connections.
   for (let i = 0; i < 10; i++) {
-    const raw = await redis.brpop(SKILL_EVENT_QUEUE, 1);
+    const raw = await redis.rpop(SKILL_EVENT_QUEUE);
     if (!raw) break;
 
     try {
-      const payload: SkillEventPayload = JSON.parse(raw[1]);
+      const payload: SkillEventPayload = JSON.parse(raw);
       const matchingSkills = await findSkillsForEvent(payload.tenantId, payload.event);
 
       for (const skill of matchingSkills) {
