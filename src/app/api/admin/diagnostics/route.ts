@@ -5,6 +5,7 @@ import {
   requirePlatformAdmin,
 } from '@/lib/platform-admin';
 import { checkOzowMerchant } from '@/lib/billing/ozow-health';
+import { checkStitchCredentials } from '@/lib/billing/stitch-health';
 import { getQueueDepth, getRedisConfigStatus, redis } from '@/lib/redis';
 
 async function pingRedis(): Promise<{
@@ -73,6 +74,7 @@ export async function GET() {
       redisHealth,
       dbHealth,
       ozowHealth,
+      stitchHealth,
       aggregates,
       lastVacuumTimestamp,
     ] = await Promise.all([
@@ -80,6 +82,7 @@ export async function GET() {
       pingRedis(),
       pingDatabase(),
       checkOzowMerchant(),
+      checkStitchCredentials(),
       prisma.$transaction([
         prisma.tenant.count({ where: { isActive: true } }),
         prisma.tenant.count({ where: { isActive: false } }),
@@ -130,6 +133,7 @@ export async function GET() {
         redis: redisHealth,
         database: dbHealth,
         ozow: ozowHealth,
+        stitch: stitchHealth,
         process: {
           uptimeSeconds: Math.floor(process.uptime()),
           nodeVersion: process.version,

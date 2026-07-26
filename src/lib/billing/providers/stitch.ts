@@ -29,6 +29,7 @@ async function getClientToken(scopes: string[]): Promise<string> {
     grant_type: 'client_credentials',
     client_id: clientId,
     client_secret: clientSecret,
+    audience: 'https://secure.stitch.money/connect/token',
     scope: scopes.join(' '),
   });
 
