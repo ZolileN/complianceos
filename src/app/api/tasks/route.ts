@@ -5,6 +5,13 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { Prisma } from '@prisma/client';
 import { logAuditAction } from '@/lib/auditLogger';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import {
+  assertWritable,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -77,6 +84,14 @@ export async function POST(request: NextRequest) {
   // Clients cannot create tasks
   if (currentUser.role === 'client') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await assertWritable(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
   }
 
   const body = await request.json();

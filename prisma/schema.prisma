@@ -596,6 +596,8 @@ model SkillExecution {
   totalSteps     Int     @default(0)
   tokensUsed     Int     @default(0)
   durationMs     Int?
+  /// 0-based step index waiting on human approval (null when not paused)
+  pausedAtStepOrder Int?
 
   startedAt     DateTime?
   completedAt   DateTime?

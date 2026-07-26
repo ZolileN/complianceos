@@ -2,6 +2,12 @@
 
 ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline corporate compliance, document management, and workflow automation. Built with modern web technologies, it empowers consultancy firms to manage their clients' regulatory obligations efficiently while providing clients with a secure portal to track their compliance status.
 
+## ✅ Phase A hardening (CI, billing, skill approvals)
+
+*   **CI:** GitHub Actions runs `lint`, `typecheck`, and Vitest unit tests on PRs (`npm test`).
+*   **Billing:** Paid signups get a one-month `currentPeriodEnd`; checkout no longer unlocks `past_due` tenants; cancel-at-period-end is finalized by the daily trial-expiry cron; key write APIs enforce read-only mode.
+*   **Skills:** Human-approval steps pause as `pending_approval` and can be Approved/Rejected from Marketplace → Execution Log (`POST /api/skills/executions/[id]/resume`).
+
 ## 🚀 Key Features
 
 *   **Multi-Tenant Architecture:** Strict data isolation utilizing NextAuth and Prisma to ensure operations managers, consultants, and clients only access authorized data.

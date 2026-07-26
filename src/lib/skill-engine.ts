@@ -19,9 +19,15 @@ export interface SkillExecutionContext {
   input: Record<string, unknown>;
 }
 
+export type SkillRunStatus =
+  | 'completed'
+  | 'failed'
+  | 'pending_approval'
+  | 'cancelled';
+
 export interface SkillExecutionResult {
   executionId: string;
-  status: 'completed' | 'failed';
+  status: SkillRunStatus;
   output: Record<string, unknown> | null;
   error: string | null;
   stepsCompleted: number;
@@ -392,58 +398,109 @@ export async function executeSkill(
     { executionId: execution.id, skillSlug, trigger: context.triggerEvent }
   );
 
-  // 5. Execute steps sequentially
-  let currentOutput: Record<string, unknown> = { ...context.input };
-  let totalTokens = 0;
-  let stepsCompleted = 0;
+  // 5. Execute steps sequentially (may pause on human_approval)
+  return runSkillSteps({
+    executionId: execution.id,
+    skillName: skill.name,
+    steps: skill.steps,
+    context,
+    startTime,
+    startIndex: 0,
+    initialOutput: { ...context.input },
+    initialTokens: 0,
+  });
+}
+
+type SkillStepRow = {
+  stepType: string;
+  config: string;
+  stepOrder: number;
+  name?: string;
+};
+
+async function runSkillSteps(args: {
+  executionId: string;
+  skillName: string;
+  steps: SkillStepRow[];
+  context: SkillExecutionContext;
+  startTime: number;
+  startIndex: number;
+  initialOutput: Record<string, unknown>;
+  initialTokens: number;
+}): Promise<SkillExecutionResult> {
+  const {
+    executionId,
+    skillName,
+    steps,
+    context,
+    startTime,
+    startIndex,
+    initialOutput,
+    initialTokens,
+  } = args;
+
+  let currentOutput: Record<string, unknown> = { ...initialOutput };
+  let totalTokens = initialTokens;
+  let stepsCompleted = startIndex;
 
   try {
-    for (const step of skill.steps) {
+    for (let i = startIndex; i < steps.length; i++) {
+      const step = steps[i];
       const stepConfig: StepConfig = JSON.parse(step.config);
       const result = await executeStep(step.stepType, stepConfig, context, currentOutput);
-      
+
       currentOutput = { ...currentOutput, ...result.output };
       totalTokens += result.tokensUsed;
-      stepsCompleted++;
+      stepsCompleted = i + 1;
 
-      // Update progress
       await prisma.skillExecution.update({
-        where: { id: execution.id },
+        where: { id: executionId },
         data: { stepsCompleted },
       });
 
-      // Check for human approval pause
       if (step.stepType === 'human_approval') {
         const durationMs = Date.now() - startTime;
         await prisma.skillExecution.update({
-          where: { id: execution.id },
+          where: { id: executionId },
           data: {
-            status: 'pending',
+            status: 'pending_approval',
+            pausedAtStepOrder: i,
             output: JSON.stringify(currentOutput),
             tokensUsed: totalTokens,
             durationMs,
           },
         });
 
+        await pushTenantLog(
+          context.tenantId,
+          `Skill paused for approval: ${skillName}`,
+          'skill',
+          {
+            executionId,
+            approverRole: stepConfig.approverRole || 'administrator',
+            stepOrder: i,
+          }
+        );
+
         return {
-          executionId: execution.id,
-          status: 'completed',
+          executionId,
+          status: 'pending_approval',
           output: currentOutput,
           error: null,
           stepsCompleted,
-          totalSteps: skill.steps.length,
+          totalSteps: steps.length,
           tokensUsed: totalTokens,
           durationMs,
         };
       }
     }
 
-    // 6. Mark as completed
     const durationMs = Date.now() - startTime;
     await prisma.skillExecution.update({
-      where: { id: execution.id },
+      where: { id: executionId },
       data: {
         status: 'completed',
+        pausedAtStepOrder: null,
         output: JSON.stringify(currentOutput),
         tokensUsed: totalTokens,
         durationMs,
@@ -453,18 +510,18 @@ export async function executeSkill(
 
     await pushTenantLog(
       context.tenantId,
-      `Skill completed: ${skill.name} (${durationMs}ms, ${totalTokens} tokens)`,
+      `Skill completed: ${skillName} (${durationMs}ms, ${totalTokens} tokens)`,
       'skill',
-      { executionId: execution.id, stepsCompleted, totalTokens }
+      { executionId, stepsCompleted, totalTokens }
     );
 
     return {
-      executionId: execution.id,
+      executionId,
       status: 'completed',
       output: currentOutput,
       error: null,
       stepsCompleted,
-      totalSteps: skill.steps.length,
+      totalSteps: steps.length,
       tokensUsed: totalTokens,
       durationMs,
     };
@@ -473,7 +530,7 @@ export async function executeSkill(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     await prisma.skillExecution.update({
-      where: { id: execution.id },
+      where: { id: executionId },
       data: {
         status: 'failed',
         error: errorMessage,
@@ -485,22 +542,190 @@ export async function executeSkill(
 
     await pushTenantLog(
       context.tenantId,
-      `Skill failed: ${skill.name} — ${errorMessage}`,
+      `Skill failed: ${skillName} — ${errorMessage}`,
       'error',
-      { executionId: execution.id, error: errorMessage }
+      { executionId, error: errorMessage }
     );
 
     return {
-      executionId: execution.id,
+      executionId,
       status: 'failed',
       output: null,
       error: errorMessage,
       stepsCompleted,
-      totalSteps: skill.steps.length,
+      totalSteps: steps.length,
       tokensUsed: totalTokens,
       durationMs,
     };
   }
+}
+
+export class SkillResumeError extends Error {
+  status: number;
+  code: string;
+
+  constructor(message: string, status = 400, code = 'SKILL_RESUME_ERROR') {
+    super(message);
+    this.name = 'SkillResumeError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/**
+ * Resume a skill execution paused on a human_approval step.
+ */
+export async function resumeSkillExecution(
+  executionId: string,
+  opts: {
+    tenantId: string;
+    userId: string;
+    userRole: string;
+    decision: 'approve' | 'reject';
+    reason?: string;
+  }
+): Promise<SkillExecutionResult> {
+  const { requireAiFeature } = await import('@/lib/entitlements');
+  await requireAiFeature(opts.tenantId);
+
+  const execution = await prisma.skillExecution.findFirst({
+    where: { id: executionId, tenantId: opts.tenantId },
+    include: {
+      skill: {
+        include: {
+          steps: { orderBy: { stepOrder: 'asc' } },
+        },
+      },
+    },
+  });
+
+  if (!execution) {
+    throw new SkillResumeError('Execution not found', 404, 'NOT_FOUND');
+  }
+
+  if (execution.status !== 'pending_approval' && execution.status !== 'pending') {
+    throw new SkillResumeError(
+      `Execution is not awaiting approval (status: ${execution.status})`,
+      409,
+      'INVALID_STATUS'
+    );
+  }
+
+  const pausedIndex =
+    execution.pausedAtStepOrder ??
+    Math.max(0, execution.stepsCompleted - 1);
+  const pausedStep = execution.skill.steps[pausedIndex];
+  if (!pausedStep || pausedStep.stepType !== 'human_approval') {
+    throw new SkillResumeError(
+      'Paused step is missing or is not a human_approval step',
+      409,
+      'INVALID_PAUSE_STATE'
+    );
+  }
+
+  const stepConfig: StepConfig = JSON.parse(pausedStep.config);
+  const approverRole = stepConfig.approverRole || 'administrator';
+  const allowedApprovers =
+    approverRole === 'operations_manager'
+      ? ['administrator', 'operations_manager']
+      : [approverRole];
+
+  if (!allowedApprovers.includes(opts.userRole)) {
+    throw new SkillResumeError(
+      `Only ${approverRole} can approve this step`,
+      403,
+      'FORBIDDEN'
+    );
+  }
+
+  if (opts.decision === 'reject') {
+    const durationMs = execution.startedAt
+      ? Date.now() - execution.startedAt.getTime()
+      : null;
+    const reason = opts.reason?.trim() || 'Rejected by approver';
+    await prisma.skillExecution.update({
+      where: { id: execution.id },
+      data: {
+        status: 'cancelled',
+        error: reason,
+        pausedAtStepOrder: null,
+        durationMs: durationMs ?? undefined,
+        completedAt: new Date(),
+      },
+    });
+
+    await pushTenantLog(
+      opts.tenantId,
+      `Skill rejected: ${execution.skill.name} — ${reason}`,
+      'skill',
+      { executionId: execution.id, decision: 'reject' }
+    );
+
+    return {
+      executionId: execution.id,
+      status: 'cancelled',
+      output: execution.output ? JSON.parse(execution.output) : null,
+      error: reason,
+      stepsCompleted: execution.stepsCompleted,
+      totalSteps: execution.totalSteps,
+      tokensUsed: execution.tokensUsed,
+      durationMs: durationMs ?? 0,
+    };
+  }
+
+  // Approve — continue from the next step after the approval gate.
+  const savedOutput = execution.output
+    ? (JSON.parse(execution.output) as Record<string, unknown>)
+    : {};
+  const resumeContext: SkillExecutionContext = {
+    tenantId: opts.tenantId,
+    userId: opts.userId,
+    userRole: opts.userRole,
+    triggerEvent: execution.triggerEvent,
+    input: execution.input ? JSON.parse(execution.input) : {},
+  };
+
+  await prisma.skillExecution.update({
+    where: { id: execution.id },
+    data: {
+      status: 'running',
+      pausedAtStepOrder: null,
+      error: null,
+      output: JSON.stringify({
+        ...savedOutput,
+        approval: {
+          decision: 'approve',
+          approvedBy: opts.userId,
+          approvedAt: new Date().toISOString(),
+        },
+      }),
+    },
+  });
+
+  await pushTenantLog(
+    opts.tenantId,
+    `Skill approved: ${execution.skill.name}`,
+    'skill',
+    { executionId: execution.id, decision: 'approve' }
+  );
+
+  return runSkillSteps({
+    executionId: execution.id,
+    skillName: execution.skill.name,
+    steps: execution.skill.steps,
+    context: resumeContext,
+    startTime: execution.startedAt?.getTime() ?? Date.now(),
+    startIndex: pausedIndex + 1,
+    initialOutput: {
+      ...savedOutput,
+      approval: {
+        decision: 'approve',
+        approvedBy: opts.userId,
+        approvedAt: new Date().toISOString(),
+      },
+    },
+    initialTokens: execution.tokensUsed,
+  });
 }
 
 // ── Utility ────────────────────────────────────────────────

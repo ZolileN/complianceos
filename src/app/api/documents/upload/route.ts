@@ -12,6 +12,13 @@ import {
   nextDueAfterCompliant,
   notifyComplianceStakeholders,
 } from '@/lib/compliance-monitor';
+import {
+  assertWritable,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -46,6 +53,14 @@ export async function POST(request: NextRequest) {
   const tenantId = user.tenantId;
   const userId = user.id;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  try {
+    await assertWritable(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
+  }
 
   const body = await request.json();
   const { url, name, size, type, client_id, category } = body;

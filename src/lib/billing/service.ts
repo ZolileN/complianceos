@@ -15,14 +15,11 @@ import {
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
-import { getBillingProvider } from '@/lib/billing/provider';
+import { getBillingProvider, ozowCheckoutAvailable } from '@/lib/billing/provider';
+import { addOneMonth } from '@/lib/billing/dates';
+import { ozowProvider } from '@/lib/billing/providers/ozow';
 
-/** Month-to-month: next period ends one calendar month after the payment date. */
-export function addOneMonth(from: Date): Date {
-  const d = new Date(from);
-  d.setMonth(d.getMonth() + 1);
-  return d;
-}
+export { addOneMonth } from '@/lib/billing/dates';
 
 async function ensureSubscription(tenantId: string, plan: TenantPlan) {
   const existing = await prisma.subscription.findUnique({ where: { tenantId } });
@@ -296,6 +293,10 @@ export async function resolveBillingSnapshot(tenantId: string) {
 
 /**
  * Start checkout for a paid plan. Returns a redirect URL when the provider needs one.
+ *
+ * Does NOT flip past_due/canceled/active to incomplete — that would either unlock
+ * writes (past_due→incomplete was historically mis-handled) or lock upgrades mid-checkout.
+ * Status only changes on activate / past_due / cancel finalizers.
  */
 export async function startCheckout(tenantId: string, plan: TenantPlan) {
   if (!isTenantPlan(plan)) throw new Error('Invalid plan');
@@ -305,22 +306,56 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
     return activateSubscription(tenantId, { plan });
   }
 
-  const result = await provider.createCheckout({ tenantId, plan });
+  const existing = await prisma.subscription.findUnique({ where: { tenantId } });
+
+  let activeProvider = provider;
+  const createCheckout = activeProvider.createCheckout;
+  if (!createCheckout) {
+    return activateSubscription(tenantId, { plan });
+  }
+
+  let result;
+  try {
+    result = await createCheckout({ tenantId, plan });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    // Stitch test credentials are often stale; fall back to Ozow when available.
+    const stitchAuthFailed =
+      activeProvider.id === 'stitch' &&
+      (/invalid_client/i.test(message) ||
+        /Stitch credentials are invalid/i.test(message));
+    if (stitchAuthFailed && ozowCheckoutAvailable() && ozowProvider.createCheckout) {
+      console.warn(
+        '[billing] Stitch auth failed; falling back to Ozow checkout for this request'
+      );
+      activeProvider = ozowProvider;
+      result = await ozowProvider.createCheckout({ tenantId, plan });
+    } else {
+      throw err;
+    }
+  }
+
+  const preserveStatus =
+    existing?.status === 'past_due' ||
+    existing?.status === 'canceled' ||
+    existing?.status === 'active' ||
+    existing?.status === 'trialing';
+
   await prisma.subscription.upsert({
     where: { tenantId },
     create: {
       tenantId,
       plan,
       status: 'incomplete',
-      provider: provider.id,
+      provider: activeProvider.id,
       providerCustomerId: result.providerCustomerId,
       providerSubscriptionId: result.providerSubscriptionId,
       providerPlanId: result.providerPlanId,
     },
     update: {
       plan,
-      status: 'incomplete',
-      provider: provider.id,
+      ...(preserveStatus ? {} : { status: 'incomplete' }),
+      provider: activeProvider.id,
       providerCustomerId: result.providerCustomerId,
       providerSubscriptionId: result.providerSubscriptionId,
       providerPlanId: result.providerPlanId,
@@ -330,6 +365,37 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
 
   return {
     checkoutUrl: result.checkoutUrl,
-    provider: provider.id,
+    provider: activeProvider.id,
   };
+}
+
+/**
+ * Finalize subscriptions that requested cancel-at-period-end once the period ends.
+ */
+export async function finalizeCanceledSubscriptions(now = new Date()) {
+  const due = await prisma.subscription.findMany({
+    where: {
+      cancelAtPeriodEnd: true,
+      status: { in: ['active', 'trialing'] },
+      currentPeriodEnd: { lte: now },
+    },
+    select: { tenantId: true, plan: true, currentPeriodEnd: true },
+  });
+
+  for (const row of due) {
+    await prisma.subscription.update({
+      where: { tenantId: row.tenantId },
+      data: {
+        status: 'canceled',
+        cancelAtPeriodEnd: false,
+        canceledAt: new Date(),
+      },
+    });
+    await logAdminAction('CANCEL_SUBSCRIPTION', row.tenantId, {
+      reason: 'period_end',
+      periodEnd: row.currentPeriodEnd,
+    });
+  }
+
+  return { canceled: due.length };
 }

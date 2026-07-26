@@ -12,7 +12,7 @@
 
 import { createHash } from 'crypto';
 import type { BillingProvider, CheckoutResult } from '@/lib/billing/provider';
-import { getPlanDefinition, type TenantPlan } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
 import { prisma } from '@/lib/prisma';
 
 function requireOzowEnv() {
@@ -26,12 +26,36 @@ function requireOzowEnv() {
 }
 
 /**
- * Ozow request hash: concatenate selected fields + private key, SHA512 lowercase hex.
- * Field order per Ozow hosted payment docs.
+ * Ozow request hash:
+ * 1) concatenate posted fields (excluding HashCheck) in docs order
+ * 2) append private key
+ * 3) lowercase the whole string
+ * 4) SHA512 hex
  */
 export function buildOzowHash(fields: string[], privateKey: string): string {
-  const raw = fields.join('') + privateKey;
+  const raw = `${fields.join('')}${privateKey}`.toLowerCase();
   return createHash('sha512').update(raw, 'utf8').digest('hex');
+}
+
+/**
+ * Ozow return URLs.
+ * CancelUrl max = 50 chars → use /pay/c
+ * ErrorUrl/SuccessUrl max = 150 → can include query params
+ */
+export function ozowReturnUrl(
+  kind: 'c' | 'e' | 's',
+  extras: Record<string, string> = {}
+): string {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  if (kind === 'c') {
+    return `${appUrl}/pay/c`;
+  }
+  // Signup extras (plan/pending) go on the longer return endpoint.
+  if (Object.keys(extras).length > 0) {
+    const params = new URLSearchParams({ r: kind, ...extras });
+    return `${appUrl}/api/billing/ozow/return?${params.toString()}`;
+  }
+  return `${appUrl}/pay/${kind}`;
 }
 
 export const ozowProvider: BillingProvider = {
@@ -52,18 +76,27 @@ export const ozowProvider: BillingProvider = {
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
     const amount = (def.priceZarCents / 100).toFixed(2);
-    const transactionReference = `PRAXIS-${tenant.slug}-${plan}-${Date.now()}`;
-    const bankReference = `PraxisOne ${def.name}`.slice(0, 20);
-    const isTest = (process.env.OZOW_IS_TEST || 'false').toLowerCase() === 'true';
+    // Keep under Ozow TransactionReference max (50)
+    const transactionReference = `PX-${tenant.slug.slice(0, 12)}-${plan.slice(0, 4)}-${Date.now()}`
+      .replace(/[^a-zA-Z0-9\-]/g, '')
+      .slice(0, 50);
+    const bankReference = `Praxis ${def.name}`.slice(0, 20);
+    const isTest = (process.env.OZOW_IS_TEST || '').toLowerCase() === 'true';
     const countryCode = 'ZA';
     const currencyCode = 'ZAR';
 
-    const cancelUrl = `${appUrl}/dashboard/billing?billing=cancelled`;
-    const errorUrl = `${appUrl}/dashboard/billing?billing=error`;
-    const successUrl = `${appUrl}/dashboard/billing?billing=success`;
+    const cancelUrl = ozowReturnUrl('c');
+    const errorUrl = ozowReturnUrl('e');
+    const successUrl = ozowReturnUrl('s');
     const notifyUrl = `${appUrl}/api/billing/ozow/webhook`;
 
-    // Hash fields in Ozow-documented order (SiteCode … PrivateKey)
+    if (cancelUrl.length > 50) {
+      throw new Error(
+        `Ozow CancelUrl exceeds 50 chars (${cancelUrl.length}). Set a shorter NEXT_PUBLIC_APP_URL host.`
+      );
+    }
+
+    // Only hash fields that we actually POST (no empty Optional* placeholders).
     const hash = buildOzowHash(
       [
         siteCode,
@@ -72,7 +105,6 @@ export const ozowProvider: BillingProvider = {
         amount,
         transactionReference,
         bankReference,
-        '', // optionalCancelUrl already below — Ozow uses specific concat; keep notify/success in request body
         cancelUrl,
         errorUrl,
         successUrl,
@@ -82,31 +114,12 @@ export const ozowProvider: BillingProvider = {
       privateKey
     );
 
-    // Return a URL the browser can POST to, or a signed payload for a client form.
-    // We expose a server-built redirect through our own start endpoint that renders a form POST.
-    const checkoutUrl = `${appUrl}/api/billing/ozow/redirect?ref=${encodeURIComponent(transactionReference)}&plan=${plan}&tenantId=${tenantId}`;
+    // Relative so local/preview always hits this deployment's redirect form,
+    // not production NEXT_PUBLIC_APP_URL. Cancel/Error/Success/Notify stay
+    // absolute (merchant-registered host) for Ozow validation.
+    const checkoutUrl = `/api/billing/ozow/redirect?ref=${encodeURIComponent(transactionReference)}&plan=${plan}&tenantId=${tenantId}`;
 
     // Persist pending checkout details on the subscription row via provider fields
-    await prisma.subscription.upsert({
-      where: { tenantId },
-      create: {
-        tenantId,
-        plan,
-        status: 'incomplete',
-        provider: 'ozow',
-        providerSubscriptionId: transactionReference,
-        providerPlanId: plan,
-      },
-      update: {
-        plan,
-        status: 'incomplete',
-        provider: 'ozow',
-        providerSubscriptionId: transactionReference,
-        providerPlanId: plan,
-      },
-    });
-
-    // Stash signed request in a short-lived usage/settings channel via providerCustomerId JSON
     const payload = {
       siteCode,
       countryCode,
@@ -122,9 +135,23 @@ export const ozowProvider: BillingProvider = {
       hashCheck: hash,
     };
 
-    await prisma.subscription.update({
+    await prisma.subscription.upsert({
       where: { tenantId },
-      data: {
+      create: {
+        tenantId,
+        plan,
+        status: 'incomplete',
+        provider: 'ozow',
+        providerSubscriptionId: transactionReference,
+        providerPlanId: plan,
+        providerCustomerId: JSON.stringify(payload),
+      },
+      update: {
+        plan,
+        // Keep past_due/active during checkout; startCheckout already handles status.
+        provider: 'ozow',
+        providerSubscriptionId: transactionReference,
+        providerPlanId: plan,
         providerCustomerId: JSON.stringify(payload),
       },
     });

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ozow not configured' }, { status: 500 });
     }
 
+    // Ozow: concatenate fields + private key, lowercase, then SHA512.
     const expected = createHash('sha512')
       .update(
         [
@@ -49,11 +50,12 @@ export async function POST(request: NextRequest) {
           isTest,
           statusMessage,
           privateKey,
-        ].join(''),
+        ]
+          .join('')
+          .toLowerCase(),
         'utf8'
       )
-      .digest('hex')
-      .toLowerCase();
+      .digest('hex');
 
     if (expected !== hashCheck.toLowerCase()) {
       console.warn('[Ozow webhook] hash mismatch', transactionReference);
