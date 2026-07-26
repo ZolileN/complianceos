@@ -5,22 +5,20 @@
 ComplianceOS (PraxisOne) is a single Next.js 16 (App Router) full-stack app — the frontend and all API route handlers run in the same server on port `3000`. Standard commands live in `package.json` (`dev`, `build`, `start`, `lint`) and `README.md`; use those. Notes below are the non-obvious bits for this cloud environment.
 
 ### Services (must be started manually each session)
-The update script only refreshes npm deps. PostgreSQL 16 and Redis are installed at the system level (baked into the snapshot) but do NOT auto-start on boot in this container. Start them before running the app or tests:
+The update script only refreshes npm deps. Redis is installed at the system level (baked into the snapshot) but does NOT auto-start on boot in this container. Redis is optional — the app falls back to an in-memory mock if unavailable:
 
 ```bash
-sudo pg_ctlcluster 16 main start   # PostgreSQL on :5432
-sudo service redis-server start    # Redis on :6379
+sudo service redis-server start    # Redis on :6379 (optional)
 ```
 
-Redis is optional — the app falls back to an in-memory mock if it is unavailable, so only Postgres is strictly required.
+A local PostgreSQL 16 is also installed as a fallback (`sudo pg_ctlcluster 16 main start`, DB `complianceos`, user/pass `postgres`/`postgres`), but the active `.env.local` points at a hosted database instead (see below), so local Postgres is usually not needed.
 
 ### Environment variables
-- App env lives in `.env.local` (gitignored, not committed; already present in the snapshot). Next.js loads it automatically for `npm run dev`.
-- Local dev uses `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/complianceos?schema=public`, a generated `NEXTAUTH_SECRET`, `NEXTAUTH_URL`/`NEXT_PUBLIC_APP_URL=http://localhost:3000`, plus `SKILL_LLM_SIMULATE=true` and `TWILIO_SKIP_OTP=true` so AI/onboarding flows work without external SaaS keys.
-- Gotcha: the Prisma CLI reads `.env` (NOT `.env.local`). For `prisma db push`/`migrate`, export the var inline, e.g. `export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/complianceos?schema=public" && npx prisma db push`.
-
-### Database schema
-The `complianceos` DB and its schema (via `npx prisma db push`) are already applied in the snapshot. If `prisma/schema.prisma` changes, re-run `prisma db push` (with `DATABASE_URL` exported as above). Optional seed scripts live in `scripts/` (run with `npx tsx` / `node`).
+- App env lives in `.env.local` (gitignored, not committed; present in the snapshot). Next.js loads it automatically for `npm run dev`.
+- `DATABASE_URL` points at a hosted **Neon** Postgres instance — treat it as PRODUCTION. Do NOT run destructive/schema-mutating commands against it (`prisma db push`, `prisma migrate`, seed scripts, or bulk deletes) unless explicitly asked. The schema is already applied there. For non-destructive verification, prefer read-only queries or side-effect-free code paths.
+- Other keys in `.env.local` are real credentials (Twilio, Stitch/Ozow billing, Resend, UploadThing). `TWILIO_SKIP_OTP=true` bypasses SMS OTP for local testing.
+- Gotcha: changing `NEXTAUTH_SECRET` invalidates existing browser session cookies — a stale cookie produces a `JWT_SESSION_ERROR` (decryption failed) in server logs until you clear cookies / log in fresh. This is harmless.
+- Gotcha: the Prisma CLI reads `.env` (NOT `.env.local`). For any Prisma CLI command that needs the DB, export the var inline, e.g. `export DATABASE_URL="$(grep -m1 ^DATABASE_URL .env.local | cut -d= -f2- | tr -d '\"')" && npx prisma ...`.
 
 ### Testing notes
 - `npm run lint` runs ESLint and currently reports pre-existing errors/warnings (also captured in the committed `eslint-output.txt`); these are not environment issues.
