@@ -10,7 +10,7 @@ import {
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
-import { buildOzowHash } from '@/lib/billing/providers/ozow';
+import { buildOzowHash, ozowReturnUrl } from '@/lib/billing/providers/ozow';
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -88,14 +88,10 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
   const { siteCode, privateKey } = requireOzowEnv();
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   const amount = (def.priceZarCents / 100).toFixed(2);
-  const bankReference = `PraxisOne ${def.name}`.slice(0, 20);
+  const bankReference = `Praxis ${def.name}`.slice(0, 20);
   const isTest = (process.env.OZOW_IS_TEST || '').toLowerCase() === 'true';
   const countryCode = 'ZA';
   const currencyCode = 'ZAR';
-
-  const cancelUrl = `${appUrl}/signup?plan=${input.plan}&billing=cancelled`;
-  const errorUrl = `${appUrl}/signup?plan=${input.plan}&billing=error`;
-  const notifyUrl = `${appUrl}/api/billing/ozow/webhook`;
 
   const pending = await prisma.pendingSignup.create({
     data: {
@@ -111,7 +107,14 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
     },
   });
 
-  const successUrl = `${appUrl}/signup?plan=${input.plan}&billing=success&pending=${pending.id}`;
+  // Short return URLs — Ozow CancelUrl max length is 50.
+  const cancelUrl = ozowReturnUrl('c', { plan: input.plan });
+  const errorUrl = ozowReturnUrl('e', { plan: input.plan });
+  const successUrl = ozowReturnUrl('s', {
+    plan: input.plan,
+    pending: pending.id,
+  });
+  const notifyUrl = `${appUrl}/api/billing/ozow/webhook`;
 
   const hash = buildOzowHash(
     [
@@ -121,7 +124,6 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
       amount,
       transactionReference,
       bankReference,
-      '',
       cancelUrl,
       errorUrl,
       successUrl,
