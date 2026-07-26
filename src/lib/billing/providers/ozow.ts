@@ -114,7 +114,10 @@ export const ozowProvider: BillingProvider = {
       privateKey
     );
 
-    const checkoutUrl = `${appUrl}/api/billing/ozow/redirect?ref=${encodeURIComponent(transactionReference)}&plan=${plan}&tenantId=${tenantId}`;
+    // Relative so local/preview always hits this deployment's redirect form,
+    // not production NEXT_PUBLIC_APP_URL. Cancel/Error/Success/Notify stay
+    // absolute (merchant-registered host) for Ozow validation.
+    const checkoutUrl = `/api/billing/ozow/redirect?ref=${encodeURIComponent(transactionReference)}&plan=${plan}&tenantId=${tenantId}`;
 
     // Persist pending checkout details on the subscription row via provider fields
     const payload = {

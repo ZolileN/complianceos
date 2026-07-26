@@ -153,7 +153,8 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
     data: { paymentPayload: JSON.stringify(payload) },
   });
 
-  const checkoutUrl = `${appUrl}/api/billing/ozow/redirect?pendingId=${pending.id}&ref=${encodeURIComponent(transactionReference)}`;
+  // Relative so local/preview uses this deployment's Ozow form, not production APP_URL.
+  const checkoutUrl = `/api/billing/ozow/redirect?pendingId=${pending.id}&ref=${encodeURIComponent(transactionReference)}`;
 
   return {
     pendingSignupId: pending.id,
