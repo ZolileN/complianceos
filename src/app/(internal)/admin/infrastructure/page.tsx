@@ -28,6 +28,14 @@ type DiagnosticsResponse = {
       error?: string;
     };
     database: { ok: boolean; latencyMs: number | null; tenantCount: number };
+    ozow?: {
+      ok: boolean;
+      configured: boolean;
+      siteCodeConfigured: boolean;
+      detail: string;
+      error?: string;
+      latencyMs: number | null;
+    };
     process: {
       uptimeSeconds: number;
       nodeVersion: string;
@@ -56,6 +64,17 @@ function redisStatusLabel(redis?: DiagnosticsResponse['health']['redis']): strin
   }
   if (redis.configured === false) return 'Not configured';
   return 'Unavailable';
+}
+
+function ozowStatusLabel(ozow?: DiagnosticsResponse['health']['ozow']): string {
+  if (!ozow) return 'Unavailable';
+  if (ozow.ok) {
+    const latency = ozow.latencyMs != null ? ` · ${ozow.latencyMs}ms` : '';
+    return `Merchant OK${latency}`;
+  }
+  if (!ozow.configured) return 'Not configured';
+  if (ozow.error === 'merchant_not_found') return 'Merchant not found';
+  return 'Rejected';
 }
 
 function formatUptime(seconds: number): string {
@@ -131,8 +150,13 @@ export default function InfrastructureTuning() {
         : data.health.redis.configured === false
           ? `not_configured (${data.health.redis.detail ?? 'missing env'})`
           : `fail (${data.health.redis.error ?? data.health.redis.detail ?? '?'})`;
+      const ozowPart = data.health.ozow
+        ? data.health.ozow.ok
+          ? `ok (${data.health.ozow.latencyMs ?? '?'}ms)`
+          : `fail (${data.health.ozow.error ?? data.health.ozow.detail})`
+        : 'n/a';
       addConsoleLog(
-        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${redisPart}, db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms)`
+        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${redisPart}, db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms), ozow: ${ozowPart}`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Diagnostics fetch failed';
@@ -269,6 +293,20 @@ export default function InfrastructureTuning() {
                     {health?.database.ok ? 'Connected' : 'Unavailable'}
                     {health?.database.latencyMs != null && ` · ${health.database.latencyMs}ms`}
                   </span>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <StatusDot ok={health?.ozow?.ok ?? false} />
+                      <span className="font-medium">Ozow</span>
+                    </div>
+                    <span className="text-slate-600">{ozowStatusLabel(health?.ozow)}</span>
+                  </div>
+                  {health?.ozow && !health.ozow.ok && (
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      {health.ozow.detail}
+                    </p>
+                  )}
                 </div>
                 <div className="text-xs text-slate-500">
                   Queue depth: {diagnostics?.queueDepth ?? '—'}

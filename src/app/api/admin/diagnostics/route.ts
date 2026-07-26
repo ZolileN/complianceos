@@ -4,6 +4,7 @@ import {
   isPlatformAdminResponse,
   requirePlatformAdmin,
 } from '@/lib/platform-admin';
+import { checkOzowMerchant } from '@/lib/billing/ozow-health';
 import { getQueueDepth, getRedisConfigStatus, redis } from '@/lib/redis';
 
 async function pingRedis(): Promise<{
@@ -67,37 +68,44 @@ export async function GET() {
   if (isPlatformAdminResponse(admin)) return admin;
 
   try {
-    const [queueDepth, redisHealth, dbHealth, aggregates, lastVacuumTimestamp] =
-      await Promise.all([
-        getQueueDepth().catch(() => -1),
-        pingRedis(),
-        pingDatabase(),
-        prisma.$transaction([
-          prisma.tenant.count({ where: { isActive: true } }),
-          prisma.tenant.count({ where: { isActive: false } }),
-          prisma.user.count({ where: { isActive: true } }),
-          prisma.client.count(),
-          prisma.conversation.count({ where: { status: 'open' } }),
-          prisma.message.count({
-            where: {
-              createdAt: {
-                gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-              },
+    const [
+      queueDepth,
+      redisHealth,
+      dbHealth,
+      ozowHealth,
+      aggregates,
+      lastVacuumTimestamp,
+    ] = await Promise.all([
+      getQueueDepth().catch(() => -1),
+      pingRedis(),
+      pingDatabase(),
+      checkOzowMerchant(),
+      prisma.$transaction([
+        prisma.tenant.count({ where: { isActive: true } }),
+        prisma.tenant.count({ where: { isActive: false } }),
+        prisma.user.count({ where: { isActive: true } }),
+        prisma.client.count(),
+        prisma.conversation.count({ where: { status: 'open' } }),
+        prisma.message.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
             },
-          }),
-          prisma.document.count({
-            where: {
-              createdAt: {
-                gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-              },
+          },
+        }),
+        prisma.document.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
             },
-          }),
-          prisma.task.count({
-            where: { status: { in: ['new', 'processing', 'waiting_on_client'] } },
-          }),
-        ]),
-        redis.get('last_vacuum_timestamp').catch(() => null),
-      ]);
+          },
+        }),
+        prisma.task.count({
+          where: { status: { in: ['new', 'processing', 'waiting_on_client'] } },
+        }),
+      ]),
+      redis.get('last_vacuum_timestamp').catch(() => null),
+    ]);
 
     const [
       activeTenants,
@@ -121,6 +129,7 @@ export async function GET() {
         checkedAt: new Date().toISOString(),
         redis: redisHealth,
         database: dbHealth,
+        ozow: ozowHealth,
         process: {
           uptimeSeconds: Math.floor(process.uptime()),
           nodeVersion: process.version,
