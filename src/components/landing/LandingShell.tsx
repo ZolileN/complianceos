@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Moon, Sun } from 'lucide-react';
 import Logo from '@/components/Logo';
 import BookDemoModal from '@/components/BookDemoModal';
+import ContactModal from '@/components/ContactModal';
 import ContactSalesModal from '@/components/ContactSalesModal';
 import ScrollLink from '@/components/ScrollLink';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,6 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
               <li><ScrollLink href="#features">Features</ScrollLink></li>
               <li><ScrollLink href="#dashboard">Dashboard</ScrollLink></li>
-              <li><ScrollLink href="#pricing">Plans</ScrollLink></li>
             </ul>
           </div>
           <div>
@@ -95,17 +95,27 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             </h4>
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
               <li><a href="#book-demo">Book demo</a></li>
-              <li><a href="mailto:support@mlkcomputer.com">Contact</a></li>
-              <li><ScrollLink href="#pricing">Plans</ScrollLink></li>
+              <li><a href="#contact">Contact</a></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-[var(--border-primary)] px-6 py-4 text-center text-xs text-[var(--text-muted)]">
           © {new Date().getFullYear()} PraxisOne. All rights reserved.
+          <span className="mx-2" aria-hidden="true">·</span>
+          A product of{' '}
+          <a
+            href="https://www.mlkcomputer.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-teal-700 transition-colors hover:text-teal-800 hover:underline dark:text-teal-400 dark:hover:text-teal-300"
+          >
+            MLK Computer Consulting
+          </a>
         </div>
       </footer>
 
       <BookDemoModal />
+      <ContactModal />
       <ContactSalesModal />
     </div>
   );

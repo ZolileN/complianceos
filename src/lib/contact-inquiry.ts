@@ -4,7 +4,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = 'PraxisOne <no-reply@praxis.mlkcomputer.com>';
 
-export type InquiryType = 'demo' | 'sales';
+export type InquiryType = 'demo' | 'sales' | 'contact';
 
 export type InquiryInput = {
   name: string;
@@ -17,26 +17,45 @@ function getInbox(type: InquiryType) {
   if (type === 'demo') {
     return process.env.BOOK_DEMO_EMAIL?.trim() || '';
   }
-  return process.env.CONTACT_SALES_EMAIL?.trim() || '';
+  if (type === 'sales') {
+    return process.env.CONTACT_SALES_EMAIL?.trim() || '';
+  }
+  return process.env.CONTACT_EMAIL?.trim() || '';
 }
 
 export async function sendInquiryEmail(type: InquiryType, input: InquiryInput) {
   const inbox = getInbox(type);
   if (!process.env.RESEND_API_KEY || !inbox) {
-    throw new Error(`${type === 'demo' ? 'Book demo' : 'Contact sales'} is not configured`);
+    const label =
+      type === 'demo' ? 'Book demo' : type === 'sales' ? 'Contact sales' : 'Contact';
+    throw new Error(`${label} is not configured`);
   }
 
   const subject =
     type === 'demo'
       ? `PraxisOne demo request — ${input.company}`
-      : `PraxisOne sales inquiry — ${input.company}`;
+      : type === 'sales'
+        ? `PraxisOne sales inquiry — ${input.company}`
+        : `PraxisOne contact — ${input.company}`;
 
-  const heading = type === 'demo' ? 'New demo request' : 'New sales inquiry';
+  const heading =
+    type === 'demo'
+      ? 'New demo request'
+      : type === 'sales'
+        ? 'New sales inquiry'
+        : 'New contact message';
   const intro =
     type === 'demo'
       ? 'Someone requested a PraxisOne product walkthrough from the landing page.'
-      : 'Someone requested Enterprise pricing / sales follow-up from the landing page.';
-  const ctaLabel = type === 'demo' ? 'Reply to schedule demo' : 'Reply to sales inquiry';
+      : type === 'sales'
+        ? 'Someone requested Enterprise pricing / sales follow-up from the landing page.'
+        : 'Someone contacted the PraxisOne team from the landing page.';
+  const ctaLabel =
+    type === 'demo'
+      ? 'Reply to schedule demo'
+      : type === 'sales'
+        ? 'Reply to sales inquiry'
+        : 'Reply to message';
   const safeName = escapeHtml(input.name);
   const safeEmail = escapeHtml(input.email);
   const safeCompany = escapeHtml(input.company);
