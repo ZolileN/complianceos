@@ -15,8 +15,9 @@ import {
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
-import { getBillingProvider } from '@/lib/billing/provider';
+import { getBillingProvider, ozowCheckoutAvailable } from '@/lib/billing/provider';
 import { addOneMonth } from '@/lib/billing/dates';
+import { ozowProvider } from '@/lib/billing/providers/ozow';
 
 export { addOneMonth } from '@/lib/billing/dates';
 
@@ -306,7 +307,33 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
   }
 
   const existing = await prisma.subscription.findUnique({ where: { tenantId } });
-  const result = await provider.createCheckout({ tenantId, plan });
+
+  let activeProvider = provider;
+  const createCheckout = activeProvider.createCheckout;
+  if (!createCheckout) {
+    return activateSubscription(tenantId, { plan });
+  }
+
+  let result;
+  try {
+    result = await createCheckout({ tenantId, plan });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    // Stitch test credentials are often stale; fall back to Ozow when available.
+    const stitchAuthFailed =
+      activeProvider.id === 'stitch' &&
+      (/invalid_client/i.test(message) ||
+        /Stitch credentials are invalid/i.test(message));
+    if (stitchAuthFailed && ozowCheckoutAvailable() && ozowProvider.createCheckout) {
+      console.warn(
+        '[billing] Stitch auth failed; falling back to Ozow checkout for this request'
+      );
+      activeProvider = ozowProvider;
+      result = await ozowProvider.createCheckout({ tenantId, plan });
+    } else {
+      throw err;
+    }
+  }
 
   const preserveStatus =
     existing?.status === 'past_due' ||
@@ -320,7 +347,7 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
       tenantId,
       plan,
       status: 'incomplete',
-      provider: provider.id,
+      provider: activeProvider.id,
       providerCustomerId: result.providerCustomerId,
       providerSubscriptionId: result.providerSubscriptionId,
       providerPlanId: result.providerPlanId,
@@ -328,7 +355,7 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
     update: {
       plan,
       ...(preserveStatus ? {} : { status: 'incomplete' }),
-      provider: provider.id,
+      provider: activeProvider.id,
       providerCustomerId: result.providerCustomerId,
       providerSubscriptionId: result.providerSubscriptionId,
       providerPlanId: result.providerPlanId,
@@ -338,7 +365,7 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
 
   return {
     checkoutUrl: result.checkoutUrl,
-    provider: provider.id,
+    provider: activeProvider.id,
   };
 }
 

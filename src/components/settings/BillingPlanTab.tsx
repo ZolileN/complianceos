@@ -439,10 +439,20 @@ export default function BillingPlanTab({
                   ? 'Upgrade'
                   : 'Choose plan';
 
+            const bullets = [
+              ...plan.marketingBullets,
+              ...(plan.aiEnabled &&
+              !plan.marketingBullets.some((b) => /ai features/i.test(b))
+                ? ['AI features']
+                : []),
+            ];
+
             return (
               <Card
                 key={plan.id}
-                className={isCurrent ? 'border-teal-400 shadow-sm' : undefined}
+                className={`flex h-full flex-col ${
+                  isCurrent ? 'border-teal-400 shadow-sm' : ''
+                }`}
               >
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">{plan.name}</CardTitle>
@@ -451,20 +461,19 @@ export default function BillingPlanTab({
                     {plan.priceZarCents != null ? '/mo' : ''}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                    {plan.marketingBullets.map((b) => (
+                <CardContent className="flex flex-1 flex-col gap-3">
+                  <ul className="flex-1 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                    {bullets.map((b) => (
                       <li key={b}>• {b}</li>
                     ))}
-                    {plan.aiEnabled && <li>• AI features</li>}
                   </ul>
                   {plan.id === 'enterprise' ? (
-                    <Button variant="outline" className="w-full" asChild>
+                    <Button variant="outline" className="mt-auto w-full" asChild>
                       <a href="mailto:support@mlkcomputer.com">Contact sales</a>
                     </Button>
                   ) : (
                     <Button
-                      className="w-full"
+                      className="mt-auto w-full"
                       variant={isCurrent && !entitlements.readOnly ? 'outline' : 'default'}
                       disabled={
                         (isCurrent && !entitlements.readOnly && !inGrace) ||

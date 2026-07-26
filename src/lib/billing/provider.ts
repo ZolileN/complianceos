@@ -32,6 +32,14 @@ export type BillingProvider = {
   }) => Promise<void>;
 };
 
+export function ozowCheckoutAvailable(): boolean {
+  return Boolean(
+    process.env.OZOW_SITE_CODE &&
+      process.env.OZOW_PRIVATE_KEY &&
+      process.env.OZOW_API_KEY
+  );
+}
+
 export function getBillingProvider(): BillingProvider {
   const configured = (process.env.BILLING_PROVIDER || '').toLowerCase();
 
@@ -39,12 +47,12 @@ export function getBillingProvider(): BillingProvider {
   if (configured === 'ozow') return ozowProvider;
   if (configured === 'manual') return manualProvider;
 
-  // Auto: prefer Stitch in test when credentials exist; Ozow when live key mode set
+  // Auto: prefer Ozow when fully configured (Phase A production path), else Stitch.
+  if (ozowCheckoutAvailable()) {
+    return ozowProvider;
+  }
   if (process.env.STITCH_CLIENT_ID && process.env.STITCH_CLIENT_SECRET) {
     return stitchProvider;
-  }
-  if (process.env.OZOW_SITE_CODE && process.env.OZOW_PRIVATE_KEY && process.env.OZOW_API_KEY) {
-    return ozowProvider;
   }
   return manualProvider;
 }

@@ -43,6 +43,11 @@ async function getClientToken(scopes: string[]): Promise<string> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
+    if (res.status === 400 && /invalid_client/i.test(text)) {
+      throw new Error(
+        'Stitch credentials are invalid (invalid_client). Update STITCH_CLIENT_ID / STITCH_CLIENT_SECRET in the Stitch dashboard, or set BILLING_PROVIDER=ozow to use Ozow checkout instead.'
+      );
+    }
     throw new Error(`Stitch token error (${res.status}): ${text.slice(0, 300)}`);
   }
 

@@ -82,6 +82,7 @@ export const PLAN_CATALOG: Record<TenantPlan, PlanDefinition> = {
       'Custom implementation',
       'Dedicated support & SLAs',
       'Bespoke integrations',
+      'AI features',
     ],
   },
 };
