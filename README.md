@@ -66,6 +66,11 @@ Ensure you have the following installed:
         *   After env vars are set, **redeploy** so serverless functions pick them up.
         *   Verify at `/admin/infrastructure` — Redis should show **Connected** (not “Not configured”).
         *   Without Redis in production the app keeps running, but skill-event processing and Redis-backed admin logs are no-ops and platform health is **degraded**.
+    *   **Sentry (production alerting):** project `praxisone` in org `mlk-computer-consulting`
+        *   `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` (same DSN value; public prefix is required for the browser SDK)
+        *   Optional: `SENTRY_ORG=mlk-computer-consulting`, `SENTRY_PROJECT=praxisone`, `SENTRY_AUTH_TOKEN` (source maps), `SENTRY_ENVIRONMENT`
+        *   Cron jobs report Redis outages and unhandled job failures to Sentry.
+        *   In Sentry → Alerts, enable email/Slack notifications for new high-priority issues.
 
 3.  Generate the Prisma Client and push the schema to your database:
     ```bash

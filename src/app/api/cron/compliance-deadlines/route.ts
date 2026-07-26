@@ -3,6 +3,7 @@ import {
   assertCronAuthorized,
   runComplianceDeadlineCheck,
 } from '@/lib/compliance-monitor';
+import { captureRouteError } from '@/lib/monitoring';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     const result = await runComplianceDeadlineCheck();
     return NextResponse.json({ ok: true, ...result });
   } catch (err: unknown) {
+    captureRouteError(err, 'cron:compliance-deadlines');
     const message = err instanceof Error ? err.message : 'Deadline check failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -115,7 +115,8 @@ export default function InfrastructureTuning() {
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
 
   const addConsoleLog = useCallback((message: string) => {
-    setConsoleLogs((prev) => [...prev.slice(-49), `[${new Date().toISOString()}] ${message}`]);
+    // Newest first (descending): prepend, then keep the most recent 50 lines.
+    setConsoleLogs((prev) => [`[${new Date().toISOString()}] ${message}`, ...prev].slice(0, 50));
   }, []);
 
   const fetchDiagnostics = useCallback(async () => {
@@ -347,9 +348,14 @@ export default function InfrastructureTuning() {
       </Card>
 
       <Card className="overflow-hidden p-0">
-        <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4">
-          <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
-          <h3 className="text-sm font-semibold text-slate-950">Platform diagnostics console</h3>
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+            <h3 className="text-sm font-semibold text-slate-950">Platform diagnostics console</h3>
+          </div>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            Newest first
+          </span>
         </div>
         <div
           className="flex h-[260px] flex-col gap-1.5 overflow-y-auto p-4 font-mono text-xs"

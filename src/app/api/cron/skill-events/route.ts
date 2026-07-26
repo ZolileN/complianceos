@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assertCronAuthorized } from '@/lib/compliance-monitor';
+import { assertRedisHealthy, captureRouteError } from '@/lib/monitoring';
 import { processSkillEventQueue } from '@/lib/skill-triggers';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   try {
+    await assertRedisHealthy('cron:skill-events');
+
     let total = 0;
     // Process several batches per invocation
     for (let i = 0; i < 5; i++) {
@@ -23,6 +26,7 @@ export async function GET(request: Request) {
     }
     return NextResponse.json({ ok: true, processed: total });
   } catch (err: unknown) {
+    captureRouteError(err, 'cron:skill-events');
     const message = err instanceof Error ? err.message : 'Skill queue processing failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }

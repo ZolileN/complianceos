@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { assertCronAuthorized } from '@/lib/compliance-monitor';
 import { expireTrialsDue, markLapsedSubscriptions } from '@/lib/billing/service';
+import { captureRouteError } from '@/lib/monitoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     const lapsed = await markLapsedSubscriptions();
     return NextResponse.json({ ok: true, ...trials, ...lapsed });
   } catch (err: unknown) {
+    captureRouteError(err, 'cron:trial-expiry');
     const message = err instanceof Error ? err.message : 'Trial expiry failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
