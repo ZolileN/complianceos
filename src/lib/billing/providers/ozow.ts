@@ -12,7 +12,7 @@
 
 import { createHash } from 'crypto';
 import type { BillingProvider, CheckoutResult } from '@/lib/billing/provider';
-import { getPlanDefinition, type TenantPlan } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
 import { prisma } from '@/lib/prisma';
 
 function requireOzowEnv() {
@@ -81,7 +81,7 @@ export const ozowProvider: BillingProvider = {
       .replace(/[^a-zA-Z0-9\-]/g, '')
       .slice(0, 50);
     const bankReference = `Praxis ${def.name}`.slice(0, 20);
-    const isTest = (process.env.OZOW_IS_TEST || 'false').toLowerCase() === 'true';
+    const isTest = (process.env.OZOW_IS_TEST || '').toLowerCase() === 'true';
     const countryCode = 'ZA';
     const currencyCode = 'ZAR';
 
