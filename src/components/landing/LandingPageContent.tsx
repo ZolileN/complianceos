@@ -29,6 +29,7 @@ import {
   TENANT_PLANS,
   type TenantPlan,
 } from '@/lib/plans';
+import { LANDING_FAQS } from '@/lib/landing-content';
 
 function SectionHeader({
   tag,
@@ -75,7 +76,7 @@ export default function LandingPageContent() {
               Built for South African professional services
             </Badge>
             <h1 className="text-4xl font-semibold leading-[1.1] tracking-[-0.04em] text-[var(--text-primary)] sm:text-5xl">
-              Run compliance, clients, and comms in one workspace
+              Compliance software for South African accounting and advisory firms
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-[var(--text-secondary)]">
               PraxisOne unifies CIPC and SARS deadlines, client records, document vaults,
@@ -109,7 +110,7 @@ export default function LandingPageContent() {
                 </span>
               </div>
               <Image
-                src="/images/landing/dashboard-tour.png"
+                src="/images/landing/dashboard-tour.jpg"
                 alt="PraxisOne operations dashboard"
                 width={1024}
                 height={516}
@@ -307,7 +308,7 @@ export default function LandingPageContent() {
               </span>
             </div>
             <Image
-              src="/images/landing/dashboard-tour.png"
+              src="/images/landing/dashboard-tour.jpg"
               alt="PraxisOne dashboard showing compliance posture and portfolio metrics"
               width={1024}
               height={516}
@@ -396,30 +397,13 @@ export default function LandingPageContent() {
             subtitle="Everything you need to know before starting."
           />
           <div className="space-y-4">
-            {[
-              {
-                q: 'Does the Starter trial require a credit card?',
-                a: 'No. Starter is a 14-day free trial — sign up with your firm details only. No payment details required.',
-              },
-              {
-                q: 'How do Growth and Professional plans work?',
-                a: 'You complete signup details, pay your first month via secure Ozow checkout, then your workspace is created immediately.',
-              },
-              {
-                q: 'Is PraxisOne POPIA compliant?',
-                a: 'Each firm operates in an isolated tenant workspace. Platform admin access is restricted to configuration — not client document vaults.',
-              },
-              {
-                q: 'Can I cancel anytime?',
-                a: 'Yes. Administrators can schedule cancellation at period end from the billing page in your dashboard.',
-              },
-            ].map((item) => (
-              <Card key={item.q}>
+            {LANDING_FAQS.map((item) => (
+              <Card key={item.question}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{item.q}</CardTitle>
+                  <CardTitle className="text-base">{item.question}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-[var(--text-secondary)]">{item.a}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{item.answer}</p>
                 </CardContent>
               </Card>
             ))}

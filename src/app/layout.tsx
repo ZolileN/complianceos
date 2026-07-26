@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://praxis.mlkcomputer.com"),
   title: "PraxisOne — SA Compliance Operating System",
   description: "The Operating System for South African Compliance, Accounting & Advisory Firms. Manage clients, documents, workflows, and communications from one platform.",
   keywords: ["compliance", "south africa", "accounting", "tax", "SARS", "CIPC", "BEE", "workflow"],
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en-ZA" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
         <AuthProvider>
           <ToastProvider>
