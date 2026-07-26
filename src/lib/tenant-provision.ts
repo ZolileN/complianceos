@@ -10,6 +10,7 @@ import {
   type TenantPlan,
 } from '@/lib/plans';
 import { createTrialSubscriptionData } from '@/lib/entitlements';
+import { addOneMonth } from '@/lib/billing/dates';
 
 export {
   TENANT_PLANS,
@@ -65,14 +66,16 @@ export async function createTenantWithAdmin(
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const trial = createTrialSubscriptionData(plan);
+  const now = new Date();
   const subscriptionData = input.startActive
     ? {
         plan,
         status: 'active' as const,
         trialStartsAt: null,
         trialEndsAt: null,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: null,
+        currentPeriodStart: now,
+        // Paid signup starts a one-month billable period (month-to-month).
+        currentPeriodEnd: addOneMonth(now),
         provider: 'manual',
       }
     : trial;

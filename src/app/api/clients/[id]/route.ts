@@ -4,6 +4,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import {
+  assertWritable,
+  PlanLimitError,
+  ReadOnlyError,
+  planLimitResponse,
+  readOnlyResponse,
+} from '@/lib/entitlements';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -61,6 +68,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   // Clients cannot modify anything
   if (currentUser.role === 'client') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await assertWritable(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
   }
 
   try {
@@ -160,6 +175,14 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   // Only administrators and operations managers can archive/delete clients
   if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  try {
+    await assertWritable(tenantId);
+  } catch (err) {
+    if (err instanceof PlanLimitError) return planLimitResponse(err);
+    if (err instanceof ReadOnlyError) return readOnlyResponse(err);
+    throw err;
   }
 
   try {

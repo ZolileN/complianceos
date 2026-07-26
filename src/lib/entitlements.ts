@@ -123,7 +123,9 @@ export async function resolveEntitlements(tenantId: string): Promise<Entitlement
   const settings = parseJsonObject(tenant.settings);
 
   const status = (tenant.subscription?.status as SubscriptionStatus) || 'active';
-  const readOnly = status === 'past_due' || status === 'canceled';
+  // incomplete = unpaid checkout in progress; past_due/canceled = unpaid/terminated
+  const readOnly =
+    status === 'past_due' || status === 'canceled' || status === 'incomplete';
 
   const messagesThisMonth =
     (
