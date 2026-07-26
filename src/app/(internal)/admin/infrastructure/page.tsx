@@ -36,6 +36,13 @@ type DiagnosticsResponse = {
       error?: string;
       latencyMs: number | null;
     };
+    stitch?: {
+      ok: boolean;
+      configured: boolean;
+      detail: string;
+      error?: string;
+      latencyMs: number | null;
+    };
     process: {
       uptimeSeconds: number;
       nodeVersion: string;
@@ -74,6 +81,18 @@ function ozowStatusLabel(ozow?: DiagnosticsResponse['health']['ozow']): string {
   }
   if (!ozow.configured) return 'Not configured';
   if (ozow.error === 'merchant_not_found') return 'Merchant not found';
+  return 'Rejected';
+}
+
+function stitchStatusLabel(stitch?: DiagnosticsResponse['health']['stitch']): string {
+  if (!stitch) return 'Unavailable';
+  if (stitch.ok) {
+    const latency = stitch.latencyMs != null ? ` · ${stitch.latencyMs}ms` : '';
+    return `Credentials OK${latency}`;
+  }
+  if (!stitch.configured) return 'Not configured';
+  if (stitch.error === 'invalid_client') return 'Invalid client';
+  if (stitch.error === 'invalid_scope') return 'Missing scope';
   return 'Rejected';
 }
 
@@ -305,6 +324,20 @@ export default function InfrastructureTuning() {
                   {health?.ozow && !health.ozow.ok && (
                     <p className="mt-2 text-xs leading-relaxed text-slate-500">
                       {health.ozow.detail}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <StatusDot ok={health?.stitch?.ok ?? false} />
+                      <span className="font-medium">Stitch</span>
+                    </div>
+                    <span className="text-slate-600">{stitchStatusLabel(health?.stitch)}</span>
+                  </div>
+                  {health?.stitch && !health.stitch.ok && (
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      {health.stitch.detail}
                     </p>
                   )}
                 </div>
