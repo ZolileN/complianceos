@@ -3,6 +3,21 @@ import { Resend } from 'resend';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = 'PraxisOne <no-reply@praxis.mlkcomputer.com>';
+const LOGO_URL = 'https://praxis.mlkcomputer.com/images/praxisone-logo.png';
+
+/** Shared branded header for all PraxisOne emails (table layout for Gmail/Outlook). */
+const EMAIL_HEADER = `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 28px;">
+    <tr>
+      <td style="vertical-align: middle; padding-right: 10px;">
+        <img src="${LOGO_URL}" alt="PraxisOne" width="36" height="36" style="display: block; width: 36px; height: 36px;" />
+      </td>
+      <td style="vertical-align: middle; font-family: sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.03em; color: #ffffff;">
+        Praxis<span style="color: #5EEAD4;">One</span>
+      </td>
+    </tr>
+  </table>
+`;
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   try {
@@ -12,6 +27,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
       subject: 'Reset your PraxisOne Password',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #e2e8f0; background-color: #000000; padding: 40px; border-radius: 8px; border: 1px solid #1f1f1f;">
+          ${EMAIL_HEADER}
           <h2 style="color: #ffffff; margin-top: 0;">Password Reset Request</h2>
           <p>We received a request to reset the password for your PraxisOne account.</p>
           <p>Please click the button below to choose a new password:</p>
@@ -58,6 +74,7 @@ export async function sendRenewalEmail(
       subject: `Your PraxisOne ${opts.planName} plan renews soon`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #e2e8f0; background-color: #000000; padding: 40px; border-radius: 8px; border: 1px solid #1f1f1f;">
+          ${EMAIL_HEADER}
           <h2 style="color: #ffffff; margin-top: 0;">Time to renew your subscription</h2>
           <p>Hello ${opts.firmName},</p>
           <p>Your PraxisOne <strong>${opts.planName}</strong> plan (R${opts.amountZar}/month) is paid up until <strong>${endDate}</strong>.</p>
@@ -90,6 +107,7 @@ export async function sendTeamInviteEmail(email: string, name: string, role: str
       subject: 'You have been invited to join PraxisOne',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #e2e8f0; background-color: #000000; padding: 40px; border-radius: 8px; border: 1px solid #1f1f1f;">
+          ${EMAIL_HEADER}
           <h2 style="color: #ffffff; margin-top: 0;">Welcome to PraxisOne!</h2>
           <p>Hello ${name},</p>
           <p>You have been invited to join your firm's workspace on PraxisOne as a <strong>${role.replace('_', ' ')}</strong>.</p>
