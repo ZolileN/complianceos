@@ -187,15 +187,7 @@ export default function EmailInboxPanel({
   }, [selectedEmailId]);
 
   useEffect(() => {
-    setClientSearch('');
-    setClientOptions([]);
-  }, [selectedEmailId]);
-
-  useEffect(() => {
-    if (!detail || detail.client) {
-      setClientOptions([]);
-      return;
-    }
+    if (!detail || detail.client) return;
     const query = clientSearch.trim() || detail.fromAddress;
     let cancelled = false;
     const timer = setTimeout(async () => {
@@ -368,7 +360,10 @@ export default function EmailInboxPanel({
                   <button
                     key={em.id}
                     type="button"
-                    onClick={() => setActiveEmailId(em.id)}
+                    onClick={() => {
+                      setActiveEmailId(em.id);
+                      setClientSearch('');
+                    }}
                     className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
                       active ? 'bg-teal-50/80' : ''
                     }`}
