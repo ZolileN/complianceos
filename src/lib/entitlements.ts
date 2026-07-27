@@ -11,6 +11,7 @@ import {
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
+import { isPlatformAdminSlug } from '@/lib/platform-admin-constants';
 
 export type SubscriptionStatus =
   | 'trialing'
@@ -100,6 +101,7 @@ export async function resolveEntitlements(tenantId: string): Promise<Entitlement
     select: {
       id: true,
       plan: true,
+      slug: true,
       settings: true,
       limitsOverride: true,
       subscription: true,
@@ -115,6 +117,35 @@ export async function resolveEntitlements(tenantId: string): Promise<Entitlement
 
   if (!tenant) {
     throw new Error('Tenant not found');
+  }
+
+  // Master control-plane tenants (PraxisAdmin) are internal — no subscription,
+  // no seat/client limits, never read-only.
+  if (isPlatformAdminSlug(tenant.slug)) {
+    const settings = parseJsonObject(tenant.settings);
+    const plan = isTenantPlan(tenant.plan) ? tenant.plan : DEFAULT_SIGNUP_PLAN;
+    return {
+      tenantId,
+      plan,
+      planName: 'Platform (internal)',
+      status: 'active',
+      readOnly: false,
+      aiEnabled: true,
+      whatsappEnabled: settings.whatsapp_enabled !== false,
+      maxUsers: null,
+      maxClients: null,
+      messagesPerMonthSoft: Number.MAX_SAFE_INTEGER,
+      usage: {
+        users: tenant._count.users,
+        clients: tenant._count.clients,
+        messagesThisMonth: 0,
+        documents: tenant._count.documents,
+      },
+      trialEndsAt: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      priceZarCents: null,
+    };
   }
 
   const plan = isTenantPlan(tenant.plan) ? tenant.plan : DEFAULT_SIGNUP_PLAN;

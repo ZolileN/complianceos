@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { getPlanDefinition, isTenantPlan } from '@/lib/plans';
 import { createExpressPayment } from '@/lib/billing/providers/stitch';
 import { ozowCheckoutAvailable } from '@/lib/billing/provider';
+import { isPlatformAdminSlug } from '@/lib/platform-admin-constants';
 import { sendRenewalEmail } from '@/lib/email';
 
 /** Days before period end that the renewal notice goes out. */
@@ -42,6 +43,12 @@ export async function sendRenewalNotices(now = new Date()) {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
 
   for (const sub of due) {
+    // Master control-plane tenants are internal — never billed.
+    if (isPlatformAdminSlug(sub.tenant.slug)) {
+      skipped += 1;
+      continue;
+    }
+
     const plan = isTenantPlan(sub.plan) ? sub.plan : null;
     const def = plan ? getPlanDefinition(plan) : null;
     const email = sub.tenant.email;

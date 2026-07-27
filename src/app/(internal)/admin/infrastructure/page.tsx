@@ -66,8 +66,7 @@ function redisStatusLabel(redis?: DiagnosticsResponse['health']['redis']): strin
   if (!redis) return 'Unavailable';
   if (redis.ok) {
     const latency = redis.latencyMs != null ? ` · ${redis.latencyMs}ms` : '';
-    const backend = redis.backend ? ` · ${redis.backend}` : '';
-    return `Connected${latency}${backend}`;
+    return `Connected${latency}`;
   }
   if (redis.configured === false) return 'Not configured';
   return 'Unavailable';

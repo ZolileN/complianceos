@@ -11,6 +11,7 @@ vi.mock('@/lib/prisma', () => ({
 import { prisma } from '@/lib/prisma';
 import {
   ReadOnlyError,
+  assertSeatAvailable,
   assertWritable,
   resolveEntitlements,
 } from '@/lib/entitlements';
@@ -21,10 +22,11 @@ const prismaMock = prisma as unknown as {
   message: { count: ReturnType<typeof vi.fn> };
 };
 
-function tenantFixture(status: string, plan = 'starter') {
+function tenantFixture(status: string, plan = 'starter', slug = 'acme-firm') {
   return {
     id: 'tenant-1',
     plan,
+    slug,
     settings: '{}',
     limitsOverride: null,
     subscription: {
@@ -62,5 +64,22 @@ describe('entitlements read-only gates', () => {
     const entitlements = await assertWritable('tenant-1');
     expect(entitlements.readOnly).toBe(false);
     expect(entitlements.aiEnabled).toBe(true);
+  });
+
+  it('exempts master control-plane tenants from limits and read-only', async () => {
+    // Even with a past_due sub, 100 users on a starter plan: master is unlimited.
+    const master = {
+      ...tenantFixture('past_due', 'starter', 'mlk-computer-consulting'),
+      _count: { users: 100, clients: 5, documents: 0 },
+    };
+    prismaMock.tenant.findUnique.mockResolvedValue(master);
+
+    const entitlements = await resolveEntitlements('tenant-1');
+    expect(entitlements.readOnly).toBe(false);
+    expect(entitlements.maxUsers).toBeNull();
+    expect(entitlements.maxClients).toBeNull();
+    expect(entitlements.planName).toBe('Platform (internal)');
+
+    await expect(assertSeatAvailable('tenant-1')).resolves.toBeTruthy();
   });
 });
