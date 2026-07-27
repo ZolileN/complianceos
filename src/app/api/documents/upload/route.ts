@@ -19,6 +19,8 @@ import {
   planLimitResponse,
   readOnlyResponse,
 } from '@/lib/entitlements';
+import { fetchReceivedAttachmentDownloadUrl } from '@/lib/inbound-email';
+import { getAppBaseUrl } from '@/lib/appUrl';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -38,6 +40,28 @@ const pdfjsLib = require('pdfjs-dist');
 
 // Bypasses stale IDE cache of the Prisma Client types
 const db = prisma as unknown as Record<string, Record<string, (...args: unknown[]) => Promise<unknown>>>;
+
+async function fetchDocumentBuffer(filePath: string): Promise<ArrayBuffer | null> {
+  const emailMatch = filePath.match(/^\/api\/emails\/([^/]+)\/attachments\/([^/?]+)/);
+  if (emailMatch) {
+    const [, inboundId, attachmentId] = emailMatch;
+    const email = await prisma.inboundEmail.findUnique({
+      where: { id: inboundId },
+      select: { messageId: true },
+    });
+    if (!email?.messageId) return null;
+    const attachment = await fetchReceivedAttachmentDownloadUrl(email.messageId, attachmentId);
+    if (!attachment) return null;
+    const res = await fetch(attachment.downloadUrl);
+    if (!res.ok) return null;
+    return res.arrayBuffer();
+  }
+
+  const resolvedUrl = filePath.startsWith('http') ? filePath : `${getAppBaseUrl()}${filePath}`;
+  const res = await fetch(resolvedUrl);
+  if (!res.ok) return null;
+  return res.arrayBuffer();
+}
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -321,11 +345,10 @@ export async function triggerOcrSimulation(documentId: string) {
       if (skipBinaryParsing) {
         ocrText = `[Large File — Binary Parsing Skipped]\nDocument Category: ${cleanCategory}\nClient Name: ${clientName}\nNote: File exceeded the 10 MB OCR processing threshold. Please upload a compressed version for full text extraction.`;
       } else {
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch file: ${response.statusText}`);
+      const arrayBuffer = await fetchDocumentBuffer(fileUrl);
+      if (!arrayBuffer) {
+        throw new Error('Failed to fetch file for OCR');
       }
-      const arrayBuffer = await response.arrayBuffer();
       const buffer = new Uint8Array(arrayBuffer);
       pdfjsLib.GlobalWorkerOptions.workerSrc = path.join(process.cwd(), 'node_modules/pdfjs-dist/build/pdf.worker.mjs');
       const loadingTask = pdfjsLib.getDocument({

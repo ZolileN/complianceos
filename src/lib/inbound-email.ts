@@ -72,7 +72,129 @@ export type ReceivedEmailContent = {
   text?: string | null;
   html?: string | null;
   headers?: Record<string, string>;
+  attachments?: InboundEmailAttachmentMeta[];
 };
+
+export type InboundEmailAttachmentMeta = {
+  id: string;
+  name: string;
+  contentType: string;
+  size?: number;
+};
+
+export function parseStoredAttachments(raw: string | null | undefined): InboundEmailAttachmentMeta[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as Array<{
+      id?: string;
+      name?: string;
+      filename?: string;
+      contentType?: string;
+      content_type?: string;
+      size?: number;
+    }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item.id)
+      .map((item) => ({
+        id: item.id!,
+        name: item.name || item.filename || 'attachment',
+        contentType: item.contentType || item.content_type || 'application/octet-stream',
+        size: item.size,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function mergeAttachmentLists(
+  stored: InboundEmailAttachmentMeta[],
+  fresh: InboundEmailAttachmentMeta[]
+): InboundEmailAttachmentMeta[] {
+  const byId = new Map<string, InboundEmailAttachmentMeta>();
+  for (const item of stored) byId.set(item.id, item);
+  for (const item of fresh) {
+    const existing = byId.get(item.id);
+    byId.set(item.id, {
+      id: item.id,
+      name: item.name || existing?.name || 'attachment',
+      contentType: item.contentType || existing?.contentType || 'application/octet-stream',
+      size: item.size ?? existing?.size,
+    });
+  }
+  return [...byId.values()];
+}
+
+/** Fetch attachments for a received email (webhook only includes metadata). */
+export async function fetchReceivedEmailAttachments(
+  emailId: string
+): Promise<InboundEmailAttachmentMeta[]> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}/attachments`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) {
+      console.error(`Resend attachments API ${res.status}:`, await res.text().catch(() => ''));
+      return [];
+    }
+    const json = (await res.json()) as {
+      data?: Array<{
+        id?: string;
+        filename?: string;
+        content_type?: string;
+        size?: number;
+      }>;
+    };
+    return (json.data || [])
+      .filter((item) => item.id)
+      .map((item) => ({
+        id: item.id!,
+        name: item.filename || 'attachment',
+        contentType: item.content_type || 'application/octet-stream',
+        size: item.size,
+      }));
+  } catch (error) {
+    console.error('Failed to fetch received email attachments:', error);
+    return [];
+  }
+}
+
+/** Fetch a single attachment download URL (valid ~1 hour). */
+export async function fetchReceivedAttachmentDownloadUrl(
+  emailId: string,
+  attachmentId: string
+): Promise<{ downloadUrl: string; filename: string; contentType: string } | null> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return null;
+
+  try {
+    const res = await fetch(
+      `https://api.resend.com/emails/receiving/${emailId}/attachments/${attachmentId}`,
+      { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    if (!res.ok) {
+      console.error(`Resend attachment API ${res.status}:`, await res.text().catch(() => ''));
+      return null;
+    }
+    const json = (await res.json()) as {
+      download_url?: string;
+      filename?: string;
+      content_type?: string;
+    };
+    if (!json.download_url) return null;
+    return {
+      downloadUrl: json.download_url,
+      filename: json.filename || 'attachment',
+      contentType: json.content_type || 'application/octet-stream',
+    };
+  } catch (error) {
+    console.error('Failed to fetch received attachment:', error);
+    return null;
+  }
+}
 
 /** Fetch body/headers for a received email (webhook metadata only includes subject/from/to). */
 export async function fetchReceivedEmailContent(
@@ -93,11 +215,27 @@ export async function fetchReceivedEmailContent(
       text?: string | null;
       html?: string | null;
       headers?: Record<string, string>;
+      attachments?: Array<{
+        id?: string;
+        filename?: string;
+        content_type?: string;
+        size?: number;
+      }>;
     };
+    const attachments = (json.attachments || [])
+      .filter((item) => item.id)
+      .map((item) => ({
+        id: item.id!,
+        name: item.filename || 'attachment',
+        contentType: item.content_type || 'application/octet-stream',
+        size: item.size,
+      }));
+
     return {
       text: json.text,
       html: json.html,
       headers: json.headers,
+      attachments,
     };
   } catch (error) {
     console.error('Failed to fetch received email content:', error);

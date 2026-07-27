@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isRbacResponse, requireStaff, requireTenantSession } from '@/lib/rbac';
-import { inboundAddressForTenant } from '@/lib/inbound-email';
+import {
+  fetchReceivedEmailAttachments,
+  inboundAddressForTenant,
+  mergeAttachmentLists,
+  parseStoredAttachments,
+} from '@/lib/inbound-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +44,28 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       email.status = 'read';
     }
 
+    const storedAttachments = parseStoredAttachments(email.attachments);
+    const freshAttachments = email.messageId
+      ? await fetchReceivedEmailAttachments(email.messageId)
+      : [];
+    const attachments = mergeAttachmentLists(storedAttachments, freshAttachments).map((item) => ({
+      ...item,
+      viewUrl: `/api/emails/${email.id}/attachments/${item.id}`,
+      downloadUrl: `/api/emails/${email.id}/attachments/${item.id}?download=1`,
+      isImage: item.contentType.startsWith('image/'),
+    }));
+
+    if (freshAttachments.length > 0 && freshAttachments.length !== storedAttachments.length) {
+      await prisma.inboundEmail.update({
+        where: { id: email.id },
+        data: {
+          attachments: JSON.stringify(
+            mergeAttachmentLists(storedAttachments, freshAttachments)
+          ),
+        },
+      });
+    }
+
     const inboundAddress = user.tenantSlug
       ? inboundAddressForTenant(user.tenantSlug)
       : null;
@@ -59,6 +86,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
             email: reply.user.email,
           },
         })),
+        attachments,
       },
       inboundAddress,
     });

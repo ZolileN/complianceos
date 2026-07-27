@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { emitSkillEvent } from '@/lib/skill-triggers';
 import {
   collectRecipientAddresses,
+  fetchReceivedEmailAttachments,
   fetchReceivedEmailContent,
   normalizeEmailAddress,
   parseTenantSlugFromRecipients,
@@ -77,6 +78,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let attachmentMeta = (data.attachments || []).map((a) => ({
+      id: a.id,
+      name: a.filename,
+      contentType: a.content_type,
+    })).filter((a) => a.id);
+
+    if (messageId) {
+      const fromApi = await fetchReceivedEmailAttachments(messageId);
+      if (fromApi.length > 0) {
+        attachmentMeta = fromApi.map((a) => ({
+          id: a.id,
+          name: a.name,
+          contentType: a.contentType,
+          size: a.size,
+        }));
+      }
+    }
+
     const email = await prisma.inboundEmail.create({
       data: {
         tenantId: tenant.id,
@@ -89,11 +108,11 @@ export async function POST(request: NextRequest) {
         messageId,
         headers: headersJson,
         attachments: JSON.stringify(
-          (data.attachments || []).map((a) => ({
+          attachmentMeta.map((a) => ({
             id: a.id,
-            name: a.filename,
-            contentType: a.content_type,
-            url: a.download_url,
+            name: a.name,
+            contentType: a.contentType,
+            size: 'size' in a ? a.size : undefined,
           }))
         ),
       },

@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Building2,
   Clock,
+  Download,
+  FileText,
   Mail,
   MailOpen,
   Reply,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { useToast } from '@/contexts/ToastContext';
+import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -35,10 +38,21 @@ type EmailReply = {
   user: { id: string; name: string | null; email: string | null };
 };
 
+type EmailAttachment = {
+  id: string;
+  name: string;
+  contentType: string;
+  size?: number;
+  viewUrl: string;
+  downloadUrl: string;
+  isImage: boolean;
+};
+
 type InboundEmailDetail = InboundEmailListItem & {
   toAddress?: string;
   bodyHtml?: string | null;
   replies: EmailReply[];
+  attachments: EmailAttachment[];
 };
 
 type EmailInboxPanelProps = {
@@ -176,6 +190,38 @@ export default function EmailInboxPanel({
       if (selectedEmailId) loadDetail(selectedEmailId, { refreshList: true });
     } catch (err) {
       toast((err as Error).message || 'Update failed', 'error');
+    }
+  };
+
+  const handleSaveToDocuments = async (
+    attachment: EmailAttachment,
+    category: string
+  ) => {
+    const linkedClientId = detail?.client?.id;
+    if (!linkedClientId) {
+      toast('No client associated with this email. Link the sender to a client first.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: attachment.viewUrl,
+          name: attachment.name,
+          type: attachment.contentType,
+          size: attachment.size,
+          client_id: linkedClientId,
+          category,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to save to documents');
+      }
+      toast('Saved to Documents — OCR processing started', 'success');
+    } catch (err) {
+      toast((err as Error).message || 'Failed to save', 'error');
     }
   };
 
@@ -361,6 +407,71 @@ export default function EmailInboxPanel({
                     <div className="prose prose-sm max-w-none whitespace-pre-wrap text-slate-700">
                       {detail.bodyText || 'No text body'}
                     </div>
+
+                    {(detail.attachments || []).length > 0 ? (
+                      <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Attachments ({detail.attachments.length})
+                        </div>
+                        {detail.attachments.map((attachment) => (
+                          <div
+                            key={attachment.id}
+                            className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"
+                          >
+                            {attachment.isImage ? (
+                              <div className="mb-3">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={attachment.viewUrl}
+                                  alt={attachment.name}
+                                  className="max-h-72 max-w-full rounded-md border border-slate-200 bg-white object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-800">
+                                <FileText className="size-4 shrink-0 text-slate-500" />
+                                {attachment.name}
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-3 text-xs">
+                              <a
+                                href={attachment.viewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-teal-700 underline"
+                              >
+                                View
+                              </a>
+                              <a
+                                href={attachment.downloadUrl}
+                                download
+                                className="inline-flex items-center gap-1 text-teal-700 underline"
+                              >
+                                <Download className="size-3.5" />
+                                Download
+                              </a>
+                              <select
+                                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 outline-none"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSaveToDocuments(attachment, e.target.value);
+                                    e.target.value = '';
+                                  }
+                                }}
+                              >
+                                <option value="">Save to...</option>
+                                {DOCUMENT_CATEGORIES.map((c) => (
+                                  <option key={c.value} value={c.value}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                   </CardContent>
                 </Card>
 

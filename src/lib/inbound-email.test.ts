@@ -2,7 +2,9 @@ import { describe, expect, it, afterEach } from 'vitest';
 import {
   collectRecipientAddresses,
   inboundAddressForTenant,
+  mergeAttachmentLists,
   normalizeEmailAddress,
+  parseStoredAttachments,
   parseTenantSlugFromRecipients,
 } from '@/lib/inbound-email';
 
@@ -38,5 +40,29 @@ describe('inbound-email helpers', () => {
       received_for: ['apex@soleiistau.resend.app'],
     });
     expect(addrs).toEqual(['apex@soleiistau.resend.app']);
+  });
+
+  it('parses stored attachment metadata', () => {
+    const items = parseStoredAttachments(
+      JSON.stringify([
+        { id: 'a1', name: 'invoice.pdf', contentType: 'application/pdf', size: 1024 },
+      ])
+    );
+    expect(items).toEqual([
+      { id: 'a1', name: 'invoice.pdf', contentType: 'application/pdf', size: 1024 },
+    ]);
+  });
+
+  it('merges stored and fresh attachment lists', () => {
+    const merged = mergeAttachmentLists(
+      [{ id: 'a1', name: 'old.pdf', contentType: 'application/pdf' }],
+      [{ id: 'a1', name: 'invoice.pdf', contentType: 'application/pdf', size: 2048 }]
+    );
+    expect(merged[0]).toEqual({
+      id: 'a1',
+      name: 'invoice.pdf',
+      contentType: 'application/pdf',
+      size: 2048,
+    });
   });
 });
