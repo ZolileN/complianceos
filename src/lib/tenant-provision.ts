@@ -29,11 +29,16 @@ export type CreateTenantInput = {
   firmName: string;
   fullName: string;
   email: string;
-  password: string;
+  /** Plain password — hashed before storage. Omit when passwordHash is set. */
+  password?: string;
+  /** Pre-hashed password (e.g. from a paid pending signup session). */
+  passwordHash?: string;
   plan?: TenantPlan;
   settings?: Record<string, unknown>;
   /** Skip trial (e.g. admin-provisioned paid workspace) */
   startActive?: boolean;
+  billingProvider?: string;
+  providerSubscriptionId?: string | null;
 };
 
 export type CreateTenantResult = {
@@ -44,10 +49,14 @@ export type CreateTenantResult = {
 export async function createTenantWithAdmin(
   input: CreateTenantInput
 ): Promise<CreateTenantResult> {
-  const { firmName, fullName, email, password } = input;
+  const { firmName, fullName, email } = input;
   const plan: TenantPlan =
     input.plan && isTenantPlan(input.plan) ? input.plan : DEFAULT_SIGNUP_PLAN;
   const settings = JSON.stringify(input.settings ?? {});
+
+  if (!input.password && !input.passwordHash) {
+    throw new Error('Password is required');
+  }
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -64,7 +73,9 @@ export async function createTenantWithAdmin(
     throw new Error('A firm with this name already exists');
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = input.passwordHash
+    ? input.passwordHash
+    : await bcrypt.hash(input.password!, 10);
   const trial = createTrialSubscriptionData(plan);
   const now = new Date();
   const subscriptionData = input.startActive
@@ -76,7 +87,8 @@ export async function createTenantWithAdmin(
         currentPeriodStart: now,
         // Paid signup starts a one-month billable period (month-to-month).
         currentPeriodEnd: addOneMonth(now),
-        provider: 'manual',
+        provider: input.billingProvider ?? 'manual',
+        providerSubscriptionId: input.providerSubscriptionId ?? null,
       }
     : trial;
 

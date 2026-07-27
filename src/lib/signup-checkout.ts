@@ -10,6 +10,7 @@ import {
   isTenantPlan,
   type TenantPlan,
 } from '@/lib/plans';
+import { createTenantWithAdmin } from '@/lib/tenant-provision';
 import { buildOzowHash, ozowReturnUrl } from '@/lib/billing/providers/ozow';
 import { createPaystackPayment } from '@/lib/billing/providers/paystack';
 
@@ -236,4 +237,95 @@ export async function completePendingSignup(pendingSignupId: string) {
     throw new Error('Signup session expired — please start again');
   }
   return pending;
+}
+
+export type CompletePaidSignupResult = {
+  outcome: 'created' | 'already_completed' | 'already_exists';
+  email: string;
+  tenantSlug?: string;
+};
+
+export function signupCompleteLoginUrl(email: string, appUrl?: string): string {
+  const base = (appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  const dest = new URL(`${base}/login`);
+  dest.searchParams.set('registered', '1');
+  dest.searchParams.set('email', email);
+  return dest.toString();
+}
+
+/**
+ * Idempotently provision a tenant after payment. Uses the password hash captured
+ * at checkout time so the customer can sign in immediately.
+ */
+export async function completePaidPendingSignup(
+  paymentReference: string
+): Promise<CompletePaidSignupResult> {
+  const pending = await prisma.pendingSignup.findUnique({
+    where: { paymentReference },
+  });
+  if (!pending) {
+    throw new Error('Signup session not found');
+  }
+
+  if (pending.expiresAt < new Date()) {
+    await prisma.pendingSignup.update({
+      where: { id: pending.id },
+      data: { status: 'expired' },
+    });
+    throw new Error('Signup session expired — please start again');
+  }
+
+  if (pending.status === 'completed') {
+    return { outcome: 'already_completed', email: pending.email };
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: pending.email },
+  });
+  if (existingUser) {
+    await prisma.pendingSignup.update({
+      where: { id: pending.id },
+      data: { status: 'completed' },
+    });
+    return { outcome: 'already_exists', email: pending.email };
+  }
+
+  if (pending.status !== 'paid') {
+    throw new Error('Payment required before creating your workspace');
+  }
+
+  const plan = isTenantPlan(pending.plan) ? pending.plan : 'growth';
+  const result = await createTenantWithAdmin({
+    firmName: pending.firmName,
+    fullName: pending.fullName,
+    email: pending.email,
+    passwordHash: pending.passwordHash,
+    plan,
+    startActive: true,
+    billingProvider: pending.provider || 'manual',
+    providerSubscriptionId: pending.paymentReference,
+  });
+
+  await prisma.pendingSignup.update({
+    where: { id: pending.id },
+    data: { status: 'completed' },
+  });
+
+  return {
+    outcome: 'created',
+    email: pending.email,
+    tenantSlug: result.tenant.slug,
+  };
+}
+
+export async function completePaidPendingSignupById(
+  pendingSignupId: string
+): Promise<CompletePaidSignupResult> {
+  const pending = await prisma.pendingSignup.findUnique({
+    where: { id: pendingSignupId },
+  });
+  if (!pending) {
+    throw new Error('Signup session not found');
+  }
+  return completePaidPendingSignup(pending.paymentReference);
 }

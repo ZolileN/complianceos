@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTenantWithAdmin } from '@/lib/tenant-provision';
 import { isTenantPlan } from '@/lib/plans';
-import { completePendingSignup } from '@/lib/signup-checkout';
+import {
+  completePaidPendingSignupById,
+  completePendingSignup,
+} from '@/lib/signup-checkout';
+import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
@@ -28,24 +32,18 @@ export async function POST(req: NextRequest) {
       if (pending.email !== String(email).toLowerCase().trim()) {
         return NextResponse.json({ error: 'Email does not match payment session' }, { status: 400 });
       }
-      const plan = isTenantPlan(pending.plan) ? pending.plan : 'growth';
+      const passwordOk = await bcrypt.compare(String(password), pending.passwordHash);
+      if (!passwordOk) {
+        return NextResponse.json({ error: 'Password does not match payment session' }, { status: 400 });
+      }
 
-      const result = await createTenantWithAdmin({
-        firmName: pending.firmName,
-        fullName: pending.fullName,
-        email: pending.email,
-        password,
-        plan,
-        startActive: true,
-      });
-
-      await prisma.pendingSignup.update({
-        where: { id: pending.id },
-        data: { status: 'completed' },
-      });
+      const result = await completePaidPendingSignupById(String(pendingSignupId));
 
       return NextResponse.json(
-        { message: 'Workspace created successfully', data: result },
+        {
+          message: 'Workspace created successfully',
+          data: { email: result.email, tenantSlug: result.tenantSlug },
+        },
         { status: 201 }
       );
     }
