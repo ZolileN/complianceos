@@ -5,6 +5,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
 import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
 import { requireStaff } from '@/lib/rbac';
+import { deleteUploadThingFiles } from '@/lib/uploadthing-storage';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -202,14 +203,25 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   try {
-    const documentToDelete = await prisma.document.findUnique({
+    const documentToDelete = await prisma.document.findFirst({
       where: { id, tenantId },
-      select: { name: true, clientId: true }
+      select: {
+        name: true,
+        clientId: true,
+        filePath: true,
+        versions: { select: { filePath: true } },
+      },
     });
 
     if (!documentToDelete) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
+
+    const filePaths = [
+      documentToDelete.filePath,
+      ...documentToDelete.versions.map((version) => version.filePath),
+    ];
+    await deleteUploadThingFiles(filePaths);
 
     await prisma.document.delete({
       where: { id, tenantId }
