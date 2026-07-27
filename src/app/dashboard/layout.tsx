@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import TenantSupportWidget from '@/components/support/TenantSupportWidget';
 
 const icons: Record<string, LucideIcon> = {
   grid: LayoutGrid,
@@ -395,6 +396,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           children
         )}
       </main>
+
+      {!loading && user && tenant ? <TenantSupportWidget /> : null}
 
       <style jsx>{`
         @media (max-width: 768px) {
