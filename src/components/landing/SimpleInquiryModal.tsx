@@ -30,6 +30,8 @@ type SimpleInquiryModalProps = {
   successTitle: string;
   successMessage: string;
   apiPath: string;
+  initialValues?: Partial<FormState>;
+  messagePlaceholder?: string;
 };
 
 export default function SimpleInquiryModal({
@@ -42,8 +44,13 @@ export default function SimpleInquiryModal({
   successTitle,
   successMessage,
   apiPath,
+  initialValues,
+  messagePlaceholder = 'How can we help?',
 }: SimpleInquiryModalProps) {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(() => ({
+    ...EMPTY_FORM,
+    ...initialValues,
+  }));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -178,7 +185,7 @@ export default function SimpleInquiryModal({
                 <textarea
                   className="textarea"
                   rows={3}
-                  placeholder="How can we help?"
+                  placeholder={messagePlaceholder}
                   value={form.message}
                   onChange={(e) => updateField('message', e.target.value)}
                   required
