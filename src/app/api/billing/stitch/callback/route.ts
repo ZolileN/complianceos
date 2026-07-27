@@ -1,43 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { activateSubscription } from '@/lib/billing/service';
+import { getExpressPaymentStatus } from '@/lib/billing/providers/stitch';
 import { isTenantPlan } from '@/lib/plans';
 
 /**
- * Stitch redirect callback after subscription collection approval.
- * Query: collection_id | id, tenant hint via state if present.
+ * Stitch Express browser redirect after checkout.
+ * Query: payment_id + reference (our merchantReference).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const collectionId =
-    searchParams.get('id') ||
-    searchParams.get('collection_id') ||
-    searchParams.get('subscriptionCollectionId');
+  const paymentId = searchParams.get('payment_id') || searchParams.get('id');
+  const reference =
+    searchParams.get('reference') || searchParams.get('merchantReference');
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const redirect = (billing: string, reason?: string) => {
+    const dest = new URL(`${appUrl}/dashboard/billing`);
+    dest.searchParams.set('billing', billing);
+    if (reason) dest.searchParams.set('reason', reason);
+    return NextResponse.redirect(dest);
+  };
 
-  if (!collectionId) {
-    return NextResponse.redirect(
-      `${appUrl}/dashboard/billing?billing=error&reason=missing_collection`
-    );
+  if (!paymentId || !reference) {
+    return redirect('error', 'missing_payment');
   }
 
   const sub = await prisma.subscription.findFirst({
-    where: { providerSubscriptionId: collectionId },
+    where: { providerSubscriptionId: reference },
   });
-
   if (!sub) {
-    return NextResponse.redirect(
-      `${appUrl}/dashboard/billing?billing=error&reason=unknown_collection`
-    );
+    return redirect('error', 'unknown_reference');
+  }
+
+  let status: string | null;
+  try {
+    status = await getExpressPaymentStatus(paymentId, reference);
+  } catch {
+    return redirect('error', 'status_check_failed');
+  }
+
+  if (status !== 'PAID') {
+    return redirect('error', status === null ? 'payment_not_found' : 'not_paid');
   }
 
   const plan = isTenantPlan(sub.plan) ? sub.plan : 'starter';
   await activateSubscription(sub.tenantId, {
     plan,
-    providerSubscriptionId: collectionId,
+    providerSubscriptionId: reference,
     providerPlanId: sub.providerPlanId || undefined,
   });
 
-  return NextResponse.redirect(`${appUrl}/dashboard/billing?billing=success`);
+  return redirect('success');
 }

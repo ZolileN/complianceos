@@ -1,7 +1,7 @@
 /**
- * Stitch credential probe for admin diagnostics.
- * Requests a client token so Infrastructure can show the real auth failure
- * (unknown client / bad secret) instead of a checkout-time surprise.
+ * Stitch Express credential probe for admin diagnostics.
+ * Requests a token from express.stitch.money so Infrastructure shows the
+ * real auth state instead of a checkout-time surprise.
  */
 
 export type StitchHealth = {
@@ -26,60 +26,47 @@ export async function checkStitchCredentials(): Promise<StitchHealth> {
     };
   }
 
-  const tokenUrl =
-    process.env.STITCH_TOKEN_URL || 'https://secure.stitch.money/connect/token';
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: clientId,
-    client_secret: clientSecret,
-    audience: 'https://secure.stitch.money/connect/token',
-    scope: 'client_paymentrequest',
-  });
+  const apiUrl = (
+    process.env.STITCH_EXPRESS_API_URL || 'https://express.stitch.money'
+  ).replace(/\/$/, '');
 
   const start = Date.now();
   try {
-    const res = await fetch(tokenUrl, {
+    const res = await fetch(`${apiUrl}/api/v1/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId, clientSecret }),
       cache: 'no-store',
     });
     const latencyMs = Date.now() - start;
     const text = await res.text();
+    let parsed: { success?: boolean; data?: { accessToken?: string } } | null =
+      null;
+    try {
+      parsed = JSON.parse(text) as {
+        success?: boolean;
+        data?: { accessToken?: string };
+      };
+    } catch {
+      parsed = null;
+    }
 
-    if (res.ok) {
+    if (res.ok && parsed?.success && parsed.data?.accessToken) {
       return {
         ok: true,
         configured: true,
-        detail: 'Stitch client token issued (credentials valid).',
+        detail: 'Stitch Express token issued (credentials valid).',
         latencyMs,
       };
     }
 
-    let errorCode = '';
-    try {
-      errorCode = (JSON.parse(text) as { error?: string }).error || '';
-    } catch {
-      errorCode = '';
-    }
-
-    if (errorCode === 'invalid_client') {
+    if (res.status === 401 || res.status === 403 || res.status === 400) {
       return {
         ok: false,
         configured: true,
         detail:
-          'Stitch rejected the client (invalid_client). The client ID does not exist or the secret is wrong — generate fresh credentials in the Stitch Dashboard and update STITCH_CLIENT_ID / STITCH_CLIENT_SECRET.',
+          'Stitch Express rejected the credentials. Copy the current Client ID and Client Secret from the Stitch Express dashboard (API Details) — note the secret regenerates each time it is viewed.',
         error: 'invalid_client',
-        latencyMs,
-      };
-    }
-    if (errorCode === 'invalid_scope') {
-      return {
-        ok: false,
-        configured: true,
-        detail:
-          'Stitch client is valid but lacks the client_paymentrequest scope. Ask Stitch support to enable the required scopes.',
-        error: 'invalid_scope',
         latencyMs,
       };
     }
@@ -87,8 +74,8 @@ export async function checkStitchCredentials(): Promise<StitchHealth> {
     return {
       ok: false,
       configured: true,
-      detail: `Stitch token error (HTTP ${res.status}): ${text.slice(0, 200)}`,
-      error: errorCode || 'token_error',
+      detail: `Stitch Express token error (HTTP ${res.status}): ${text.slice(0, 200)}`,
+      error: 'token_error',
       latencyMs,
     };
   } catch (err) {

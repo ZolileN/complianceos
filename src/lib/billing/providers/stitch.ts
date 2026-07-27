@@ -1,213 +1,196 @@
 /**
- * Stitch Money adapter (test/live via client credentials).
- * Uses Subscription Plans + Collections GraphQL API.
- * Docs: https://docs.stitch.money/payment-products/payins/subscriptions/plans
+ * Stitch Express adapter — hosted payment links via the Express REST API.
+ *
+ * NOTE: This targets Stitch Express (express.stitch.money), the product our
+ * merchant account is registered on — not the classic Stitch GraphQL platform
+ * (secure.stitch.money), whose clients are provisioned separately.
+ *
+ * Flow: create a payment link for the first billing period, redirect the
+ * customer, then activate the subscription when the payment reports PAID
+ * (browser callback and/or HMAC-signed webhook).
  *
  * Env:
  *   STITCH_CLIENT_ID
  *   STITCH_CLIENT_SECRET
- *   STITCH_API_URL (default https://api.stitch.money/graphql)
- *   STITCH_REDIRECT_URI (must be whitelisted in Stitch dashboard)
- *   STITCH_PLAN_STARTER / STITCH_PLAN_GROWTH / STITCH_PLAN_PROFESSIONAL (optional provider plan IDs)
+ *   STITCH_EXPRESS_API_URL (default https://express.stitch.money)
  */
 
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import type { BillingProvider, CheckoutResult } from '@/lib/billing/provider';
-import { getPlanDefinition, type TenantPlan } from '@/lib/plans';
+import { getPlanDefinition } from '@/lib/plans';
 import { prisma } from '@/lib/prisma';
 
-const STITCH_API = () =>
-  process.env.STITCH_API_URL || 'https://api.stitch.money/graphql';
+const EXPRESS_API = () =>
+  (process.env.STITCH_EXPRESS_API_URL || 'https://express.stitch.money').replace(
+    /\/$/,
+    ''
+  );
 
-async function getClientToken(scopes: string[]): Promise<string> {
-  const clientId = process.env.STITCH_CLIENT_ID || '';
-  const clientSecret = process.env.STITCH_CLIENT_SECRET || '';
+function requireStitchEnv() {
+  const clientId = (process.env.STITCH_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.STITCH_CLIENT_SECRET || '').trim();
   if (!clientId || !clientSecret) {
-    throw new Error('Stitch credentials missing (STITCH_CLIENT_ID / STITCH_CLIENT_SECRET)');
-  }
-
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: clientId,
-    client_secret: clientSecret,
-    audience: 'https://secure.stitch.money/connect/token',
-    scope: scopes.join(' '),
-  });
-
-  const audience =
-    process.env.STITCH_TOKEN_URL || 'https://secure.stitch.money/connect/token';
-
-  const res = await fetch(audience, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    if (res.status === 400 && /invalid_client/i.test(text)) {
-      throw new Error(
-        'Stitch credentials are invalid (invalid_client). Update STITCH_CLIENT_ID / STITCH_CLIENT_SECRET in the Stitch dashboard, or set BILLING_PROVIDER=ozow to use Ozow checkout instead.'
-      );
-    }
-    throw new Error(`Stitch token error (${res.status}): ${text.slice(0, 300)}`);
-  }
-
-  const data = (await res.json()) as { access_token?: string };
-  if (!data.access_token) throw new Error('Stitch token response missing access_token');
-  return data.access_token;
-}
-
-async function stitchGraphql<T>(
-  query: string,
-  variables: Record<string, unknown>,
-  scopes: string[]
-): Promise<T> {
-  const token = await getClientToken(scopes);
-  const res = await fetch(STITCH_API(), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  const json = (await res.json()) as {
-    data?: T;
-    errors?: Array<{ message: string }>;
-  };
-
-  if (!res.ok || json.errors?.length) {
     throw new Error(
-      `Stitch GraphQL error: ${json.errors?.map((e) => e.message).join('; ') || res.statusText}`
+      'Stitch credentials missing (STITCH_CLIENT_ID / STITCH_CLIENT_SECRET)'
     );
   }
-  if (!json.data) throw new Error('Stitch GraphQL returned no data');
-  return json.data;
+  return { clientId, clientSecret };
 }
 
-function providerPlanEnvKey(plan: TenantPlan): string {
-  return `STITCH_PLAN_${plan.toUpperCase()}`;
-}
-
-async function ensureStitchPlanId(plan: TenantPlan): Promise<string> {
-  const fromEnv = process.env[providerPlanEnvKey(plan)];
-  if (fromEnv) return fromEnv;
-
-  // Create a fixed monthly subscription plan on Stitch if not preconfigured
-  const def = getPlanDefinition(plan);
-  if (def.priceZarCents == null) {
-    throw new Error(`Plan ${plan} requires custom pricing — contact sales`);
-  }
-
-  const mutation = `
-    mutation CreatePlan($input: SubscriptionPlanCreateInput!) {
-      subscriptionPlanCreate(input: $input) {
-        subscriptionPlan { id }
-      }
-    }
-  `;
-
-  try {
-    const data = await stitchGraphql<{
-      subscriptionPlanCreate: { subscriptionPlan: { id: string } };
-    }>(
-      mutation,
-      {
-        input: {
-          planReference: `praxisone-${plan}`,
-          name: `PraxisOne ${def.name}`,
-          amount: {
-            quantity: def.priceZarCents / 100,
-            currency: 'ZAR',
-          },
-          billingModel: 'fixed',
-          frequency: 'monthly',
-        },
-      },
-      ['subscription:plan']
-    );
-    return data.subscriptionPlanCreate.subscriptionPlan.id;
-  } catch (err) {
-    // Surface a clear setup hint — plan IDs can be set manually in env after dashboard create
+export async function getExpressToken(): Promise<string> {
+  const { clientId, clientSecret } = requireStitchEnv();
+  const res = await fetch(`${EXPRESS_API()}/api/v1/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId, clientSecret }),
+    cache: 'no-store',
+  });
+  const json = (await res.json().catch(() => null)) as {
+    success?: boolean;
+    data?: { accessToken?: string };
+  } | null;
+  if (!res.ok || !json?.success || !json.data?.accessToken) {
     throw new Error(
-      `Unable to create/resolve Stitch plan for ${plan}. Set ${providerPlanEnvKey(plan)} or enable subscription:plan scope. ${
-        err instanceof Error ? err.message : ''
-      }`
+      `Stitch Express auth failed (HTTP ${res.status}). Check STITCH_CLIENT_ID / STITCH_CLIENT_SECRET in the Stitch Express dashboard (API Details).`
     );
   }
+  return json.data.accessToken;
+}
+
+/**
+ * Payment status via GET /api/v1/payments/{id}. Returns e.g. PAID / CREATED,
+ * or null when the payment does not exist.
+ */
+export async function getExpressPaymentStatus(
+  paymentId: string,
+  merchantReference?: string
+): Promise<string | null> {
+  const token = await getExpressToken();
+  const qs = merchantReference
+    ? `?merchantReference=${encodeURIComponent(merchantReference)}`
+    : '';
+  const res = await fetch(
+    `${EXPRESS_API()}/api/v1/payments/${encodeURIComponent(paymentId)}${qs}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    }
+  );
+  if (res.status === 404) return null;
+  const json = (await res.json().catch(() => null)) as {
+    data?: { payment?: { status?: string } };
+  } | null;
+  if (!res.ok || !json?.data?.payment?.status) {
+    throw new Error(`Stitch Express status check failed (HTTP ${res.status})`);
+  }
+  return json.data.payment.status;
+}
+
+/**
+ * Webhook signature: HMAC-SHA256(rawBody) keyed with base64(SHA256(client_secret)),
+ * sent in the X-Stitch-Express-Signature header (matches the official plugin).
+ */
+export function verifyExpressSignature(
+  rawBody: string,
+  signature: string,
+  clientSecret: string
+): boolean {
+  const hashedSecret = createHash('sha256')
+    .update(clientSecret, 'utf8')
+    .digest('base64');
+  const expected = createHmac('sha256', hashedSecret)
+    .update(rawBody, 'utf8')
+    .digest('hex');
+  const a = Buffer.from(expected, 'utf8');
+  const b = Buffer.from(signature, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export const stitchProvider: BillingProvider = {
   id: 'stitch',
 
   async createCheckout({ tenantId, plan }): Promise<CheckoutResult> {
+    const def = getPlanDefinition(plan);
+    if (def.priceZarCents == null) {
+      throw new Error('Enterprise requires a custom quote — contact sales');
+    }
+
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { name: true, email: true, slug: true },
     });
     if (!tenant) throw new Error('Tenant not found');
 
-    const planId = await ensureStitchPlanId(plan);
-    const redirectUri =
-      process.env.STITCH_REDIRECT_URI ||
-      `${(process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')}/api/billing/stitch/callback`;
+    const token = await getExpressToken();
+    const reference = `PX-${tenant.slug.slice(0, 24)}-${plan.slice(0, 4)}-${Date.now()}`
+      .replace(/[^a-zA-Z0-9\-]/g, '')
+      .slice(0, 64);
 
-    const mutation = `
-      mutation CreateCollection($input: SubscriptionCollectionCreateInput!) {
-        subscriptionCollectionCreate(input: $input) {
-          subscriptionCollection {
-            id
-            url
-          }
-        }
-      }
-    `;
-
-    const data = await stitchGraphql<{
-      subscriptionCollectionCreate: {
-        subscriptionCollection: { id: string; url: string };
-      };
-    }>(
-      mutation,
-      {
-        input: {
-          nonce: `praxis-${tenantId}-${plan}-${Date.now()}`,
-          subscriptionPlans: [{ id: planId }],
-          payer: {
-            name: tenant.name,
-            email: tenant.email || undefined,
-            reference: tenant.slug,
-          },
-        },
+    const res = await fetch(`${EXPRESS_API()}/api/v1/payments`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      ['subscription:collection']
-    );
+      body: JSON.stringify({
+        amount: def.priceZarCents,
+        payerName: tenant.name,
+        payerEmailAddress: tenant.email || undefined,
+        merchantReference: reference,
+        skipCheckoutPage: false,
+        currency: 'ZAR',
+      }),
+      cache: 'no-store',
+    });
 
-    const collection = data.subscriptionCollectionCreate.subscriptionCollection;
-    const sep = collection.url.includes('?') ? '&' : '?';
-    const checkoutUrl = `${collection.url}${sep}redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const json = (await res.json().catch(() => null)) as {
+      success?: boolean;
+      data?: { payment?: { link?: string; id?: string } };
+    } | null;
+
+    if (!res.ok || !json?.success || !json.data?.payment?.link) {
+      throw new Error(
+        `Stitch Express payment create failed (HTTP ${res.status}): ${JSON.stringify(json)?.slice(0, 200)}`
+      );
+    }
+
+    // Express sends the payer back to redirect_url (must be registered in the
+    // Express dashboard) with payment_id + reference query params.
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const callbackUrl = `${appUrl}/api/billing/stitch/callback`;
+    const link = json.data.payment.link;
+    const sep = link.includes('?') ? '&' : '?';
+    const checkoutUrl = `${link}${sep}redirect_url=${encodeURIComponent(callbackUrl)}`;
+
+    await prisma.subscription.upsert({
+      where: { tenantId },
+      create: {
+        tenantId,
+        plan,
+        status: 'incomplete',
+        provider: 'stitch',
+        providerSubscriptionId: reference,
+        providerPlanId: plan,
+        providerCustomerId: json.data.payment.id || null,
+      },
+      update: {
+        plan,
+        provider: 'stitch',
+        providerSubscriptionId: reference,
+        providerPlanId: plan,
+        providerCustomerId: json.data.payment.id || null,
+      },
+    });
 
     return {
       checkoutUrl,
-      providerSubscriptionId: collection.id,
-      providerPlanId: planId,
+      providerSubscriptionId: reference,
+      providerPlanId: plan,
     };
   },
 
-  async cancel({ providerSubscriptionId }) {
-    if (!providerSubscriptionId) return;
-    // Best-effort cancel — exact mutation name may vary by Stitch product version
-    try {
-      await stitchGraphql(
-        `mutation Cancel($id: ID!) {
-          subscriptionCollectionCancel(id: $id) { success }
-        }`,
-        { id: providerSubscriptionId },
-        ['subscription:collection']
-      );
-    } catch {
-      // Manual follow-up via Stitch dashboard if API cancel is unavailable
-    }
+  async cancel() {
+    // Express payments are single collections; nothing to cancel provider-side.
+    // Renewals simply stop being issued once the local subscription is canceled.
   },
 };
