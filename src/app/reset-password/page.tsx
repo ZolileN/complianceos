@@ -4,6 +4,7 @@ import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { PasswordInput } from '@/components/ui/password-input';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -113,26 +114,22 @@ function ResetPasswordForm() {
 
             <div className="form-group">
               <label className="form-label">New Password</label>
-              <input 
-                className="input" 
-                type="password" 
-                placeholder="Min. 6 characters" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
+              <PasswordInput
+                placeholder="Min. 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 disabled={!token || !email}
               />
             </div>
 
             <div className="form-group">
               <label className="form-label">Confirm New Password</label>
-              <input 
-                className="input" 
-                type="password" 
-                placeholder="••••••••" 
-                value={confirmPassword} 
-                onChange={(e) => setConfirmPassword(e.target.value)} 
-                required 
+              <PasswordInput
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
                 disabled={!token || !email}
               />
             </div>

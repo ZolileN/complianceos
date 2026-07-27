@@ -3,6 +3,10 @@ import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { activateSubscription } from '@/lib/billing/service';
 import { isTenantPlan } from '@/lib/plans';
+import {
+  completePaidPendingSignup,
+  markPendingSignupPaid,
+} from '@/lib/signup-checkout';
 
 /**
  * Ozow notify/webhook — verify hash then activate subscription on success.
@@ -87,9 +91,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, activated: true, type: 'tenant' });
     }
 
-    const { markPendingSignupPaid } = await import('@/lib/signup-checkout');
     const pending = await markPendingSignupPaid(transactionReference);
     if (pending) {
+      try {
+        await completePaidPendingSignup(transactionReference);
+      } catch (err) {
+        console.error('[Ozow webhook] signup finalize failed', err);
+      }
       return NextResponse.json({ received: true, activated: true, type: 'signup' });
     }
 

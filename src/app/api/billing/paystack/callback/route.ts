@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { activateSubscription } from '@/lib/billing/service';
 import { getPaystackTransactionStatus } from '@/lib/billing/providers/paystack';
-import { markPendingSignupPaid } from '@/lib/signup-checkout';
+import {
+  completePaidPendingSignup,
+  markPendingSignupPaid,
+  signupCompleteLoginUrl,
+} from '@/lib/signup-checkout';
 import { isTenantPlan } from '@/lib/plans';
 
 /**
@@ -45,11 +49,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(dest);
     }
     await markPendingSignupPaid(reference);
-    const dest = new URL(`${appUrl}/signup`);
-    dest.searchParams.set('plan', pendingSignup.plan);
-    dest.searchParams.set('pending', pendingSignup.id);
-    dest.searchParams.set('billing', 'success');
-    return NextResponse.redirect(dest);
+    try {
+      const result = await completePaidPendingSignup(reference);
+      return NextResponse.redirect(signupCompleteLoginUrl(result.email, appUrl));
+    } catch (err) {
+      console.error('[paystack callback] signup finalize failed', err);
+      const dest = new URL(`${appUrl}/signup`);
+      dest.searchParams.set('plan', pendingSignup.plan);
+      dest.searchParams.set('pending', pendingSignup.id);
+      dest.searchParams.set('billing', 'error');
+      dest.searchParams.set('reason', 'provision_failed');
+      return NextResponse.redirect(dest);
+    }
   }
 
   const sub = await prisma.subscription.findFirst({

@@ -9,6 +9,7 @@ import { ArrowLeft, CreditCard, Loader2, Moon, Sun } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Card,
   CardContent,
@@ -33,31 +34,33 @@ function SignupForm() {
   const plan: TenantPlan = isTenantPlan(planParam) ? planParam : 'starter';
   const pendingParam = searchParams.get('pending') || '';
   const billingParam = searchParams.get('billing');
+  const reasonParam = searchParams.get('reason');
 
   const planDef = getPlanDefinition(plan);
   const isTrialPlan = plan === 'starter';
   const isPaidPlan = plan === 'growth' || plan === 'professional';
+  const isRecoveringPaidSignup =
+    billingParam === 'success' && Boolean(pendingParam);
 
   const [firmName, setFirmName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // Payment redirects arrive as full page loads, so initializing from the URL
-  // params is sufficient (no setState-in-effect needed).
-  const [pendingSignupId, setPendingSignupId] = useState(pendingParam);
-  const [paid, setPaid] = useState(
-    () => billingParam === 'success' && Boolean(pendingParam)
-  );
   const [error, setError] = useState(() => {
     if (billingParam === 'cancelled')
       return 'Payment was cancelled. You can try again when ready.';
-    if (billingParam === 'error')
+    if (billingParam === 'error') {
+      if (reasonParam === 'provision_failed') {
+        return 'Payment succeeded but workspace setup failed. Please try again or contact support.';
+      }
       return 'Payment could not be completed. Please try again.';
+    }
     return '';
   });
   const [loading, setLoading] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
+  const [provisioning, setProvisioning] = useState(isRecoveringPaidSignup);
 
   useEffect(() => {
     if (plan === 'enterprise') {
@@ -66,27 +69,50 @@ function SignupForm() {
   }, [plan, router]);
 
   useEffect(() => {
-    if (!pendingParam) return;
+    if (!isRecoveringPaidSignup) return;
     let cancelled = false;
-    (async () => {
+
+    const finalize = async (attempt = 0) => {
+      setProvisioning(true);
+      setError('');
       try {
-        const res = await fetch(`/api/auth/signup/pending?id=${encodeURIComponent(pendingParam)}`);
+        const res = await fetch('/api/auth/signup/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pendingSignupId: pendingParam }),
+        });
         const data = await res.json();
-        if (!res.ok || cancelled) return;
-        const pending = data.data;
-        if (pending?.firmName) setFirmName(pending.firmName);
-        if (pending?.fullName) setFullName(pending.fullName);
-        if (pending?.email) setEmail(pending.email);
-        if (pending?.paid) setPaid(true);
-        if (pending?.pendingSignupId) setPendingSignupId(pending.pendingSignupId);
-      } catch {
-        /* ignore — user can fill manually */
+        if (!res.ok) {
+          const retryable =
+            res.status === 400 &&
+            String(data.error || '').includes('Payment required') &&
+            attempt < 5;
+          if (retryable) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            if (!cancelled) return finalize(attempt + 1);
+            return;
+          }
+          throw new Error(data.error || 'Could not create your workspace');
+        }
+        const loginEmail = data.data?.email || '';
+        router.replace(
+          `/login?registered=1&email=${encodeURIComponent(loginEmail)}`
+        );
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Could not create your workspace'
+          );
+          setProvisioning(false);
+        }
       }
-    })();
+    };
+
+    void finalize();
     return () => {
       cancelled = true;
     };
-  }, [pendingParam]);
+  }, [isRecoveringPaidSignup, pendingParam, router]);
 
   const formValid = useMemo(
     () =>
@@ -117,10 +143,6 @@ function SignupForm() {
         window.location.assign(data.data.checkoutUrl);
         return;
       }
-      if (data.data?.pendingSignupId) {
-        setPendingSignupId(data.data.pendingSignupId);
-        setPaid(true);
-      }
       setPayLoading(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Payment setup failed');
@@ -130,15 +152,12 @@ function SignupForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isTrialPlan) return;
+
     setError('');
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
-      return;
-    }
-
-    if (isPaidPlan && !paid) {
-      setError('Please complete payment before creating your workspace.');
       return;
     }
 
@@ -152,8 +171,7 @@ function SignupForm() {
           fullName,
           email,
           password,
-          plan: isTrialPlan ? 'starter' : plan,
-          pendingSignupId: isPaidPlan ? pendingSignupId : undefined,
+          plan: 'starter',
         }),
       });
 
@@ -176,6 +194,30 @@ function SignupForm() {
       setLoading(false);
     }
   };
+
+  if (provisioning) {
+    return (
+      <div className={`precision-ops min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
+        <div className="flex min-h-screen items-center justify-center px-4 py-12">
+          <Card className="w-full max-w-[480px]">
+            <CardHeader className="text-center">
+              <div className="mb-3 flex justify-center">
+                <Logo size={40} showText tone={theme === 'dark' ? 'dark' : 'light'} />
+              </div>
+              <CardTitle>Creating your workspace</CardTitle>
+              <CardDescription>
+                Payment received. We&apos;re setting up your account — you&apos;ll be
+                redirected to sign in shortly.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center py-6">
+              <Loader2 className="size-8 animate-spin text-teal-600" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`precision-ops min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
@@ -209,12 +251,11 @@ function SignupForm() {
             <CardDescription>
               {isTrialPlan
                 ? 'Start your 14-day Starter trial — no credit card required.'
-                : `Subscribe to ${planDef.name} — pay first, then create your account.`}
+                : `Subscribe to ${planDef.name} — pay securely, then sign in to your workspace.`}
             </CardDescription>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <Badge variant="info">{planDef.name}</Badge>
               {isTrialPlan && <Badge variant="success">14-day trial</Badge>}
-              {isPaidPlan && paid && <Badge variant="success">Payment received</Badge>}
               {planDef.priceZarCents != null && (
                 <Badge variant="outline">
                   {formatZarFromCents(planDef.priceZarCents)}/mo
@@ -229,15 +270,15 @@ function SignupForm() {
               </div>
             )}
 
-            {isPaidPlan && !paid && (
+            {isPaidPlan && (
               <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
                   <CreditCard className="size-4" />
-                  Step 1 — Pay for your plan
+                  Secure payment checkout
                 </div>
                 <p className="mb-3 text-xs text-amber-800/80 dark:text-amber-200/80">
-                  Complete secure payment before creating your workspace. No card details
-                  stored on PraxisOne — you&apos;ll pay via Ozow.
+                  Complete payment with Paystack. After payment you&apos;ll be redirected
+                  to sign in with the password you choose below.
                 </p>
                 <Button
                   type="button"
@@ -258,11 +299,6 @@ function SignupForm() {
             )}
 
             <form onSubmit={handleSubmit} className="stack">
-              {isPaidPlan && paid && (
-                <p className="mb-2 text-xs font-medium text-teal-700 dark:text-teal-400">
-                  Step 2 — Create your workspace
-                </p>
-              )}
               <div className="form-group">
                 <label className="form-label">Firm name</label>
                 <input
@@ -298,9 +334,7 @@ function SignupForm() {
               </div>
               <div className="form-group">
                 <label className="form-label">Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   placeholder="Min 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -310,9 +344,7 @@ function SignupForm() {
               </div>
               <div className="form-group">
                 <label className="form-label">Confirm password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -320,22 +352,16 @@ function SignupForm() {
                   minLength={6}
                 />
               </div>
-              <Button
-                type="submit"
-                variant="primary"
-                className="mt-2 w-full"
-                disabled={
-                  loading ||
-                  !formValid ||
-                  (isPaidPlan && !paid)
-                }
-              >
-                {loading
-                  ? 'Creating…'
-                  : isTrialPlan
-                    ? 'Start free trial'
-                    : 'Create workspace'}
-              </Button>
+              {isTrialPlan && (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="mt-2 w-full"
+                  disabled={loading || !formValid}
+                >
+                  {loading ? 'Creating…' : 'Start free trial'}
+                </Button>
+              )}
             </form>
 
             <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">

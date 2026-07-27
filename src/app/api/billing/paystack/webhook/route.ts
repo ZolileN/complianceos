@@ -6,7 +6,10 @@ import {
   requirePaystackSecretKey,
   verifyPaystackSignature,
 } from '@/lib/billing/providers/paystack';
-import { markPendingSignupPaid } from '@/lib/signup-checkout';
+import {
+  completePaidPendingSignup,
+  markPendingSignupPaid,
+} from '@/lib/signup-checkout';
 import { isTenantPlan } from '@/lib/plans';
 
 /**
@@ -54,6 +57,11 @@ export async function POST(request: NextRequest) {
   });
   if (pendingSignup) {
     await markPendingSignupPaid(reference);
+    try {
+      await completePaidPendingSignup(reference);
+    } catch (err) {
+      console.error('[paystack webhook] signup finalize failed', err);
+    }
     return NextResponse.json({ success: true, signup: pendingSignup.id });
   }
 

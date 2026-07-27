@@ -3,6 +3,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { PasswordInput } from '@/components/ui/password-input';
+
 function AcceptInviteForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,12 +84,10 @@ function AcceptInviteForm() {
             <form onSubmit={handleSubmit} className="stack">
               <div className="form-group">
                 <label className="form-label">New Password</label>
-                <input 
-                  type="password" 
-                  className="input"
+                <PasswordInput
                   required
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 6 characters"
                   disabled={loading}
                 />
@@ -95,12 +95,10 @@ function AcceptInviteForm() {
 
               <div className="form-group">
                 <label className="form-label">Confirm Password</label>
-                <input 
-                  type="password" 
-                  className="input"
+                <PasswordInput
                   required
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   disabled={loading}
                 />

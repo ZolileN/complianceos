@@ -5,6 +5,7 @@ import { KeyRound, UserRound } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Card,
   CardContent,
@@ -219,9 +220,7 @@ export default function AdminProfile() {
             <form onSubmit={handleChangePassword} className="stack">
               <div className="form-group">
                 <label className="form-label">Current Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   required
@@ -229,9 +228,7 @@ export default function AdminProfile() {
               </div>
               <div className="form-group">
                 <label className="form-label">New Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -239,9 +236,7 @@ export default function AdminProfile() {
               </div>
               <div className="form-group">
                 <label className="form-label">Confirm New Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required

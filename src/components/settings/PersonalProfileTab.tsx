@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { PasswordInput } from '@/components/ui/password-input';
 import type { PersonalData, PersonalProfileForm } from './types';
 
 interface PersonalProfileTabProps {
@@ -162,9 +163,7 @@ export default function PersonalProfileTab({
         <form onSubmit={onChangePassword} className="stack">
           <div className="form-group">
             <label className="form-label">Current Password</label>
-            <input
-              type="password"
-              className="input"
+            <PasswordInput
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="••••••••"
@@ -174,9 +173,7 @@ export default function PersonalProfileTab({
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">New Password</label>
-              <input
-                type="password"
-                className="input"
+              <PasswordInput
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Min. 6 characters"
@@ -185,9 +182,7 @@ export default function PersonalProfileTab({
             </div>
             <div className="form-group">
               <label className="form-label">Confirm New Password</label>
-              <input
-                type="password"
-                className="input"
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
