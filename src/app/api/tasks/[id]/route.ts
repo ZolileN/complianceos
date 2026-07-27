@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import { requireStaff } from '@/lib/rbac';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -12,10 +13,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
 
-  // Clients cannot modify tasks
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     const existingTask = await prisma.task.findFirst({

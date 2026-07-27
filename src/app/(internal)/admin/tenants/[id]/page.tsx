@@ -38,7 +38,7 @@ interface UserItem {
 }
 
 const TENANT_PLANS = ['starter', 'growth', 'professional', 'enterprise'] as const;
-const USER_ROLES = ['administrator', 'operations_manager', 'consultant', 'client'] as const;
+const USER_ROLES = ['administrator', 'operations_manager', 'consultant'] as const;
 
 interface ClientItem {
   id: string;

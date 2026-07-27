@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import { sendComplianceAlertEmail } from '@/lib/email';
 import {
   daysUntil,
   getObligationMeta,
@@ -77,13 +78,20 @@ export async function notifyComplianceStakeholders(
   if (userIds.length === 0) return 0;
 
   const link = complianceLink(item.clientId, item.id, opts.dedupeKey);
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const actionUrl = appUrl ? `${appUrl}${link}` : link;
   const dayStart = startOfUtcDay();
 
+  const staffUsers = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, email: true },
+  });
+
   let created = 0;
-  for (const userId of userIds) {
+  for (const staff of staffUsers) {
     const existing = await prisma.notification.findFirst({
       where: {
-        userId,
+        userId: staff.id,
         createdAt: { gte: dayStart },
         OR: [
           { link },
@@ -100,7 +108,7 @@ export async function notifyComplianceStakeholders(
 
     await prisma.notification.create({
       data: {
-        userId,
+        userId: staff.id,
         title: opts.title,
         message: opts.message,
         type: opts.type || 'warning',
@@ -109,6 +117,15 @@ export async function notifyComplianceStakeholders(
       },
     });
     created++;
+
+    if (staff.email) {
+      await sendComplianceAlertEmail(staff.email, {
+        title: opts.title,
+        message: opts.message,
+        actionUrl,
+        severity: opts.type === 'error' ? 'error' : 'warning',
+      });
+    }
   }
   return created;
 }

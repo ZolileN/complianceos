@@ -52,7 +52,6 @@ export const USER_ROLES = [
   { value: 'administrator', label: 'Administrator', description: 'Full access — manage users, configure workflows' },
   { value: 'operations_manager', label: 'Operations Manager', description: 'Monitor workload, assign work' },
   { value: 'consultant', label: 'Consultant', description: 'Manage clients, process tasks' },
-  { value: 'client', label: 'Client', description: 'Upload documents, view status' },
 ] as const;
 
 // ── Client Statuses ────────────────────────────────────────
@@ -71,6 +70,7 @@ export const NAV_ITEMS = [
   { href: '/dashboard/workflows', label: 'Workflows', icon: 'git-branch' },
   { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
   { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },
+  { href: '/dashboard/revenue', label: 'Revenue', icon: 'revenue' },
   { href: '/dashboard/marketplace', label: 'Marketplace', icon: 'zap' },
 ] as const;
 

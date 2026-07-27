@@ -3,7 +3,7 @@
    ============================================================ */
 
 // ── Roles ──────────────────────────────────────────────────
-export type UserRole = 'administrator' | 'operations_manager' | 'consultant' | 'client';
+export type UserRole = 'administrator' | 'operations_manager' | 'consultant';
 
 // ── Tenants ────────────────────────────────────────────────
 export interface Tenant {

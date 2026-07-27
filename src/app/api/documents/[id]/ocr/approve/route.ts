@@ -9,6 +9,7 @@ import {
   nextDueAfterCompliant,
   notifyComplianceStakeholders,
 } from '@/lib/compliance-monitor';
+import { requireStaff } from '@/lib/rbac';
 
 async function upsertObligation(opts: {
   clientId: string;
@@ -97,10 +98,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
 
-  // Clients cannot approve OCR data
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     const document = await prisma.document.findFirst({

@@ -46,7 +46,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?   // Added for credentials provider
-  role          String    @default("consultant") // administrator, operations_manager, consultant, client
+  role          String    @default("consultant") // administrator, operations_manager, consultant
   isActive      Boolean   @default(true) // platform/tenant can disable login without deleting
   contactNumber String?
   resetToken        String?
@@ -121,6 +121,11 @@ model Tenant {
   skillSuggestions    SkillSuggestion[]
   subscription        Subscription?
   usageCounters       UsageCounter[]
+  quotes              Quote[]
+  invoices            Invoice[]
+  retainers           Retainer[]
+  mandates            Mandate[]
+  inboundEmails       InboundEmail[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -222,6 +227,11 @@ model Client {
   tasks               Task[]
   conversations       Conversation[]
   complianceItems     ComplianceItem[]
+  quotes              Quote[]
+  invoices            Invoice[]
+  retainers           Retainer[]
+  mandates            Mandate[]
+  inboundEmails       InboundEmail[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -652,6 +662,181 @@ model SkillSuggestion {
   status          String   @default("pending") // pending, accepted, dismissed
   
   createdAt       DateTime @default(now())
+}
+
+// ── Revenue (firm → client billing) ──
+
+model Quote {
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  quoteNumber      String
+  status           String   @default("draft") // draft, sent, accepted, rejected, expired, converted
+  title            String?
+  notes            String?
+  subtotalCents    Int
+  vatCents         Int      @default(0)
+  totalCents       Int
+  validUntil       DateTime?
+  convertedInvoiceId String?
+
+  lineItems        QuoteLineItem[]
+  createdById      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, quoteNumber])
+  @@index([tenantId, status])
+}
+
+model QuoteLineItem {
+  id             String @id @default(cuid())
+  quoteId        String
+  quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description    String
+  quantity       Int    @default(1)
+  unitPriceCents Int
+  amountCents    Int
+  sortOrder      Int    @default(0)
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  invoiceNumber   String
+  status          String   @default("draft") // draft, sent, paid, partial, overdue, void
+  title           String?
+  notes           String?
+  subtotalCents   Int
+  vatCents        Int      @default(0)
+  totalCents      Int
+  amountPaidCents Int      @default(0)
+  dueDate         DateTime?
+  issuedAt        DateTime?
+  paidAt          DateTime?
+  quoteId         String?
+  retainerId      String?
+  retainer        Retainer? @relation(fields: [retainerId], references: [id], onDelete: SetNull)
+
+  lineItems       InvoiceLineItem[]
+  payments        InvoicePayment[]
+  createdById     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId, status])
+  @@index([clientId])
+}
+
+model InvoiceLineItem {
+  id             String  @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description    String
+  quantity       Int     @default(1)
+  unitPriceCents Int
+  amountCents    Int
+  sortOrder      Int     @default(0)
+}
+
+model InvoicePayment {
+  id           String   @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountCents  Int
+  method       String   @default("manual") // manual, bank_transfer, ozow, stitch
+  reference    String?
+  notes        String?
+  paidAt       DateTime @default(now())
+  recordedById String?
+
+  createdAt DateTime @default(now())
+}
+
+model Retainer {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  name        String
+  amountCents Int
+  billingDay  Int      @default(1)
+  status      String   @default("active") // active, paused, cancelled
+  startDate   DateTime
+  endDate     DateTime?
+  description String?
+
+  invoices    Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+}
+
+// ── Mandates (e-sign) ──
+
+model Mandate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  title         String
+  description   String?
+  status        String   @default("pending") // pending, signed, expired, void
+  signToken     String   @unique
+  signerName    String?
+  signerEmail   String?
+  signatureData String?  // JSON: { typedName, signedAt, userAgent? }
+  documentId    String?
+  expiresAt     DateTime?
+  signedAt      DateTime?
+  createdById   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, status])
+}
+
+// ── Inbound email channel ──
+
+model InboundEmail {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  fromAddress String
+  toAddress   String
+  subject     String?
+  bodyText    String?
+  bodyHtml    String?
+  messageId   String?  @unique
+  status      String   @default("unread") // unread, read, archived
+  headers     String?  // JSON
+  attachments String   @default("[]") // JSON array
+
+  receivedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@index([clientId])
 }
 
 

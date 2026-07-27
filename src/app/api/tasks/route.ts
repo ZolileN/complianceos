@@ -12,6 +12,7 @@ import {
   planLimitResponse,
   readOnlyResponse,
 } from '@/lib/entitlements';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -36,14 +37,11 @@ export async function GET(request: NextRequest) {
     ...(hasClientId ? { clientId } : {}),
   };
 
-  // Role-based restrictions
   if (currentUser.role === 'consultant') {
     where.OR = [
       { assignedTo: currentUser.id },
       { client: { assignedConsultantId: currentUser.id } }
     ];
-  } else if (currentUser.role === 'client') {
-    where.client = { email: currentUser.email };
   }
 
   try {
@@ -81,10 +79,8 @@ export async function POST(request: NextRequest) {
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
-  // Clients cannot create tasks
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     await assertWritable(tenantId);

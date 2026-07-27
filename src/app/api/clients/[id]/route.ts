@@ -11,6 +11,7 @@ import {
   planLimitResponse,
   readOnlyResponse,
 } from '@/lib/entitlements';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,10 +29,6 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     });
     if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     
-    // Role-based authorization checks
-    if (currentUser.role === 'client' && client.email !== currentUser.email) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
     if (currentUser.role === 'consultant' && client.assignedConsultantId !== currentUser.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -65,10 +62,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const currentUser = session.user as { tenantId: string; role: string; email: string; id: string };
   const tenantId = currentUser.tenantId;
 
-  // Clients cannot modify anything
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     await assertWritable(tenantId);

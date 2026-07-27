@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     });
 
     // --- SKILL ENGINE TRIGGER ---
-    emitSkillEvent(tenantId, 'document.uploaded', userId as string, user.role || 'client', {
+    emitSkillEvent(tenantId, 'document.uploaded', userId as string, user.role || 'system', {
       documentId: document.id,
       category: document.category,
       name: document.name
@@ -250,18 +250,6 @@ export async function POST(request: NextRequest) {
             },
             clientData?.assignedConsultantId
           );
-
-          if (user.role === 'client' && clientData?.assignedConsultantId) {
-            await prisma.notification.create({
-              data: {
-                userId: clientData.assignedConsultantId,
-                title: 'Document Uploaded (Proof)',
-                message: `Client "${clientData.companyName}" uploaded a document "${name || 'Uploaded Document'}" for ${match.category} - ${match.name}.`,
-                type: 'success',
-                link: `/dashboard/clients/${client_id}?tab=compliance&item=${updated.id}`,
-              },
-            });
-          }
         } catch (err) {
           console.error('Compliance auto-update or notification failed (non-critical):', err);
         }

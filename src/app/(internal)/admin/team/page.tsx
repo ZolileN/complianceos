@@ -14,7 +14,7 @@ interface TeamMember {
   id: string;
   email: string;
   full_name: string;
-  role: 'administrator' | 'operations_manager' | 'consultant' | 'client';
+  role: 'administrator' | 'operations_manager' | 'consultant';
   created_at: string;
 }
 
@@ -48,7 +48,7 @@ export default function PlatformTeamPage() {
     name: '',
     email: '',
     password: '',
-    role: 'administrator' as 'administrator' | 'operations_manager' | 'consultant' | 'client',
+    role: 'administrator' as 'administrator' | 'operations_manager' | 'consultant',
   });
 
   const [showResetModal, setShowResetModal] = useState(false);
@@ -356,8 +356,7 @@ export default function PlatformTeamPage() {
                         role: e.target.value as
                           | 'administrator'
                           | 'operations_manager'
-                          | 'consultant'
-                          | 'client',
+                          | 'consultant',
                       }))
                     }
                   >

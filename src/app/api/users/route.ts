@@ -69,6 +69,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (role === 'client') {
+      return NextResponse.json({ error: 'Client role is not allowed' }, { status: 400 });
+    }
+
     // Prevent operations manager from creating an administrator
     if (currentUser.role === 'operations_manager' && role === 'administrator') {
       return NextResponse.json({ error: 'Operations managers cannot create administrator accounts' }, { status: 403 });
