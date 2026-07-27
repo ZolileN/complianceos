@@ -1,6 +1,7 @@
 import { describe, expect, it, afterEach } from 'vitest';
 import {
   collectRecipientAddresses,
+  inboundAddressForTenant,
   normalizeEmailAddress,
   parseTenantSlugFromRecipients,
 } from '@/lib/inbound-email';
@@ -22,6 +23,13 @@ describe('inbound-email helpers', () => {
     expect(
       parseTenantSlugFromRecipients(['mlk-computer-consulting@soleiistau.resend.app'])
     ).toBe('mlk-computer-consulting');
+  });
+
+  it('builds inbound address for tenant slug', () => {
+    process.env.INBOUND_EMAIL_DOMAIN = 'soleiistau.resend.app';
+    expect(inboundAddressForTenant('mlk-computer-consulting')).toBe(
+      'mlk-computer-consulting@soleiistau.resend.app'
+    );
   });
 
   it('collects received_for addresses', () => {

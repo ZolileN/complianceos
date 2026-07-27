@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isRbacResponse, requireStaff, requireTenantSession } from '@/lib/rbac';
+import { inboundAddressForTenant } from '@/lib/inbound-email';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const user = await requireTenantSession();
@@ -26,14 +29,37 @@ export async function GET(request: NextRequest) {
       : {}),
   };
 
-  const data = await prisma.inboundEmail.findMany({
-    where,
-    include: { client: { select: { id: true, companyName: true } } },
-    orderBy: { receivedAt: 'desc' },
-    take: 100,
-  });
+  try {
+    const rows = await prisma.inboundEmail.findMany({
+      where,
+      include: { client: { select: { id: true, companyName: true } } },
+      orderBy: { receivedAt: 'desc' },
+      take: 100,
+    });
 
-  return NextResponse.json({ data });
+    const data = rows.map((row) => ({
+      ...row,
+      client: row.client
+        ? { id: row.client.id, company_name: row.client.companyName }
+        : null,
+    }));
+
+    const inboundAddress = user.tenantSlug
+      ? inboundAddressForTenant(user.tenantSlug)
+      : null;
+
+    return NextResponse.json({
+      data,
+      inboundAddress,
+      tenantSlug: user.tenantSlug ?? null,
+    });
+  } catch (error: unknown) {
+    console.error('GET /api/emails error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to load emails' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PATCH(request: NextRequest) {

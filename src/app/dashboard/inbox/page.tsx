@@ -63,7 +63,7 @@ function clientId(conversation?: Conversation | null) {
 }
 
 export default function InboxPage() {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvo, setActiveConvo] = useState<string | null>(null);
@@ -71,7 +71,9 @@ export default function InboxPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [convoRefreshKey, setConvoRefreshKey] = useState(0);
+  const [emailRefreshKey, setEmailRefreshKey] = useState(0);
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
@@ -80,6 +82,7 @@ export default function InboxPage() {
   const [activeEmail, setActiveEmail] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [inboundAddress, setInboundAddress] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -99,7 +102,7 @@ export default function InboxPage() {
   }, [tenant]);
 
   useEffect(() => {
-    if (!tenant) return;
+    if (!tenant || channel !== 'whatsapp') return;
     let cancelled = false;
     (async () => {
       if (convoRefreshKey === 0) setLoading(true);
@@ -120,30 +123,37 @@ export default function InboxPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenant, convoRefreshKey, statusFilter, debouncedQuery]);
+  }, [tenant, channel, convoRefreshKey, statusFilter, debouncedQuery]);
 
   useEffect(() => {
     if (!tenant || channel !== 'email') return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      if (emailRefreshKey === 0) setEmailLoading(true);
       try {
         const params = new URLSearchParams({ status: 'all' });
         if (debouncedQuery) params.set('q', debouncedQuery);
         const res = await fetch(`/api/emails?${params}`);
-        const { data } = await res.json();
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error || 'Failed to load emails');
+        }
         if (!cancelled) {
-          setEmails(data || []);
-          if (data?.[0]) setActiveEmail((prev) => prev || data[0].id);
+          setEmails(json.data || []);
+          setInboundAddress(json.inboundAddress || null);
+          if (json.data?.[0]) setActiveEmail((prev) => prev || json.data[0].id);
         }
       } catch (err) {
         console.error(err);
+        if (!cancelled) {
+          toast((err as Error).message || 'Failed to load emails', 'error');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setEmailLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [tenant, channel, debouncedQuery]);
+  }, [tenant, channel, debouncedQuery, emailRefreshKey]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -197,11 +207,15 @@ export default function InboxPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setConvoRefreshKey((k) => k + 1);
-      if (activeConvo) setMsgRefreshKey((k) => k + 1);
+      if (channel === 'whatsapp') {
+        setConvoRefreshKey((k) => k + 1);
+        if (activeConvo) setMsgRefreshKey((k) => k + 1);
+      } else {
+        setEmailRefreshKey((k) => k + 1);
+      }
     }, 5000);
     return () => clearInterval(interval);
-  }, [activeConvo]);
+  }, [activeConvo, channel]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,6 +307,12 @@ export default function InboxPage() {
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
 
+  const tenantInboundAddress =
+    inboundAddress ||
+    (user?.tenantSlug && process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN
+      ? `${user.tenantSlug}@${process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN}`
+      : null);
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <section>
@@ -317,7 +337,7 @@ export default function InboxPage() {
       </section>
 
       {channel === 'email' ? (
-        loading ? (
+        emailLoading ? (
           <div className="skeleton h-[400px] rounded-xl" />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
@@ -327,10 +347,24 @@ export default function InboxPage() {
                   <input className="input w-full" placeholder="Search emails..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
                 {emails.length === 0 ? (
-                  <p className="p-6 text-sm text-slate-500 text-center">
-                    No inbound emails yet. Send to your tenant address, e.g.{' '}
-                    <code className="text-xs">mlk-computer-consulting@soleiistau.resend.app</code>
-                  </p>
+                  <div className="space-y-2 p-6 text-center text-sm text-slate-500">
+                    <p>
+                      No inbound emails yet. Send to your tenant address
+                      {tenantInboundAddress ? (
+                        <>
+                          :{' '}
+                          <code className="text-xs">{tenantInboundAddress}</code>
+                        </>
+                      ) : (
+                        ' (configure INBOUND_EMAIL_DOMAIN on the server)'
+                      )}
+                    </p>
+                    {user?.tenantSlug ? (
+                      <p className="text-xs text-slate-400">
+                        Viewing inbox for <code>{user.tenantSlug}</code> workspace
+                      </p>
+                    ) : null}
+                  </div>
                 ) : emails.map((em) => (
                   <button key={em.id} type="button" onClick={() => setActiveEmail(em.id)} className={`w-full text-left p-4 hover:bg-slate-50 ${activeEmail === em.id ? 'bg-teal-50' : ''}`}>
                     <div className="font-medium text-sm">{em.subject || '(no subject)'}</div>

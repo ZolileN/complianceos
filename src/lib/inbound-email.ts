@@ -105,10 +105,22 @@ export async function fetchReceivedEmailContent(
   }
 }
 
-export function inboundAddressHint(): string {
-  const domain =
+export function inboundEmailDomain(): string | null {
+  return (
     process.env.INBOUND_EMAIL_DOMAIN?.trim() ||
-    process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN?.trim();
+    process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN?.trim() ||
+    null
+  );
+}
+
+export function inboundAddressForTenant(tenantSlug: string): string {
+  const domain = inboundEmailDomain();
+  if (!domain) return `${tenantSlug}@your-inbound-domain`;
+  return `${tenantSlug}@${domain}`;
+}
+
+export function inboundAddressHint(): string {
+  const domain = inboundEmailDomain();
   if (!domain) return '{tenant-slug}@your-inbound-domain';
   return `{tenant-slug}@${domain}`;
 }
