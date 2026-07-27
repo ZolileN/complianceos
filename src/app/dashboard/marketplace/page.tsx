@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Activity, Brain, CheckCircle2, Store, Zap } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { ExecutionErrorInspector } from '@/components/marketplace/ExecutionErrorInspector';
 import { Badge } from '@/components/ui/badge';
 import IntelligenceTab from './IntelligenceTab';
 
@@ -370,6 +371,7 @@ export default function MarketplacePage() {
                     <th>Tokens</th>
                     <th>Duration</th>
                     <th>Time</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -392,6 +394,17 @@ export default function MarketplacePage() {
                         <td>{ex.tokensUsed.toLocaleString()}</td>
                         <td>{ex.durationMs ? `${ex.durationMs}ms` : '—'}</td>
                         <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(ex.createdAt).toLocaleString()}</td>
+                        <td>
+                          {(ex.status === 'failed' || ex.status === 'cancelled') && ex.error ? (
+                            <ExecutionErrorInspector
+                              error={ex.error}
+                              skillName={ex.skillName}
+                              executionId={ex.id}
+                            />
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                       </tr>
                     );
                   })}

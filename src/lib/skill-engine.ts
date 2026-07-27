@@ -527,7 +527,12 @@ async function runSkillSteps(args: {
     };
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error
+        ? error.stack || error.message
+        : typeof error === 'string'
+          ? error
+          : 'Unknown error';
 
     await prisma.skillExecution.update({
       where: { id: executionId },

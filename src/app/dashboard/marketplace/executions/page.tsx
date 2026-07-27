@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getExecutionHistory } from '@/lib/skill-engine';
 import Link from 'next/link';
 import { ExecutionApprovalActions } from '@/components/marketplace/ExecutionApprovalActions';
+import { ExecutionErrorInspector } from '@/components/marketplace/ExecutionErrorInspector';
 
 export const metadata = {
   title: 'Skill Execution Log | PraxisOne',
@@ -105,7 +106,16 @@ export default async function ExecutionLogPage() {
                     {new Date(exec.createdAt).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <ExecutionApprovalActions executionId={exec.id} status={exec.status} />
+                    <div className="flex items-center justify-end gap-2">
+                      {(exec.status === 'failed' || exec.status === 'cancelled') && exec.error ? (
+                        <ExecutionErrorInspector
+                          error={exec.error}
+                          skillName={exec.skill.name}
+                          executionId={exec.id}
+                        />
+                      ) : null}
+                      <ExecutionApprovalActions executionId={exec.id} status={exec.status} />
+                    </div>
                   </td>
                 </tr>
               ))

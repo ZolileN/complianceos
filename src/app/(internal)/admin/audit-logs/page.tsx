@@ -6,6 +6,7 @@ import { RefreshCw, ScrollText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { formatAuditDetailValue } from '@/lib/format-audit-details';
 
 interface AuditLogItem {
   id: string;
@@ -233,7 +234,9 @@ export default function SystemAuditLogs() {
                             Object.entries(detailsParsed).map(([key, val]) => (
                               <div key={key} className="text-xs text-slate-700">
                                 <span className="font-semibold text-slate-400">{key}:</span>{' '}
-                                <span>{String(val)}</span>
+                                <span className="whitespace-pre-wrap break-words font-mono">
+                                  {formatAuditDetailValue(val)}
+                                </span>
                               </div>
                             ))
                           )}

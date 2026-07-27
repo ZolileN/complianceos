@@ -5,6 +5,7 @@ import { ScrollText } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatAuditDetailValue } from '@/lib/format-audit-details';
 
 interface AuditLog {
   id: string;
@@ -150,7 +151,9 @@ export default function AuditLogsPage() {
                                 <span className="font-semibold capitalize text-slate-500">
                                   {key.replace(/([A-Z])/g, ' $1').trim()}:
                                 </span>{' '}
-                                <span className="text-slate-700">{String(value)}</span>
+                                <span className="whitespace-pre-wrap break-words font-mono text-slate-700">
+                                  {formatAuditDetailValue(value)}
+                                </span>
                               </div>
                             ))
                           )}

@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { ArrowLeft, CreditCard, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader2, Moon, Sun } from 'lucide-react';
 
 import Logo from '@/components/Logo';
 import { Badge } from '@/components/ui/badge';
@@ -121,9 +121,9 @@ function SignupForm() {
         setPendingSignupId(data.data.pendingSignupId);
         setPaid(true);
       }
+      setPayLoading(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Payment setup failed');
-    } finally {
       setPayLoading(false);
     }
   };
@@ -245,9 +245,14 @@ function SignupForm() {
                   disabled={!formValid || payLoading}
                   onClick={handlePay}
                 >
-                  {payLoading
-                    ? 'Redirecting…'
-                    : `Pay ${formatZarFromCents(planDef.priceZarCents)} / mo`}
+                  {payLoading ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Redirecting to payment…
+                    </>
+                  ) : (
+                    `Pay ${formatZarFromCents(planDef.priceZarCents)} / mo`
+                  )}
                 </Button>
               </div>
             )}

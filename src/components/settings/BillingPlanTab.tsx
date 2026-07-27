@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, CreditCard } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -197,9 +197,9 @@ export default function BillingPlanTab({
       }
       onToast('Plan updated', 'success');
       await load();
+      setCheckingOut(null);
     } catch (err) {
       onToast(err instanceof Error ? err.message : 'Checkout failed', 'error');
-    } finally {
       setCheckingOut(null);
     }
   };
@@ -282,7 +282,14 @@ export default function BillingPlanTab({
               disabled={!!checkingOut}
               onClick={() => checkout(entitlements.plan)}
             >
-              {checkingOut === entitlements.plan ? 'Starting…' : 'Pay now'}
+              {checkingOut === entitlements.plan ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Redirecting…
+                </>
+              ) : (
+                'Pay now'
+              )}
             </Button>
           </CardContent>
         </Card>
@@ -377,7 +384,14 @@ export default function BillingPlanTab({
                 disabled={!!checkingOut}
                 onClick={() => checkout(entitlements.plan)}
               >
-                {checkingOut === entitlements.plan ? 'Starting…' : 'Renew / Pay now'}
+                {checkingOut === entitlements.plan ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Redirecting…
+                  </>
+                ) : (
+                  'Renew / Pay now'
+                )}
               </Button>
             )}
             {entitlements.status === 'active' &&
@@ -488,11 +502,18 @@ export default function BillingPlanTab({
                       variant={isCurrent && !entitlements.readOnly ? 'outline' : 'default'}
                       disabled={
                         (isCurrent && !entitlements.readOnly && !inGrace) ||
-                        checkingOut === plan.id
+                        !!checkingOut
                       }
                       onClick={() => checkout(plan.id)}
                     >
-                      {checkingOut === plan.id ? 'Starting…' : ctaLabel}
+                      {checkingOut === plan.id ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          Redirecting…
+                        </>
+                      ) : (
+                        ctaLabel
+                      )}
                     </Button>
                   )}
                 </CardContent>
