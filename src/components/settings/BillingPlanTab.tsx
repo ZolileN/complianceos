@@ -5,6 +5,7 @@ import { AlertTriangle, CreditCard } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ContactSalesModal from '@/components/ContactSalesModal';
 import {
   Card,
   CardContent,
@@ -247,6 +248,7 @@ export default function BillingPlanTab({
 
   return (
     <div className="space-y-6">
+      <ContactSalesModal />
       {(entitlements.readOnly || inGrace) && (
         <Card
           className={
@@ -471,8 +473,14 @@ export default function BillingPlanTab({
                     ))}
                   </ul>
                   {plan.id === 'enterprise' ? (
-                    <Button variant="outline" className="mt-auto w-full" asChild>
-                      <a href="mailto:support@mlkcomputer.com">Contact sales</a>
+                    <Button
+                      variant="outline"
+                      className="mt-auto w-full"
+                      onClick={() => {
+                        window.location.hash = '#contact-sales';
+                      }}
+                    >
+                      Contact sales
                     </Button>
                   ) : (
                     <Button
