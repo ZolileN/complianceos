@@ -1,6 +1,8 @@
 # ComplianceOS (PraxisOne)
 
-ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline corporate compliance, document management, and workflow automation. Built with modern web technologies, it empowers consultancy firms to manage their clients' regulatory obligations efficiently while providing clients with a secure portal to track their compliance status.
+ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline corporate compliance, document management, and workflow automation. Built with modern web technologies, it empowers consultancy firms to manage their clients' regulatory obligations efficiently.
+
+**Two dashboards:** tenant staff (`/dashboard`) and platform ops (`/admin`). There is no client login portal — clients interact via WhatsApp, email, public onboarding (`/onboard/{slug}`), and mandate signing (`/sign/{token}`).
 
 ## ✅ Phase A hardening (CI, billing, skill approvals)
 
@@ -97,7 +99,8 @@ The platform enforces strict Role-Based Access Control (RBAC):
 *   **Administrator:** Full platform access, global visibility across the tenant, and complete management of the PraxisAdmin internal control plane.
 *   **Operations Manager:** Full platform access across the tenant.
 *   **Consultant:** Restricted access; can only view and modify clients, tasks, and workflows explicitly assigned to them.
-*   **Client:** Highly restricted; can only access their specific company profile and upload required compliance documentation.
+
+There is no **client user role** — end clients use WhatsApp, email, onboarding links, and mandate signing instead of logging in.
 
 ### 👑 Administrator Setup & Access Guide
 

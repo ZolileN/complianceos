@@ -8,6 +8,7 @@ import { NAV_ITEMS } from '@/lib/constants';
 import Logo from '@/components/Logo';
 import {
   Bell,
+  Banknote,
   CheckSquare2,
   CreditCard,
   FileText,
@@ -43,6 +44,7 @@ const icons: Record<string, LucideIcon> = {
   settings: Settings,
   zap: Sparkles,
   'credit-card': CreditCard,
+  revenue: Banknote,
 };
 
 interface SearchResult {
@@ -58,37 +60,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [clientId, setClientId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.role === 'client') {
-      fetch('/api/clients')
-        .then((r) => r.json())
-        .then(({ data }) => {
-          if (data && data[0]) {
-            setClientId(data[0].id);
-          }
-        })
-        .catch((err) => console.error(err));
+      router.push('/login?error=client_portal_removed');
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.role === 'client' && clientId && pathname === '/dashboard') {
-      router.push(`/dashboard/clients/${clientId}`);
-    }
-  }, [user, clientId, pathname, router]);
+  }, [user, router]);
 
   const getFilteredNavItems = () => {
     if (!user) return [];
-    
-    if (user.role === 'client') {
-      return [
-        { href: clientId ? `/dashboard/clients/${clientId}` : '/dashboard', label: 'My Company', icon: 'grid' },
-        { href: '/dashboard/documents', label: 'Documents', icon: 'folder' },
-        { href: '/dashboard/inbox', label: 'Inbox', icon: 'message-circle' },
-      ];
-    }
     
     if (user.role === 'consultant') {
       return [
@@ -299,8 +279,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }} id="mobile-menu-btn" aria-label="Open navigation"><Menu size={19} /></button>
           {/* Global Search */}
-          {user?.role !== 'client' && (
-            <div className="search-wrapper" ref={searchRef}>
+          <div className="search-wrapper" ref={searchRef}>
               <div className="header-search">
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   {searchLoading ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 1.5 }} /> : <Search size={16} />}
@@ -346,7 +325,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               )}
             </div>
-          )}
         </div>
         <div className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
           <button

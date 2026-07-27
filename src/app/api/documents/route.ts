@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
   const clientId = searchParams.get('client_id');
+  const q = (searchParams.get('q') || '').trim();
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = (page - 1) * limit;
@@ -29,11 +30,17 @@ export async function GET(request: NextRequest) {
     ...(hasClientId ? { clientId } : {}),
   };
 
-  // Role-based restrictions
   if (currentUser.role === 'consultant') {
     where.client = { assignedConsultantId: currentUser.id };
-  } else if (currentUser.role === 'client') {
-    where.client = { email: currentUser.email };
+  }
+
+  if (q) {
+    where.OR = [
+      { name: { contains: q, mode: 'insensitive' } },
+      { ocrText: { contains: q, mode: 'insensitive' } },
+      { category: { contains: q, mode: 'insensitive' } },
+      { client: { companyName: { contains: q, mode: 'insensitive' } } },
+    ];
   }
 
   try {

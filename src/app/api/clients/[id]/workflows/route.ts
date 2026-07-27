@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
 import { emitSkillEvent } from '@/lib/skill-triggers';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(
   request: NextRequest,
@@ -20,10 +21,8 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Clients cannot view client workflows unless they belong to them (checked below)
-  const { id: clientId } = await params;
-
   // Verify client belongs to this tenant
+  const { id: clientId } = await params;
   const client = await prisma.client.findFirst({
     where: { id: clientId, tenantId }
   });
@@ -119,10 +118,8 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Only staff roles can assign workflows
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   const { id: clientId } = await params;
 
@@ -261,10 +258,8 @@ export async function PUT(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Only staff roles can update workflow steps/status
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   const { id: clientId } = await params;
 

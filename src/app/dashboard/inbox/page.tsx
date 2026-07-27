@@ -7,6 +7,7 @@ import {
   ArchiveRestore,
   Download,
   FileText,
+  Mail,
   MessageSquareText,
   Plug,
   Send,
@@ -38,6 +39,17 @@ function clientName(conversation?: Conversation | null) {
 }
 
 type StatusFilter = 'open' | 'closed' | 'archived' | 'all';
+type Channel = 'whatsapp' | 'email';
+
+type InboundEmail = {
+  id: string;
+  fromAddress: string;
+  subject?: string;
+  bodyText?: string;
+  status: string;
+  receivedAt: string;
+  client?: { id: string; company_name: string } | null;
+};
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'open', label: 'Open' },
@@ -63,6 +75,9 @@ export default function InboxPage() {
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [channel, setChannel] = useState<Channel>('whatsapp');
+  const [emails, setEmails] = useState<InboundEmail[]>([]);
+  const [activeEmail, setActiveEmail] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -106,6 +121,29 @@ export default function InboxPage() {
       cancelled = true;
     };
   }, [tenant, convoRefreshKey, statusFilter, debouncedQuery]);
+
+  useEffect(() => {
+    if (!tenant || channel !== 'email') return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ status: 'all' });
+        if (debouncedQuery) params.set('q', debouncedQuery);
+        const res = await fetch(`/api/emails?${params}`);
+        const { data } = await res.json();
+        if (!cancelled) {
+          setEmails(data || []);
+          if (data?.[0] && !activeEmail) setActiveEmail(data[0].id);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, channel, debouncedQuery, activeEmail]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -263,13 +301,60 @@ export default function InboxPage() {
           Omnichannel
         </div>
         <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Inbox</h1>
+        <div className="mt-3 flex gap-2">
+          <button type="button" onClick={() => setChannel('whatsapp')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${channel === 'whatsapp' ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-600'}`}>
+            <MessageSquareText className="inline size-4 mr-1" />WhatsApp
+          </button>
+          <button type="button" onClick={() => setChannel('email')} className={`rounded-md px-3 py-1.5 text-sm font-medium ${channel === 'email' ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-600'}`}>
+            <Mail className="inline size-4 mr-1" />Email
+          </button>
+        </div>
         <p className="mt-1.5 text-sm text-slate-500">
-          {conversations.length}{' '}
-          {conversations.length === 1 ? 'conversation' : 'conversations'} across WhatsApp
+          {channel === 'whatsapp'
+            ? `${conversations.length} ${conversations.length === 1 ? 'conversation' : 'conversations'} across WhatsApp`
+            : `${emails.length} inbound ${emails.length === 1 ? 'email' : 'emails'}`}
         </p>
       </section>
 
-      {loading ? (
+      {channel === 'email' ? (
+        loading ? (
+          <div className="skeleton h-[400px] rounded-xl" />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardContent className="p-0 divide-y">
+                <div className="p-3">
+                  <input className="input w-full" placeholder="Search emails..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                </div>
+                {emails.length === 0 ? (
+                  <p className="p-6 text-sm text-slate-500 text-center">No inbound emails. Route mail to <code>{'{tenant-slug}'}@inbound.praxis.mlkcomputer.com</code></p>
+                ) : emails.map((em) => (
+                  <button key={em.id} type="button" onClick={() => setActiveEmail(em.id)} className={`w-full text-left p-4 hover:bg-slate-50 ${activeEmail === em.id ? 'bg-teal-50' : ''}`}>
+                    <div className="font-medium text-sm">{em.subject || '(no subject)'}</div>
+                    <div className="text-xs text-slate-500">{em.fromAddress}</div>
+                    <div className="text-xs text-slate-400 mt-1">{new Date(em.receivedAt).toLocaleString()}</div>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                {activeEmail ? (() => {
+                  const em = emails.find((e) => e.id === activeEmail);
+                  if (!em) return null;
+                  return (
+                    <div className="space-y-3">
+                      <h2 className="text-lg font-semibold">{em.subject || '(no subject)'}</h2>
+                      <p className="text-sm text-slate-500">From {em.fromAddress}{em.client ? ` · ${em.client.company_name}` : ''}</p>
+                      <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">{em.bodyText || 'No text body'}</pre>
+                    </div>
+                  );
+                })() : <p className="text-sm text-slate-500">Select an email</p>}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      ) : loading ? (
         <div className="skeleton h-[500px] rounded-xl" />
       ) : whatsappConnected === false ? (
         <Card>

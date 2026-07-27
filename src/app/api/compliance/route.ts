@@ -16,8 +16,6 @@ export async function GET() {
   
   if (currentUser.role === 'consultant') {
     where.client = { assignedConsultantId: currentUser.id };
-  } else if (currentUser.role === 'client') {
-    where.client = { email: currentUser.email };
   }
 
   try {

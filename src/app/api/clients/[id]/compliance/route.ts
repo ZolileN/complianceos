@@ -9,6 +9,7 @@ import {
   nextDueAfterCompliant,
   notifyComplianceStakeholders,
 } from '@/lib/compliance-monitor';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(
   request: NextRequest,
@@ -112,9 +113,8 @@ export async function PUT(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   const { id: clientId } = await params;
 
@@ -235,24 +235,6 @@ export async function PUT(
         },
         client.assignedConsultantId
       );
-    }
-
-    // Client user still gets a nudge when action is required
-    if (client.email && (updated.status === 'action_required' || updated.status === 'critical')) {
-      const clientUser = await prisma.user.findFirst({
-        where: { role: 'client', email: client.email, tenantId },
-      });
-      if (clientUser) {
-        await prisma.notification.create({
-          data: {
-            userId: clientUser.id,
-            title: `Compliance Action Needed: ${updated.name}`,
-            message: `Status updated to "${updated.status.replace('_', ' ')}" for ${updated.category} - ${updated.name}. Notes: ${updated.notes || 'None'}`,
-            type: updated.status === 'critical' ? 'error' : 'warning',
-            link: `/dashboard/clients/${clientId}?tab=compliance&item=${updated.id}`,
-          },
-        });
-      }
     }
 
     await logAuditAction({

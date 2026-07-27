@@ -12,6 +12,7 @@ import {
   planLimitResponse,
   readOnlyResponse,
 } from '@/lib/entitlements';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -34,10 +35,7 @@ export async function GET(request: NextRequest) {
     ...(!includeInactive ? { status: { not: 'inactive' } } : {}),
   };
 
-  // Role-based restrictions
-  if (currentUser.role === 'client') {
-    where.email = currentUser.email;
-  } else if (currentUser.role === 'consultant') {
+  if (currentUser.role === 'consultant') {
     where.assignedConsultantId = currentUser.id;
   }
 
@@ -84,6 +82,9 @@ export async function POST(request: NextRequest) {
   const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
+
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   // Only administrators and operations managers can create clients
   if (currentUser.role !== 'administrator' && currentUser.role !== 'operations_manager') {

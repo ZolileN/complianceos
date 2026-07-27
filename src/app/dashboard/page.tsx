@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  BriefcaseBusiness,
   CalendarClock,
   CheckCircle2,
   CircleGauge,
@@ -139,25 +138,6 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <span className="spinner size-9" />
-      </div>
-    );
-  }
-
-  if (user?.role === "client") {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-              <BriefcaseBusiness className="size-5" />
-            </div>
-            <h2 className="text-lg font-semibold text-slate-950">Welcome to PraxisOne</h2>
-            <p className="text-sm leading-6 text-slate-500">
-              We are preparing your company dashboard. Contact your consultant if your
-              company details do not appear shortly.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     );
   }

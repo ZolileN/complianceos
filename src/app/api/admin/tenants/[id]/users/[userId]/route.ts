@@ -12,7 +12,6 @@ const ALLOWED_ROLES = [
   'administrator',
   'operations_manager',
   'consultant',
-  'client',
 ] as const;
 
 /**

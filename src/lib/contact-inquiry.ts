@@ -1,6 +1,4 @@
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { getResend } from '@/lib/resend-client';
 
 const FROM_EMAIL = 'PraxisOne <no-reply@praxis.mlkcomputer.com>';
 
@@ -102,6 +100,8 @@ export async function sendInquiryEmail(type: InquiryType, input: InquiryInput) {
   `;
 
   try {
+    const resend = getResend();
+    if (!resend) throw new Error('RESEND_API_KEY is not configured');
     const data = await resend.emails.send({
       from: FROM_EMAIL,
       to: inbox,

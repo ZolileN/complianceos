@@ -82,6 +82,8 @@ export default function DocumentsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [activeViewDoc, setActiveViewDoc] = useState<Doc | null>(null);
@@ -94,6 +96,11 @@ export default function DocumentsPage() {
     setPage(1);
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // Correct effect pattern with cancellation token
   useEffect(() => {
     if (!tenant) return;
@@ -103,6 +110,7 @@ export default function DocumentsPage() {
       try {
         const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
         if (filter !== 'all') params.set('category', filter);
+        if (debouncedSearch) params.set('q', debouncedSearch);
         params.set('_t', Date.now().toString());
         const res = await fetch(`/api/documents?${params}`, { cache: 'no-store' });
         const { data, count } = await res.json();
@@ -114,7 +122,7 @@ export default function DocumentsPage() {
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [tenant, filter, page, refreshKey]);
+  }, [tenant, filter, page, refreshKey, debouncedSearch]);
 
   useEffect(() => {
     if (!tenant) return;
@@ -173,6 +181,13 @@ export default function DocumentsPage() {
           Upload
         </Button>
       </section>
+
+      <input
+        className="input w-full max-w-md"
+        placeholder="Search documents, OCR text, clients..."
+        value={searchQuery}
+        onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button

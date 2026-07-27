@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     await incrementUsage(tenantId, 'whatsapp_messages', 1).catch(() => undefined);
 
     if (tenantId && user.id) {
-      emitSkillEvent(tenantId, 'message.sent', user.id, user.role || 'client', {
+      emitSkillEvent(tenantId, 'message.sent', user.id, user.role || 'system', {
         to,
         conversationId: conversation_id || null,
         messageId: waMessageId,

@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
 import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,16 +50,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!document) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    // Client role can only view their own documents
-    if (currentUser.role === 'client') {
-      const client = await prisma.client.findFirst({
-        where: { tenantId, email: currentUser.email }
-      });
-      if (!client || document.clientId !== client.id) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
-    }
 
     // Auto-trigger OCR if it was never run
     if (document.ocrStatus === 'none') {
@@ -134,10 +125,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const currentUser = session.user as { tenantId: string; role: string; id: string };
   const tenantId = currentUser.tenantId;
 
-  // Clients cannot modify document records directly
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     const existingDoc = await prisma.document.findFirst({

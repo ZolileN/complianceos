@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { logAuditAction } from '@/lib/auditLogger';
+import { requireStaff } from '@/lib/rbac';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -12,10 +13,8 @@ export async function GET() {
   const tenantId = currentUser.tenantId;
   if (!tenantId) return NextResponse.json({ error: 'No profile' }, { status: 403 });
 
-  // Clients cannot view workflow templates
-  if (currentUser.role === 'client') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const forbidden = requireStaff(currentUser);
+  if (forbidden) return forbidden;
 
   try {
     const data = await prisma.workflowTemplate.findMany({

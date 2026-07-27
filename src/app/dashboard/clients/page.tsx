@@ -36,12 +36,6 @@ export default function ClientsPage() {
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    if (user?.role === 'client') {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
-  useEffect(() => {
     if (!tenant) return;
     fetch('/api/dashboard')
       .then((r) => (r.ok ? r.json() : null))

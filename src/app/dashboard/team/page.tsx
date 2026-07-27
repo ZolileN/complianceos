@@ -15,7 +15,7 @@ interface TeamMember {
   id: string;
   email: string;
   full_name: string;
-  role: 'administrator' | 'operations_manager' | 'consultant' | 'client';
+  role: 'administrator' | 'operations_manager' | 'consultant';
   created_at: string;
 }
 
@@ -55,7 +55,7 @@ export default function TeamPage() {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    role: 'consultant' as 'administrator' | 'operations_manager' | 'consultant' | 'client',
+    role: 'consultant' as 'administrator' | 'operations_manager' | 'consultant',
   });
 
   // Reset Password Modal state
@@ -360,8 +360,7 @@ export default function TeamPage() {
                         role: e.target.value as
                           | 'administrator'
                           | 'operations_manager'
-                          | 'consultant'
-                          | 'client',
+                          | 'consultant',
                       }))
                     }
                   >
@@ -370,7 +369,6 @@ export default function TeamPage() {
                     )}
                     <option value="operations_manager">Operations Manager</option>
                     <option value="consultant">Consultant</option>
-                    <option value="client">Client</option>
                   </select>
                 </div>
 

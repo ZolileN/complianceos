@@ -38,6 +38,7 @@ import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import { UploadDropzone } from '@/lib/uploadthing';
 import { Badge } from '@/components/ui/badge';
+import MandatePanel from '@/components/clients/MandatePanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import '@uploadthing/react/styles.css';
@@ -77,7 +78,7 @@ interface AuditLogHistoryItem {
   } | null;
 }
 
-type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows';
+type TabType = 'overview' | 'documents' | 'compliance' | 'tasks' | 'workflows' | 'mandates';
 
 function ClientDetailPageContent() {
   const { id } = useParams();
@@ -204,27 +205,24 @@ function ClientDetailPageContent() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link opens editor once data loads
     setTab('compliance');
 
-    // Staff land directly in the issue editor; clients land on the highlighted issue.
-    if (user?.role !== 'client') {
-      setEditingItem(item);
-      setEditStatus(item.status);
-      setEditDueDate(item.due_date ? item.due_date.substring(0, 10) : '');
-      setEditNotes(item.notes || '');
-      setSelectedDocIds(item.documents ? item.documents.map((doc) => doc.id) : []);
-      setLoadingHistory(true);
-      fetch(`/api/compliance/${item.id}/history`)
-        .then((response) => (response.ok ? response.json() : { data: [] }))
-        .then((json) => setItemHistory(json.data || []))
-        .catch((error) => console.error(error))
-        .finally(() => setLoadingHistory(false));
-    }
+    setEditingItem(item);
+    setEditStatus(item.status);
+    setEditDueDate(item.due_date ? item.due_date.substring(0, 10) : '');
+    setEditNotes(item.notes || '');
+    setSelectedDocIds(item.documents ? item.documents.map((doc) => doc.id) : []);
+    setLoadingHistory(true);
+    fetch(`/api/compliance/${item.id}/history`)
+      .then((response) => (response.ok ? response.json() : { data: [] }))
+      .then((json) => setItemHistory(json.data || []))
+      .catch((error) => console.error(error))
+      .finally(() => setLoadingHistory(false));
 
     window.requestAnimationFrame(() => {
       document
         .getElementById(`compliance-item-${item.id}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-  }, [complianceItems, deepLinkedItemId, user?.role]);
+  }, [complianceItems, deepLinkedItemId]);
 
   const handleArchive = async () => {
     const ok = await confirm({
@@ -406,19 +404,18 @@ function ClientDetailPageContent() {
     { id: 'compliance', label: 'Compliance', icon: <ClipboardList className="size-3.5" /> },
     { id: 'tasks', label: 'Tasks', icon: <CheckCircle2 className="size-3.5" /> },
     { id: 'workflows', label: 'Workflows', icon: <GitBranch className="size-3.5" /> },
+    { id: 'mandates', label: 'Mandates', icon: <FileText className="size-3.5" /> },
   ];
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="flex items-start gap-3">
-          {user?.role !== 'client' && (
-            <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0">
-              <Link href="/dashboard/clients" aria-label="Back to clients">
-                <ArrowLeft />
-              </Link>
-            </Button>
-          )}
+          <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0">
+            <Link href="/dashboard/clients" aria-label="Back to clients">
+              <ArrowLeft />
+            </Link>
+          </Button>
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
               <UsersRound className="size-3.5" />
@@ -438,14 +435,12 @@ function ClientDetailPageContent() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {user?.role !== 'client' && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/dashboard/clients/${id}/edit`}>
-                <Pencil />
-                Edit
-              </Link>
-            </Button>
-          )}
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dashboard/clients/${id}/edit`}>
+              <Pencil />
+              Edit
+            </Link>
+          </Button>
           {(user?.role === 'administrator' || user?.role === 'operations_manager') && (
             <Button variant="secondary" size="sm" onClick={handleArchive}>
               <Archive />
@@ -615,30 +610,24 @@ function ClientDetailPageContent() {
                 </CardHeader>
                 <CardContent className="pt-4">
                   <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {categoryItems.map((item) => {
-                      const canEdit = user?.role !== 'client';
-                      return (
+                    {categoryItems.map((item) => (
                         <div
                           id={`compliance-item-${item.id}`}
                           key={item.id}
-                          role={canEdit ? 'button' : undefined}
-                          tabIndex={canEdit ? 0 : undefined}
-                          onClick={canEdit ? () => handleEditCompliance(item) : undefined}
-                          onKeyDown={
-                            canEdit
-                              ? (e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    handleEditCompliance(item);
-                                  }
-                                }
-                              : undefined
-                          }
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleEditCompliance(item)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleEditCompliance(item);
+                            }
+                          }}
                           className={`flex flex-col justify-between rounded-lg border bg-[var(--bg-secondary)] p-4 transition-colors ${
                             deepLinkedItemId === item.id
                               ? 'border-teal-600 shadow-[0_0_0_4px_var(--accent-muted)]'
                               : 'border-[var(--border-primary)]'
-                          } ${canEdit ? 'cursor-pointer hover:border-teal-600/40' : ''}`}
+                          } cursor-pointer hover:border-teal-600/40`}
                         >
                           <div>
                             <div className="mb-2.5 flex items-start justify-between gap-2">
@@ -693,8 +682,7 @@ function ClientDetailPageContent() {
                             </p>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 </CardContent>
               </Card>
@@ -972,44 +960,42 @@ function ClientDetailPageContent() {
 
       {tab === 'workflows' && (
         <div className="space-y-6">
-          {user?.role !== 'client' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Assign new workflow</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={handleAssignWorkflow}
-                  className="flex flex-wrap items-end gap-3"
-                >
-                  <div className="form-group mb-0 min-w-[250px] flex-1">
-                    <label className="form-label">Workflow template</label>
-                    <select
-                      value={selectedTemplateId}
-                      onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="select"
-                      required
-                    >
-                      <option value="">Select a template...</option>
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.category.replace('_', ' ')})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={assigningWorkflow || !selectedTemplateId}
+          <Card>
+            <CardHeader>
+              <CardTitle>Assign new workflow</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={handleAssignWorkflow}
+                className="flex flex-wrap items-end gap-3"
+              >
+                <div className="form-group mb-0 min-w-[250px] flex-1">
+                  <label className="form-label">Workflow template</label>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    className="select"
+                    required
                   >
-                    <Plus />
-                    {assigningWorkflow ? 'Assigning...' : 'Assign workflow'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          )}
+                    <option value="">Select a template...</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.category.replace('_', ' ')})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={assigningWorkflow || !selectedTemplateId}
+                >
+                  <Plus />
+                  {assigningWorkflow ? 'Assigning...' : 'Assign workflow'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
           {clientWorkflows.length === 0 ? (
             <Card>
@@ -1219,7 +1205,7 @@ function ClientDetailPageContent() {
                                     )}
                                   </div>
 
-                                  {user?.role !== 'client' && p.status !== 'completed' && (
+                                  {p.status !== 'completed' && (
                                     <div>
                                       {p.step?.auto_complete && docsPresent ? (
                                         <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
@@ -1322,6 +1308,14 @@ function ClientDetailPageContent() {
             </div>
           )}
         </div>
+      )}
+
+      {tab === 'mandates' && client && (
+        <MandatePanel
+          clientId={client.id}
+          clientName={client.company_name}
+          clientEmail={client.email}
+        />
       )}
 
       {activeViewDoc && (
