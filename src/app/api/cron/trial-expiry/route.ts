@@ -5,19 +5,19 @@ import {
   finalizeCanceledSubscriptions,
   markLapsedSubscriptions,
 } from '@/lib/billing/service';
+import { captureRouteError } from '@/lib/monitoring';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Daily billing status sweep:
- * - expire trials → past_due (read-only) until payment
- * - finalize cancel-at-period-end → canceled
- * - lapse month-to-month plans unpaid past the 7-day grace window → past_due
- * Auth: Authorization: Bearer ${CRON_SECRET}
+ * Daily billing lifecycle cron:
+ * - expire trials that have ended (→ past_due)
+ * - finalize cancel-at-period-end subscriptions whose period lapsed
+ * - mark paid subscriptions past their grace window as past_due
  */
 export async function GET(request: Request) {
-  const denied = assertCronAuthorized(request);
-  if (denied) return denied;
+  const unauthorized = assertCronAuthorized(request);
+  if (unauthorized) return unauthorized;
 
   try {
     const trials = await expireTrialsDue();
@@ -25,11 +25,8 @@ export async function GET(request: Request) {
     const lapsed = await markLapsedSubscriptions();
     return NextResponse.json({ ok: true, ...trials, ...canceled, ...lapsed });
   } catch (err: unknown) {
+    captureRouteError(err, 'cron:trial-expiry');
     const message = err instanceof Error ? err.message : 'Trial expiry failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
-export async function POST(request: Request) {
-  return GET(request);
 }
