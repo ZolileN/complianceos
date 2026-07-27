@@ -187,9 +187,13 @@ export default function InfrastructureTuning() {
   }, [addConsoleLog]);
 
   useEffect(() => {
-    fetchDiagnostics();
+    // Defer the initial fetch a tick so no state is set synchronously in the effect.
+    const initial = setTimeout(fetchDiagnostics, 0);
     const interval = setInterval(fetchDiagnostics, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(interval);
+    };
   }, [fetchDiagnostics]);
 
   const handleRunVacuum = async () => {

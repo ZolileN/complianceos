@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const mine = searchParams.get('mine') === '1';
+  const q = (searchParams.get('q') || '').trim().slice(0, 200);
 
   if (status && !ALLOWED_STATUSES.includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
@@ -33,6 +34,23 @@ export async function GET(request: NextRequest) {
     where.assignedTo = user.id;
   } else if (isConsultant(user)) {
     where.OR = [{ assignedTo: user.id }, { assignedTo: null }];
+  }
+
+  // Server-side search across client name, WhatsApp number, and message content.
+  if (q) {
+    where.AND = [
+      {
+        OR: [
+          { whatsappNumber: { contains: q, mode: 'insensitive' } },
+          { client: { companyName: { contains: q, mode: 'insensitive' } } },
+          {
+            messages: {
+              some: { content: { contains: q, mode: 'insensitive' } },
+            },
+          },
+        ],
+      },
+    ];
   }
 
   try {

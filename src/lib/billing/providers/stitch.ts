@@ -21,7 +21,7 @@ import { getPlanDefinition } from '@/lib/plans';
 import { prisma } from '@/lib/prisma';
 
 const EXPRESS_API = () =>
-  (process.env.STITCH_EXPRESS_API_URL || 'https://express.stitch.money').replace(
+  (process.env.STITCH_EXPRESS_API_URL ?? 'https://express.stitch.money').replace(
     /\/$/,
     ''
   );
@@ -106,6 +106,59 @@ export function verifyExpressSignature(
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/**
+ * Create an Express payment and return a checkout URL that redirects the
+ * payer back to our callback afterwards. Shared by upgrade checkout,
+ * paid signup, and renewal dunning.
+ */
+export async function createExpressPayment(args: {
+  amountCents: number;
+  payerName: string;
+  payerEmail?: string | null;
+  merchantReference: string;
+}): Promise<{ checkoutUrl: string; paymentId: string | null }> {
+  const token = await getExpressToken();
+
+  const res = await fetch(`${EXPRESS_API()}/api/v1/payments`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      amount: args.amountCents,
+      payerName: args.payerName,
+      payerEmailAddress: args.payerEmail || undefined,
+      merchantReference: args.merchantReference,
+      skipCheckoutPage: false,
+      currency: 'ZAR',
+    }),
+    cache: 'no-store',
+  });
+
+  const json = (await res.json().catch(() => null)) as {
+    success?: boolean;
+    data?: { payment?: { link?: string; id?: string } };
+  } | null;
+
+  if (!res.ok || !json?.success || !json.data?.payment?.link) {
+    throw new Error(
+      `Stitch Express payment create failed (HTTP ${res.status}): ${JSON.stringify(json)?.slice(0, 200)}`
+    );
+  }
+
+  // Express sends the payer back to redirect_url (must be registered in the
+  // Express dashboard) with payment_id + reference query params.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const callbackUrl = `${appUrl}/api/billing/stitch/callback`;
+  const link = json.data.payment.link;
+  const sep = link.includes('?') ? '&' : '?';
+  return {
+    checkoutUrl: `${link}${sep}redirect_url=${encodeURIComponent(callbackUrl)}`,
+    paymentId: json.data.payment.id || null,
+  };
+}
+
 export const stitchProvider: BillingProvider = {
   id: 'stitch',
 
@@ -121,46 +174,16 @@ export const stitchProvider: BillingProvider = {
     });
     if (!tenant) throw new Error('Tenant not found');
 
-    const token = await getExpressToken();
     const reference = `PX-${tenant.slug.slice(0, 24)}-${plan.slice(0, 4)}-${Date.now()}`
       .replace(/[^a-zA-Z0-9\-]/g, '')
       .slice(0, 64);
 
-    const res = await fetch(`${EXPRESS_API()}/api/v1/payments`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        amount: def.priceZarCents,
-        payerName: tenant.name,
-        payerEmailAddress: tenant.email || undefined,
-        merchantReference: reference,
-        skipCheckoutPage: false,
-        currency: 'ZAR',
-      }),
-      cache: 'no-store',
+    const { checkoutUrl, paymentId } = await createExpressPayment({
+      amountCents: def.priceZarCents,
+      payerName: tenant.name,
+      payerEmail: tenant.email,
+      merchantReference: reference,
     });
-
-    const json = (await res.json().catch(() => null)) as {
-      success?: boolean;
-      data?: { payment?: { link?: string; id?: string } };
-    } | null;
-
-    if (!res.ok || !json?.success || !json.data?.payment?.link) {
-      throw new Error(
-        `Stitch Express payment create failed (HTTP ${res.status}): ${JSON.stringify(json)?.slice(0, 200)}`
-      );
-    }
-
-    // Express sends the payer back to redirect_url (must be registered in the
-    // Express dashboard) with payment_id + reference query params.
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
-    const callbackUrl = `${appUrl}/api/billing/stitch/callback`;
-    const link = json.data.payment.link;
-    const sep = link.includes('?') ? '&' : '?';
-    const checkoutUrl = `${link}${sep}redirect_url=${encodeURIComponent(callbackUrl)}`;
 
     await prisma.subscription.upsert({
       where: { tenantId },
@@ -171,14 +194,14 @@ export const stitchProvider: BillingProvider = {
         provider: 'stitch',
         providerSubscriptionId: reference,
         providerPlanId: plan,
-        providerCustomerId: json.data.payment.id || null,
+        providerCustomerId: paymentId,
       },
       update: {
         plan,
         provider: 'stitch',
         providerSubscriptionId: reference,
         providerPlanId: plan,
-        providerCustomerId: json.data.payment.id || null,
+        providerCustomerId: paymentId,
       },
     });
 

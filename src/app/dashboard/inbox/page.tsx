@@ -63,8 +63,15 @@ export default function InboxPage() {
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (!tenant) return;
@@ -84,6 +91,7 @@ export default function InboxPage() {
       try {
         const params = new URLSearchParams();
         if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (debouncedQuery) params.set('q', debouncedQuery);
         const qs = params.toString();
         const res = await fetch(`/api/conversations${qs ? `?${qs}` : ''}`);
         const { data } = await res.json();
@@ -97,7 +105,7 @@ export default function InboxPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenant, convoRefreshKey, statusFilter]);
+  }, [tenant, convoRefreshKey, statusFilter, debouncedQuery]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -333,10 +341,10 @@ export default function InboxPage() {
               </div>
               <input
                 className="input"
-                placeholder="Search conversations..."
+                placeholder="Search clients, numbers, messages..."
                 style={{ fontSize: '0.85rem' }}
-                readOnly
-                title="Search coming soon"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             {conversations.map((c) => {

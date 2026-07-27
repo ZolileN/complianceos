@@ -5,6 +5,7 @@ import {
   getExpressPaymentStatus,
   verifyExpressSignature,
 } from '@/lib/billing/providers/stitch';
+import { markPendingSignupPaid } from '@/lib/signup-checkout';
 import { isTenantPlan } from '@/lib/plans';
 
 /**
@@ -42,6 +43,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Confirm with Stitch before acting — never trust the payload alone.
+  const status = await getExpressPaymentStatus(body.payment_id, body.reference);
+  if (status !== 'PAID') {
+    return NextResponse.json({ success: true, skipped: `status=${status}` });
+  }
+
+  // Pay-before-create signup?
+  const pendingSignup = await prisma.pendingSignup.findUnique({
+    where: { paymentReference: body.reference },
+  });
+  if (pendingSignup) {
+    await markPendingSignupPaid(body.reference);
+    return NextResponse.json({ success: true, signup: pendingSignup.id });
+  }
+
   const sub = await prisma.subscription.findFirst({
     where: { providerSubscriptionId: body.reference },
   });
@@ -50,12 +66,6 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Unknown reference' },
       { status: 404 }
     );
-  }
-
-  // Confirm with Stitch before activating — never trust the payload alone.
-  const status = await getExpressPaymentStatus(body.payment_id, body.reference);
-  if (status !== 'PAID') {
-    return NextResponse.json({ success: true, skipped: `status=${status}` });
   }
 
   const plan = isTenantPlan(sub.plan) ? sub.plan : 'starter';

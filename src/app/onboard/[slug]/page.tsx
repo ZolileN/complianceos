@@ -46,15 +46,19 @@ export default function OnboardingPage() {
   // Resolve firm name from slug
   useEffect(() => {
     if (!slug) return;
-    setFirmLoading(true);
-    fetch(`/api/onboard/${slug}`)
-      .then(r => {
-        if (!r.ok) throw new Error('Firm not found');
-        return r.json();
-      })
-      .then(d => setFirmName(d.firmName))
-      .catch(() => setFirmError('This onboarding link is invalid or has expired.'))
-      .finally(() => setFirmLoading(false));
+    // Defer a tick so no state is set synchronously in the effect.
+    const t = setTimeout(() => {
+      setFirmLoading(true);
+      fetch(`/api/onboard/${slug}`)
+        .then(r => {
+          if (!r.ok) throw new Error('Firm not found');
+          return r.json();
+        })
+        .then(d => setFirmName(d.firmName))
+        .catch(() => setFirmError('This onboarding link is invalid or has expired.'))
+        .finally(() => setFirmLoading(false));
+    }, 0);
+    return () => clearTimeout(t);
   }, [slug]);
 
   // ── Director helpers ──────────────────────────────────────────────────────
@@ -319,7 +323,7 @@ export default function OnboardingPage() {
                 WhatsApp Number
                 {whatsapp && (
                   <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: 'rgba(16,185,129,0.1)', color: '#10B981', borderRadius: 99, fontWeight: 600 }}>
-                    ✓ We'll send a welcome message here
+                    ✓ We&apos;ll send a welcome message here
                   </span>
                 )}
               </label>

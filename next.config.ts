@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG || 'mlk-computer-consulting',
-  project: process.env.SENTRY_PROJECT || 'praxisone',
+  org: process.env.SENTRY_ORG ?? 'mlk-computer-consulting',
+  project: process.env.SENTRY_PROJECT ?? 'praxisone',
   // Only attempt source-map upload when an auth token is present.
   silent: !process.env.CI,
   widenClientFileUpload: true,

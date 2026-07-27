@@ -294,8 +294,12 @@ export default function TenantProfile() {
   };
 
   useEffect(() => {
-    fetchTenantDetail();
-    fetchBilling();
+    // Defer a tick so no state is set synchronously in the effect.
+    const t = setTimeout(() => {
+      fetchTenantDetail();
+      fetchBilling();
+    }, 0);
+    return () => clearTimeout(t);
   }, [id]);
 
   const parseSettings = (settings?: string | null): Record<string, unknown> => {

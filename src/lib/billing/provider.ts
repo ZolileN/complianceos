@@ -1,6 +1,8 @@
 /**
  * Billing provider interface + factory.
- * BILLING_PROVIDER=manual|stitch|ozow (default: stitch when STITCH_* set, else manual)
+ * BILLING_PROVIDER=manual|stitch|ozow
+ * Default: Stitch (primary rail) when STITCH_* set, else Ozow, else manual.
+ * startCheckout falls back to Ozow when a Stitch checkout fails.
  */
 
 import type { TenantPlan } from '@/lib/plans';
@@ -47,12 +49,13 @@ export function getBillingProvider(): BillingProvider {
   if (configured === 'ozow') return ozowProvider;
   if (configured === 'manual') return manualProvider;
 
-  // Auto: prefer Ozow when fully configured (Phase A production path), else Stitch.
-  if (ozowCheckoutAvailable()) {
-    return ozowProvider;
-  }
+  // Auto: Stitch is the primary rail; Ozow is the fallback (startCheckout
+  // retries failed Stitch checkouts on Ozow when it is configured).
   if (process.env.STITCH_CLIENT_ID && process.env.STITCH_CLIENT_SECRET) {
     return stitchProvider;
+  }
+  if (ozowCheckoutAvailable()) {
+    return ozowProvider;
   }
   return manualProvider;
 }

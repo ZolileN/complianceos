@@ -131,6 +131,8 @@ export default function BillingPlanTab({
   onToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }) {
   const [entitlements, setEntitlements] = useState<Entitlements | null>(null);
+  // Stable "now" so render stays pure (trial-window check tolerance is days).
+  const [mountedAtTs] = useState(() => Date.now());
   const [catalog, setCatalog] = useState<CatalogPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
@@ -240,7 +242,8 @@ export default function BillingPlanTab({
     entitlements.status === 'incomplete' ||
     (entitlements.status === 'trialing' &&
       !!entitlements.trialEndsAt &&
-      new Date(entitlements.trialEndsAt).getTime() < Date.now() + 3 * 24 * 60 * 60 * 1000);
+      new Date(entitlements.trialEndsAt).getTime() <
+        mountedAtTs + 3 * 24 * 60 * 60 * 1000);
 
   return (
     <div className="space-y-6">

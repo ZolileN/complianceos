@@ -1,31 +1,36 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
+
+const HASH_EVENT = 'praxis-hash-modal-change';
+
+function subscribeHash(callback: () => void) {
+  window.addEventListener('hashchange', callback);
+  window.addEventListener('popstate', callback);
+  window.addEventListener(HASH_EVENT, callback);
+  return () => {
+    window.removeEventListener('hashchange', callback);
+    window.removeEventListener('popstate', callback);
+    window.removeEventListener(HASH_EVENT, callback);
+  };
+}
 
 export function useHashModal(hash: string) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const syncFromLocation = useCallback(() => {
-    setIsOpen(window.location.hash === hash);
-  }, [hash]);
+  // External store: the URL hash is the source of truth (no setState-in-effect).
+  const isOpen = useSyncExternalStore(
+    subscribeHash,
+    () => window.location.hash === hash,
+    () => false
+  );
 
   const closeModal = useCallback(() => {
     if (window.location.hash === hash) {
       const url = `${window.location.pathname}${window.location.search}`;
       window.history.replaceState(window.history.state, '', url);
+      // replaceState fires no events — notify subscribers explicitly.
+      window.dispatchEvent(new Event(HASH_EVENT));
     }
-    setIsOpen(false);
   }, [hash]);
-
-  useEffect(() => {
-    syncFromLocation();
-    window.addEventListener('hashchange', syncFromLocation);
-    window.addEventListener('popstate', syncFromLocation);
-    return () => {
-      window.removeEventListener('hashchange', syncFromLocation);
-      window.removeEventListener('popstate', syncFromLocation);
-    };
-  }, [syncFromLocation]);
 
   useEffect(() => {
     if (!isOpen) return;

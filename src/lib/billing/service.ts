@@ -16,7 +16,7 @@ import {
   type TenantPlan,
 } from '@/lib/plans';
 import { getBillingProvider, ozowCheckoutAvailable } from '@/lib/billing/provider';
-import { addOneMonth } from '@/lib/billing/dates';
+import { addOneMonth, nextPeriodEnd } from '@/lib/billing/dates';
 import { ozowProvider } from '@/lib/billing/providers/ozow';
 
 export { addOneMonth } from '@/lib/billing/dates';
@@ -99,9 +99,18 @@ export async function activateSubscription(
         ? tenant.plan
         : 'starter';
 
-  // Month-to-month: the paid period starts on successful payment and runs one month.
+  // Month-to-month: the paid period runs one month. Early renewals extend
+  // from the current period end so customers never lose paid days.
   const now = new Date();
-  const periodEnd = opts.periodEnd ?? addOneMonth(now);
+  const existing = await prisma.subscription.findUnique({
+    where: { tenantId },
+    select: { status: true, currentPeriodEnd: true },
+  });
+  const periodEnd =
+    opts.periodEnd ??
+    (existing?.status === 'active'
+      ? nextPeriodEnd(now, existing.currentPeriodEnd)
+      : addOneMonth(now));
 
   await prisma.$transaction([
     prisma.tenant.update({ where: { id: tenantId }, data: { plan } }),
@@ -128,6 +137,7 @@ export async function activateSubscription(
         currentPeriodEnd: periodEnd,
         cancelAtPeriodEnd: false,
         canceledAt: null,
+        renewalNoticeAt: null,
         provider: getBillingProvider().id,
         ...(opts.providerCustomerId
           ? { providerCustomerId: opts.providerCustomerId }
@@ -318,17 +328,16 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
   try {
     result = await createCheckout({ tenantId, plan });
   } catch (err) {
-    const message = err instanceof Error ? err.message : '';
-    // Stitch credentials can go stale (secret regenerates when viewed);
-    // fall back to Ozow when available.
-    const stitchAuthFailed =
+    // Ozow is the resilience rail: any Stitch checkout failure (stale secret,
+    // API outage, rejected payment create) falls back to Ozow when configured.
+    const canFallBack =
       activeProvider.id === 'stitch' &&
-      (/invalid_client/i.test(message) ||
-        /Stitch Express auth failed/i.test(message) ||
-        /Stitch credentials/i.test(message));
-    if (stitchAuthFailed && ozowCheckoutAvailable() && ozowProvider.createCheckout) {
+      ozowCheckoutAvailable() &&
+      ozowProvider.createCheckout;
+    if (canFallBack && ozowProvider.createCheckout) {
+      const message = err instanceof Error ? err.message : String(err);
       console.warn(
-        '[billing] Stitch auth failed; falling back to Ozow checkout for this request'
+        `[billing] Stitch checkout failed (${message.slice(0, 200)}); falling back to Ozow`
       );
       activeProvider = ozowProvider;
       result = await ozowProvider.createCheckout({ tenantId, plan });

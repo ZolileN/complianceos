@@ -204,7 +204,7 @@ export async function migrateAliasComplianceItems(): Promise<{
 
   let renamed = 0;
   let merged = 0;
-  let skipped = 0;
+  const skipped = 0;
 
   for (const item of items) {
     const resolved = resolveObligation(item.category, item.name);

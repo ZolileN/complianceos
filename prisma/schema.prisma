@@ -150,6 +150,9 @@ model Subscription {
   providerSubscriptionId String?
   providerPlanId         String?
 
+  /// When the renewal notice for the current period was sent (dunning cron).
+  renewalNoticeAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

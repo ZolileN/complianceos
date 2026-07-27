@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 export type ThemeMode = "light" | "dark";
 
 const STORAGE_KEY = "praxis-theme";
+const CHANGE_EVENT = "praxis-theme-change";
 
 function readStoredTheme(): ThemeMode {
   if (typeof window === "undefined") return "light";
@@ -17,27 +18,43 @@ function readStoredTheme(): ThemeMode {
   return "light";
 }
 
-export function useTheme() {
-  const [theme, setThemeState] = useState<ThemeMode>("light");
-  const [ready, setReady] = useState(false);
+function subscribeTheme(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CHANGE_EVENT, callback);
+  };
+}
 
-  useEffect(() => {
-    setThemeState(readStoredTheme());
-    setReady(true);
-  }, []);
+const emptySubscribe = () => () => {};
+
+export function useTheme() {
+  // External store: theme lives in localStorage; no setState-in-effect needed.
+  const theme = useSyncExternalStore(
+    subscribeTheme,
+    readStoredTheme,
+    () => "light" as ThemeMode
+  );
+  // false during SSR/hydration, true on the client.
+  const ready = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const setTheme = useCallback((next: ThemeMode) => {
-    setThemeState(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, next);
     } catch {
       /* ignore */
     }
+    window.dispatchEvent(new Event(CHANGE_EVENT));
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [setTheme, theme]);
+    setTheme(readStoredTheme() === "dark" ? "light" : "dark");
+  }, [setTheme]);
 
   return { theme, setTheme, toggleTheme, ready };
 }

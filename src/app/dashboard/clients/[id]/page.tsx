@@ -178,6 +178,7 @@ function ClientDetailPageContent() {
       requestedTab &&
       ['overview', 'documents', 'compliance', 'tasks', 'workflows'].includes(requestedTab)
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- URL → state sync on param change
       setTab(requestedTab as TabType);
     }
     if (itemId) {
@@ -200,6 +201,7 @@ function ClientDetailPageContent() {
     if (!item) return;
 
     deepLinkHandledRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link opens editor once data loads
     setTab('compliance');
 
     // Staff land directly in the issue editor; clients land on the highlighted issue.

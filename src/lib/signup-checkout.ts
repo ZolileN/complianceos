@@ -11,6 +11,7 @@ import {
   type TenantPlan,
 } from '@/lib/plans';
 import { buildOzowHash, ozowReturnUrl } from '@/lib/billing/providers/ozow';
+import { createExpressPayment } from '@/lib/billing/providers/stitch';
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -79,9 +80,43 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
     };
   }
 
+  if (provider.id === 'stitch') {
+    const pending = await prisma.pendingSignup.create({
+      data: {
+        plan: input.plan,
+        firmName: input.firmName.trim(),
+        fullName: input.fullName.trim(),
+        email: normalizedEmail,
+        passwordHash,
+        status: 'pending',
+        paymentReference: transactionReference,
+        provider: 'stitch',
+        expiresAt,
+      },
+    });
+
+    const payment = await createExpressPayment({
+      amountCents: def.priceZarCents,
+      payerName: input.firmName.trim(),
+      payerEmail: normalizedEmail,
+      merchantReference: transactionReference,
+    });
+
+    await prisma.pendingSignup.update({
+      where: { id: pending.id },
+      data: { paymentPayload: JSON.stringify({ paymentId: payment.paymentId }) },
+    });
+
+    return {
+      pendingSignupId: pending.id,
+      checkoutUrl: payment.checkoutUrl,
+      provider: 'stitch' as const,
+    };
+  }
+
   if (provider.id !== 'ozow') {
     throw new Error(
-      'Signup checkout currently supports Ozow or manual billing. Configure OZOW_* or BILLING_PROVIDER=manual for development.'
+      'Signup checkout currently supports Stitch, Ozow, or manual billing. Configure STITCH_* / OZOW_* or BILLING_PROVIDER=manual for development.'
     );
   }
 

@@ -43,9 +43,19 @@ function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Payment redirects arrive as full page loads, so initializing from the URL
+  // params is sufficient (no setState-in-effect needed).
   const [pendingSignupId, setPendingSignupId] = useState(pendingParam);
-  const [paid, setPaid] = useState(false);
-  const [error, setError] = useState('');
+  const [paid, setPaid] = useState(
+    () => billingParam === 'success' && Boolean(pendingParam)
+  );
+  const [error, setError] = useState(() => {
+    if (billingParam === 'cancelled')
+      return 'Payment was cancelled. You can try again when ready.';
+    if (billingParam === 'error')
+      return 'Payment could not be completed. Please try again.';
+    return '';
+  });
   const [loading, setLoading] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
 
@@ -54,19 +64,6 @@ function SignupForm() {
       router.replace('/#contact-sales');
     }
   }, [plan, router]);
-
-  useEffect(() => {
-    if (billingParam === 'success' && pendingParam) {
-      setPendingSignupId(pendingParam);
-      setPaid(true);
-    }
-    if (billingParam === 'cancelled') {
-      setError('Payment was cancelled. You can try again when ready.');
-    }
-    if (billingParam === 'error') {
-      setError('Payment could not be completed. Please try again.');
-    }
-  }, [billingParam, pendingParam]);
 
   useEffect(() => {
     if (!pendingParam) return;
@@ -117,7 +114,7 @@ function SignupForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Payment setup failed');
       if (data.data?.checkoutUrl) {
-        window.location.href = data.data.checkoutUrl;
+        window.location.assign(data.data.checkoutUrl);
         return;
       }
       if (data.data?.pendingSignupId) {

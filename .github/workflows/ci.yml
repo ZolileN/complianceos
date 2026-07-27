@@ -26,9 +26,7 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      # Lint is advisory until pre-existing repo lint debt is cleared.
       - name: Lint
-        continue-on-error: true
         run: npm run lint
 
       - name: Typecheck

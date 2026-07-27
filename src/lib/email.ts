@@ -36,6 +36,52 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   }
 }
 
+export async function sendRenewalEmail(
+  email: string,
+  opts: {
+    firmName: string;
+    planName: string;
+    amountZar: string;
+    periodEnd: Date;
+    payUrl: string;
+  }
+) {
+  try {
+    const endDate = opts.periodEnd.toLocaleDateString('en-ZA', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const data = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Your PraxisOne ${opts.planName} plan renews soon`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #e2e8f0; background-color: #000000; padding: 40px; border-radius: 8px; border: 1px solid #1f1f1f;">
+          <h2 style="color: #ffffff; margin-top: 0;">Time to renew your subscription</h2>
+          <p>Hello ${opts.firmName},</p>
+          <p>Your PraxisOne <strong>${opts.planName}</strong> plan (R${opts.amountZar}/month) is paid up until <strong>${endDate}</strong>.</p>
+          <p>To keep your workspace active without interruption, please complete your renewal payment:</p>
+          <div style="margin: 30px 0;">
+            <a href="${opts.payUrl}"
+               target="_blank"
+               style="background-color: #ffffff; color: #000000; font-family: sans-serif; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 6px; display: inline-block; cursor: pointer; border: 1px solid #333;">
+              Renew now — R${opts.amountZar}
+            </a>
+          </div>
+          <p style="font-size: 0.9em; color: #666;">If payment isn't received, your workspace becomes read-only 7 days after the period ends. Your data stays safe and access is restored as soon as you pay.</p>
+          <hr style="border: none; border-top: 1px solid #1f1f1f; margin-top: 40px;" />
+          <p style="font-size: 0.8em; color: #64748b;">&copy; ${new Date().getFullYear()} PraxisOne. All rights reserved.</p>
+        </div>
+      `,
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send renewal email:', error);
+    return { success: false, error };
+  }
+}
+
 export async function sendTeamInviteEmail(email: string, name: string, role: string, inviteUrl: string) {
   try {
     const data = await resend.emails.send({

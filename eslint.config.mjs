@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local dev utilities, not shipped application code:
+    "scratch/**",
+    "scratch.js",
+    "scripts/**",
+    "webhook-stress.js",
   ]),
   {
     rules: {

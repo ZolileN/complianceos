@@ -27,7 +27,7 @@ export async function checkStitchCredentials(): Promise<StitchHealth> {
   }
 
   const apiUrl = (
-    process.env.STITCH_EXPRESS_API_URL || 'https://express.stitch.money'
+    process.env.STITCH_EXPRESS_API_URL ?? 'https://express.stitch.money'
   ).replace(/\/$/, '');
 
   const start = Date.now();

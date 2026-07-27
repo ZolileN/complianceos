@@ -35,8 +35,8 @@ export async function completePrompt(prompt: string): Promise<LLMCompletionResul
     );
   }
 
-  const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const baseUrl = (process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1').replace(/\/$/, '');
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
