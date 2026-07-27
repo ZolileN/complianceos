@@ -6,19 +6,13 @@
 
 import { prisma } from '@/lib/prisma';
 import { getPlanDefinition, isTenantPlan } from '@/lib/plans';
-import { createExpressPayment } from '@/lib/billing/providers/stitch';
-import { ozowCheckoutAvailable } from '@/lib/billing/provider';
+import { createPaystackPayment } from '@/lib/billing/providers/paystack';
+import { paystackCheckoutAvailable } from '@/lib/billing/provider';
 import { isPlatformAdminSlug } from '@/lib/platform-admin-constants';
 import { sendRenewalEmail } from '@/lib/email';
 
 /** Days before period end that the renewal notice goes out. */
 export const RENEWAL_NOTICE_DAYS = 5;
-
-function stitchConfigured(): boolean {
-  return Boolean(
-    process.env.STITCH_CLIENT_ID && process.env.STITCH_CLIENT_SECRET
-  );
-}
 
 export async function sendRenewalNotices(now = new Date()) {
   const windowEnd = new Date(
@@ -60,37 +54,34 @@ export async function sendRenewalNotices(now = new Date()) {
 
     let payUrl = `${appUrl}/dashboard/billing`;
 
-    // Prefer a direct Stitch Express payment link (no login required).
+    // Prefer a direct Paystack checkout link (no login required).
     // Fall back to the billing dashboard when only Ozow/manual is available.
-    if (stitchConfigured()) {
+    if (paystackCheckoutAvailable()) {
       try {
         const reference = `PXRN-${sub.tenant.slug.slice(0, 24)}-${plan.slice(0, 4)}-${Date.now()}`
-          .replace(/[^a-zA-Z0-9\-]/g, '')
+          .replace(/[^a-zA-Z0-9\-_.]/g, '')
           .slice(0, 64);
-        const payment = await createExpressPayment({
+        const payment = await createPaystackPayment({
           amountCents: def.priceZarCents,
+          email,
           payerName: sub.tenant.name,
-          payerEmail: email,
           merchantReference: reference,
+          metadata: { tenant_id: sub.tenantId, plan },
         });
         payUrl = payment.checkoutUrl;
 
         await prisma.subscription.update({
           where: { tenantId: sub.tenantId },
           data: {
-            provider: 'stitch',
+            provider: 'paystack',
             providerSubscriptionId: reference,
-            providerCustomerId: payment.paymentId,
           },
         });
       } catch (err) {
         console.warn(
-          `[renewals] Stitch link failed for ${sub.tenantId}; using dashboard link`,
+          `[renewals] Paystack link failed for ${sub.tenantId}; using dashboard link`,
           err instanceof Error ? err.message : err
         );
-        if (!ozowCheckoutAvailable()) {
-          // No payment rail at all — still send the dashboard link.
-        }
       }
     }
 

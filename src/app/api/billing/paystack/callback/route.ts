@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { activateSubscription } from '@/lib/billing/service';
-import { getExpressPaymentStatus } from '@/lib/billing/providers/stitch';
+import { getPaystackTransactionStatus } from '@/lib/billing/providers/paystack';
 import { markPendingSignupPaid } from '@/lib/signup-checkout';
 import { isTenantPlan } from '@/lib/plans';
 
 /**
- * Stitch Express browser redirect after checkout.
- * Query: payment_id + reference (our merchantReference).
- * Handles both tenant upgrades/renewals and pay-before-create signups.
+ * Paystack browser redirect after checkout.
+ * Query: reference (or trxref — Paystack sends both).
+ * Handles tenant upgrades/renewals and pay-before-create signups.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const paymentId = searchParams.get('payment_id') || searchParams.get('id');
   const reference =
-    searchParams.get('reference') || searchParams.get('merchantReference');
+    searchParams.get('reference') || searchParams.get('trxref');
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   const redirect = (path: string, billing: string, reason?: string) => {
@@ -24,8 +23,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(dest);
   };
 
-  if (!paymentId || !reference) {
-    return redirect('/dashboard/billing', 'error', 'missing_payment');
+  if (!reference) {
+    return redirect('/dashboard/billing', 'error', 'missing_reference');
   }
 
   // Pay-before-create signup?
@@ -35,15 +34,11 @@ export async function GET(request: NextRequest) {
   if (pendingSignup) {
     let status: string | null;
     try {
-      status = await getExpressPaymentStatus(paymentId, reference);
+      status = await getPaystackTransactionStatus(reference);
     } catch {
-      return redirect(
-        `/signup`,
-        'error',
-        'status_check_failed'
-      );
+      return redirect('/signup', 'error', 'status_check_failed');
     }
-    if (status !== 'PAID') {
+    if (status !== 'success') {
       const dest = new URL(`${appUrl}/signup`);
       dest.searchParams.set('plan', pendingSignup.plan);
       dest.searchParams.set('billing', 'error');
@@ -57,7 +52,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(dest);
   }
 
-  // Tenant upgrade / renewal
   const sub = await prisma.subscription.findFirst({
     where: { providerSubscriptionId: reference },
   });
@@ -67,12 +61,12 @@ export async function GET(request: NextRequest) {
 
   let status: string | null;
   try {
-    status = await getExpressPaymentStatus(paymentId, reference);
+    status = await getPaystackTransactionStatus(reference);
   } catch {
     return redirect('/dashboard/billing', 'error', 'status_check_failed');
   }
 
-  if (status !== 'PAID') {
+  if (status !== 'success') {
     return redirect(
       '/dashboard/billing',
       'error',

@@ -11,7 +11,7 @@ import {
   type TenantPlan,
 } from '@/lib/plans';
 import { buildOzowHash, ozowReturnUrl } from '@/lib/billing/providers/ozow';
-import { createExpressPayment } from '@/lib/billing/providers/stitch';
+import { createPaystackPayment } from '@/lib/billing/providers/paystack';
 
 const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -80,7 +80,7 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
     };
   }
 
-  if (provider.id === 'stitch') {
+  if (provider.id === 'paystack') {
     const pending = await prisma.pendingSignup.create({
       data: {
         plan: input.plan,
@@ -90,33 +90,34 @@ export async function createPendingSignupCheckout(input: SignupCheckoutInput) {
         passwordHash,
         status: 'pending',
         paymentReference: transactionReference,
-        provider: 'stitch',
+        provider: 'paystack',
         expiresAt,
       },
     });
 
-    const payment = await createExpressPayment({
+    const payment = await createPaystackPayment({
       amountCents: def.priceZarCents,
+      email: normalizedEmail,
       payerName: input.firmName.trim(),
-      payerEmail: normalizedEmail,
       merchantReference: transactionReference,
+      metadata: { pending_signup_id: pending.id, plan: input.plan },
     });
 
     await prisma.pendingSignup.update({
       where: { id: pending.id },
-      data: { paymentPayload: JSON.stringify({ paymentId: payment.paymentId }) },
+      data: { paymentPayload: JSON.stringify({ reference: payment.reference }) },
     });
 
     return {
       pendingSignupId: pending.id,
       checkoutUrl: payment.checkoutUrl,
-      provider: 'stitch' as const,
+      provider: 'paystack' as const,
     };
   }
 
   if (provider.id !== 'ozow') {
     throw new Error(
-      'Signup checkout currently supports Stitch, Ozow, or manual billing. Configure STITCH_* / OZOW_* or BILLING_PROVIDER=manual for development.'
+      'Signup checkout currently supports Paystack, Ozow, or manual billing. Configure PAYSTACK_SECRET_KEY / OZOW_* or BILLING_PROVIDER=manual for development.'
     );
   }
 

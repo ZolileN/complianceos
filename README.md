@@ -65,7 +65,7 @@ Ensure you have the following installed:
         *   **Compliance deadlines:** Vercel Cron in `vercel.json` — daily `0 6 * * *` (Hobby-safe). Vercel sends `Authorization: Bearer $CRON_SECRET`.
         *   **Trial expiry:** Vercel Cron daily `0 7 * * *` — moves expired trials to `past_due` (read-only).
         *   **Skill events:** external [cron-job.org](https://cron-job.org) every 5 minutes → `GET https://praxis.mlkcomputer.com/api/cron/skill-events` with header `Authorization: Bearer $CRON_SECRET` (Vercel Hobby only allows once-per-day crons).
-    *   Billing (optional until go-live): `BILLING_PROVIDER`, `STITCH_CLIENT_ID`, `STITCH_CLIENT_SECRET`, `STITCH_REDIRECT_URI`, `OZOW_SITE_CODE`, `OZOW_PRIVATE_KEY`, `OZOW_API_KEY`. Plan limits live in `src/lib/plans.ts`.
+    *   Billing (optional until go-live): `BILLING_PROVIDER`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `OZOW_SITE_CODE`, `OZOW_PRIVATE_KEY`, `OZOW_API_KEY`. Plan limits live in `src/lib/plans.ts`.
     *   **Redis (required in production for skills queue, tenant admin logs, and Infrastructure health):**
         *   **Preferred on Vercel:** install [Upstash Redis](https://vercel.com/marketplace/upstash) and connect it to the project. That injects:
             *   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
