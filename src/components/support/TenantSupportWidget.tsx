@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import SimpleInquiryModal from '@/components/landing/SimpleInquiryModal';
+import SuggestImprovementModal from '@/components/support/SuggestImprovementModal';
 import { useAuth } from '@/contexts/AuthContext';
 
 type Panel = 'menu' | 'contact';
@@ -160,19 +161,11 @@ export default function TenantSupportWidget() {
         initialValues={inquiryDefaults}
       />
 
-      <SimpleInquiryModal
+      <SuggestImprovementModal
         key={improvementOpen ? `improvement-${user?.email || 'open'}` : 'improvement-closed'}
         isOpen={improvementOpen}
         onClose={() => setImprovementOpen(false)}
-        badge="Feedback"
-        title="Suggest an improvement"
-        description="Share an idea to make PraxisOne better for your team."
-        submitLabel="Send suggestion"
-        successTitle="Thanks for the feedback"
-        successMessage="We review every suggestion and use them to shape the product roadmap."
-        apiPath="/api/contact/general"
-        initialValues={inquiryDefaults}
-        messagePlaceholder="What would you like us to improve?"
+        reporter={inquiryDefaults}
       />
 
       <style jsx>{`
