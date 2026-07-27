@@ -1,6 +1,6 @@
 /**
  * Provider-agnostic billing service.
- * Adapters (manual / stitch / ozow) plug in without changing entitlement guards.
+ * Adapters (manual / paystack / ozow) plug in without changing entitlement guards.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -328,16 +328,16 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
   try {
     result = await createCheckout({ tenantId, plan });
   } catch (err) {
-    // Ozow is the resilience rail: any Stitch checkout failure (stale secret,
+    // Ozow is the resilience rail: any Paystack checkout failure (stale key,
     // API outage, rejected payment create) falls back to Ozow when configured.
     const canFallBack =
-      activeProvider.id === 'stitch' &&
+      activeProvider.id === 'paystack' &&
       ozowCheckoutAvailable() &&
       ozowProvider.createCheckout;
     if (canFallBack && ozowProvider.createCheckout) {
       const message = err instanceof Error ? err.message : String(err);
       console.warn(
-        `[billing] Stitch checkout failed (${message.slice(0, 200)}); falling back to Ozow`
+        `[billing] Paystack checkout failed (${message.slice(0, 200)}); falling back to Ozow`
       );
       activeProvider = ozowProvider;
       result = await ozowProvider.createCheckout({ tenantId, plan });

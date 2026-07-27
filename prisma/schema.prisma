@@ -151,7 +151,7 @@ model Subscription {
   cancelAtPeriodEnd  Boolean  @default(false)
   canceledAt         DateTime?
 
-  /// manual | stitch | ozow
+  /// manual | paystack | ozow
   provider               String  @default("manual")
   providerCustomerId     String?
   providerSubscriptionId String?
@@ -756,7 +756,7 @@ model InvoicePayment {
   invoiceId    String
   invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   amountCents  Int
-  method       String   @default("manual") // manual, bank_transfer, ozow, stitch
+  method       String   @default("manual") // manual, bank_transfer, ozow, paystack
   reference    String?
   notes        String?
   paidAt       DateTime @default(now())

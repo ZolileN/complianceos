@@ -1,13 +1,13 @@
 /**
  * Billing provider interface + factory.
- * BILLING_PROVIDER=manual|stitch|ozow
- * Default: Stitch (primary rail) when STITCH_* set, else Ozow, else manual.
- * startCheckout falls back to Ozow when a Stitch checkout fails.
+ * BILLING_PROVIDER=manual|paystack|ozow
+ * Default: Paystack (primary rail) when PAYSTACK_SECRET_KEY set, else Ozow, else manual.
+ * startCheckout falls back to Ozow when a Paystack checkout fails.
  */
 
 import type { TenantPlan } from '@/lib/plans';
 import { manualProvider } from '@/lib/billing/providers/manual';
-import { stitchProvider } from '@/lib/billing/providers/stitch';
+import { paystackProvider } from '@/lib/billing/providers/paystack';
 import { ozowProvider } from '@/lib/billing/providers/ozow';
 
 export type CheckoutResult = {
@@ -18,7 +18,7 @@ export type CheckoutResult = {
 };
 
 export type BillingProvider = {
-  id: 'manual' | 'stitch' | 'ozow';
+  id: 'manual' | 'paystack' | 'ozow';
   createCheckout?: (args: {
     tenantId: string;
     plan: TenantPlan;
@@ -42,17 +42,21 @@ export function ozowCheckoutAvailable(): boolean {
   );
 }
 
+export function paystackCheckoutAvailable(): boolean {
+  return Boolean((process.env.PAYSTACK_SECRET_KEY || '').trim());
+}
+
 export function getBillingProvider(): BillingProvider {
   const configured = (process.env.BILLING_PROVIDER || '').toLowerCase();
 
-  if (configured === 'stitch') return stitchProvider;
+  if (configured === 'paystack') return paystackProvider;
   if (configured === 'ozow') return ozowProvider;
   if (configured === 'manual') return manualProvider;
 
-  // Auto: Stitch is the primary rail; Ozow is the fallback (startCheckout
-  // retries failed Stitch checkouts on Ozow when it is configured).
-  if (process.env.STITCH_CLIENT_ID && process.env.STITCH_CLIENT_SECRET) {
-    return stitchProvider;
+  // Auto: Paystack is the primary rail; Ozow is the fallback (startCheckout
+  // retries failed Paystack checkouts on Ozow when it is configured).
+  if (paystackCheckoutAvailable()) {
+    return paystackProvider;
   }
   if (ozowCheckoutAvailable()) {
     return ozowProvider;

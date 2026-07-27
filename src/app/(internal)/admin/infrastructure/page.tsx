@@ -36,7 +36,7 @@ type DiagnosticsResponse = {
       error?: string;
       latencyMs: number | null;
     };
-    stitch?: {
+    paystack?: {
       ok: boolean;
       configured: boolean;
       detail: string;
@@ -83,15 +83,14 @@ function ozowStatusLabel(ozow?: DiagnosticsResponse['health']['ozow']): string {
   return 'Rejected';
 }
 
-function stitchStatusLabel(stitch?: DiagnosticsResponse['health']['stitch']): string {
-  if (!stitch) return 'Unavailable';
-  if (stitch.ok) {
-    const latency = stitch.latencyMs != null ? ` · ${stitch.latencyMs}ms` : '';
-    return `Credentials OK${latency}`;
+function paystackStatusLabel(paystack?: DiagnosticsResponse['health']['paystack']): string {
+  if (!paystack) return 'Unavailable';
+  if (paystack.ok) {
+    const latency = paystack.latencyMs != null ? ` · ${paystack.latencyMs}ms` : '';
+    return `API key OK${latency}`;
   }
-  if (!stitch.configured) return 'Not configured';
-  if (stitch.error === 'invalid_client') return 'Invalid client';
-  if (stitch.error === 'invalid_scope') return 'Missing scope';
+  if (!paystack.configured) return 'Not configured';
+  if (paystack.error === 'invalid_key') return 'Invalid key';
   return 'Rejected';
 }
 
@@ -174,8 +173,13 @@ export default function InfrastructureTuning() {
           ? `ok (${data.health.ozow.latencyMs ?? '?'}ms)`
           : `fail (${data.health.ozow.error ?? data.health.ozow.detail})`
         : 'n/a';
+      const paystackPart = data.health.paystack
+        ? data.health.paystack.ok
+          ? `ok (${data.health.paystack.latencyMs ?? '?'}ms)`
+          : `fail (${data.health.paystack.error ?? data.health.paystack.detail})`
+        : 'n/a';
       addConsoleLog(
-        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${redisPart}, db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms), ozow: ${ozowPart}`
+        `Diagnostics check @ ${ts} — overall: ${data.health.overall}, redis: ${redisPart}, db: ${data.health.database.ok ? 'ok' : 'fail'} (${data.health.database.latencyMs ?? '?'}ms), ozow: ${ozowPart}, paystack: ${paystackPart}`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Diagnostics fetch failed';
@@ -334,14 +338,14 @@ export default function InfrastructureTuning() {
                 <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <StatusDot ok={health?.stitch?.ok ?? false} />
-                      <span className="font-medium">Stitch</span>
+                      <StatusDot ok={health?.paystack?.ok ?? false} />
+                      <span className="font-medium">Paystack</span>
                     </div>
-                    <span className="text-slate-600">{stitchStatusLabel(health?.stitch)}</span>
+                    <span className="text-slate-600">{paystackStatusLabel(health?.paystack)}</span>
                   </div>
-                  {health?.stitch && !health.stitch.ok && (
+                  {health?.paystack && !health.paystack.ok && (
                     <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                      {health.stitch.detail}
+                      {health.paystack.detail}
                     </p>
                   )}
                 </div>

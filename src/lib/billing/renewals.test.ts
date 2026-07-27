@@ -13,13 +13,13 @@ vi.mock('@/lib/email', () => ({
   sendRenewalEmail: vi.fn(),
 }));
 
-vi.mock('@/lib/billing/providers/stitch', () => ({
-  createExpressPayment: vi.fn(),
+vi.mock('@/lib/billing/providers/paystack', () => ({
+  createPaystackPayment: vi.fn(),
 }));
 
 import { prisma } from '@/lib/prisma';
 import { sendRenewalEmail } from '@/lib/email';
-import { createExpressPayment } from '@/lib/billing/providers/stitch';
+import { createPaystackPayment } from '@/lib/billing/providers/paystack';
 import { sendRenewalNotices } from '@/lib/billing/renewals';
 import { nextPeriodEnd } from '@/lib/billing/dates';
 
@@ -32,7 +32,7 @@ const prismaMock = prisma as unknown as {
 const sendRenewalEmailMock = sendRenewalEmail as unknown as ReturnType<
   typeof vi.fn
 >;
-const createExpressPaymentMock = createExpressPayment as unknown as ReturnType<
+const createPaystackPaymentMock = createPaystackPayment as unknown as ReturnType<
   typeof vi.fn
 >;
 
@@ -41,18 +41,17 @@ describe('sendRenewalNotices', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('STITCH_CLIENT_ID', 'test-client');
-    vi.stubEnv('STITCH_CLIENT_SECRET', 'secret');
-    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://praxis.mlkcomputer.com');
+    vi.stubEnv('PAYSTACK_SECRET_KEY', 'sk_test_secret');
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://praxis.example.com');
     prismaMock.subscription.update.mockResolvedValue({});
     sendRenewalEmailMock.mockResolvedValue({ success: true });
-    createExpressPaymentMock.mockResolvedValue({
-      checkoutUrl: 'https://express.stitch.money/pay/renew1?redirect_url=x',
-      paymentId: 'pay_renew1',
+    createPaystackPaymentMock.mockResolvedValue({
+      checkoutUrl: 'https://checkout.paystack.com/renew1',
+      reference: 'PXRN-acme-grow-1',
     });
   });
 
-  it('creates a Stitch payment link and emails tenants due for renewal', async () => {
+  it('creates a Paystack checkout link and emails tenants due for renewal', async () => {
     prismaMock.subscription.findMany.mockResolvedValue([
       {
         tenantId: 't1',
@@ -65,7 +64,7 @@ describe('sendRenewalNotices', () => {
     const result = await sendRenewalNotices(now);
 
     expect(result.renewalsSent).toBe(1);
-    expect(createExpressPaymentMock).toHaveBeenCalledWith(
+    expect(createPaystackPaymentMock).toHaveBeenCalledWith(
       expect.objectContaining({ amountCents: 2_999_00, payerName: 'Acme Firm' })
     );
     expect(sendRenewalEmailMock).toHaveBeenCalledWith(
@@ -73,17 +72,15 @@ describe('sendRenewalNotices', () => {
       expect.objectContaining({
         planName: 'Growth',
         amountZar: '2999.00',
-        payUrl: expect.stringContaining('express.stitch.money'),
+        payUrl: expect.stringContaining('checkout.paystack.com'),
       })
     );
-    // Reference swap so the payment webhook can activate the renewal.
     expect(prismaMock.subscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { tenantId: 't1' },
-        data: expect.objectContaining({ provider: 'stitch' }),
+        data: expect.objectContaining({ provider: 'paystack' }),
       })
     );
-    // Notice marked sent.
     expect(prismaMock.subscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ renewalNoticeAt: now }),
@@ -107,8 +104,8 @@ describe('sendRenewalNotices', () => {
     expect(sendRenewalEmailMock).not.toHaveBeenCalled();
   });
 
-  it('falls back to the dashboard link when Stitch fails', async () => {
-    createExpressPaymentMock.mockRejectedValue(new Error('express down'));
+  it('falls back to the dashboard link when Paystack fails', async () => {
+    createPaystackPaymentMock.mockRejectedValue(new Error('paystack down'));
     prismaMock.subscription.findMany.mockResolvedValue([
       {
         tenantId: 't3',
@@ -123,7 +120,7 @@ describe('sendRenewalNotices', () => {
     expect(sendRenewalEmailMock).toHaveBeenCalledWith(
       'fb@firm.co.za',
       expect.objectContaining({
-        payUrl: 'https://praxis.mlkcomputer.com/dashboard/billing',
+        payUrl: 'https://praxis.example.com/dashboard/billing',
       })
     );
   });
