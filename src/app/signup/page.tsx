@@ -9,6 +9,7 @@ import { ArrowLeft, CreditCard, Loader2, Moon, Sun } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Card,
   CardContent,
@@ -298,9 +299,7 @@ function SignupForm() {
               </div>
               <div className="form-group">
                 <label className="form-label">Password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   placeholder="Min 6 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -310,9 +309,7 @@ function SignupForm() {
               </div>
               <div className="form-group">
                 <label className="form-label">Confirm password</label>
-                <input
-                  className="input"
-                  type="password"
+                <PasswordInput
                   placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

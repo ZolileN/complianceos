@@ -17,6 +17,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Card,
   CardContent,
@@ -712,16 +713,27 @@ export default function FleetOverview() {
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     {label}
                   </label>
-                  <input
-                    type={type}
-                    required
-                    minLength={key === 'password' ? 6 : undefined}
-                    value={provisionForm[key]}
-                    onChange={(e) =>
-                      setProvisionForm((prev) => ({ ...prev, [key]: e.target.value }))
-                    }
-                    className="input w-full"
-                  />
+                  {type === 'password' ? (
+                    <PasswordInput
+                      required
+                      minLength={6}
+                      value={provisionForm[key]}
+                      onChange={(e) =>
+                        setProvisionForm((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      className="input w-full"
+                    />
+                  ) : (
+                    <input
+                      type={type}
+                      required
+                      value={provisionForm[key]}
+                      onChange={(e) =>
+                        setProvisionForm((prev) => ({ ...prev, [key]: e.target.value }))
+                      }
+                      className="input w-full"
+                    />
+                  )}
                 </div>
               ))}
               <div>

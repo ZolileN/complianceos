@@ -10,6 +10,7 @@ import { useConfirm } from '@/contexts/ConfirmContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface TeamMember {
@@ -437,9 +438,7 @@ export default function TeamPage() {
               <form onSubmit={handleResetPassword} className="stack">
                 <div className="form-group">
                   <label className="form-label">New Password *</label>
-                  <input
-                    className="input"
-                    type="password"
+                  <PasswordInput
                     required
                     value={resetPassword}
                     onChange={(e) => setResetPassword(e.target.value)}
