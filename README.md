@@ -93,6 +93,23 @@ Ensure you have the following installed:
 
 5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## 🚀 Production deploy checklist
+
+After merging schema changes to `main`, apply the database **before** or immediately after Vercel redeploys:
+
+```bash
+# From your machine — use the production DATABASE_URL from Vercel/Neon
+DATABASE_URL="postgresql://..." ./scripts/sync-production-schema.sh
+```
+
+Or:
+
+```bash
+DATABASE_URL="postgresql://..." npx prisma db push
+```
+
+If this step is skipped, Sentry will report errors like `The table public.Invoice does not exist` on `/api/invoices`, `/api/revenue/summary`, and `/api/emails`.
+
 ## 🔒 Security & Roles
 
 The platform enforces strict Role-Based Access Control (RBAC):
