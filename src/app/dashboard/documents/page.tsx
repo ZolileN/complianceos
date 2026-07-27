@@ -8,12 +8,12 @@ import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import type { Document as Doc } from '@/types';
+import { PageHeader } from '@/components/PageHeader';
 import { UploadDropzone } from '@/lib/uploadthing';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import '@uploadthing/react/styles.css';
 
 const PAGE_LIMIT = 20;
 
@@ -165,22 +165,22 @@ export default function DocumentsPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <FolderOpen className="size-3.5" />
             Files
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Documents</h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            {totalCount} {totalCount === 1 ? 'file' : 'files'} stored
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => setShowUpload(true)}>
-          <Upload />
-          Upload
-        </Button>
-      </section>
+        }
+        title="Documents"
+        description={`${totalCount} ${totalCount === 1 ? 'file' : 'files'} stored`}
+        actions={
+          <Button variant="primary" onClick={() => setShowUpload(true)}>
+            <Upload />
+            Upload
+          </Button>
+        }
+      />
 
       <input
         className="input w-full max-w-md"

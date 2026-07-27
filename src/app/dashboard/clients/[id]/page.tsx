@@ -41,7 +41,6 @@ import { Badge } from '@/components/ui/badge';
 import MandatePanel from '@/components/clients/MandatePanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import '@uploadthing/react/styles.css';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
 
@@ -409,8 +408,9 @@ function ClientDetailPageContent() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div className="flex items-start gap-3">
+      <section className="page-heading-row">
+        <div className="page-heading-row__content">
+          <div className="flex items-start gap-3">
           <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0">
             <Link href="/dashboard/clients" aria-label="Back to clients">
               <ArrowLeft />
@@ -433,8 +433,9 @@ function ClientDetailPageContent() {
               {client.registration_number || 'No registration number'}
             </p>
           </div>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="page-heading-row__actions flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href={`/dashboard/clients/${id}/edit`}>
               <Pencil />

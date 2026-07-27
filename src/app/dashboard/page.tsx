@@ -16,6 +16,7 @@ import {
 
 import { useAuth } from "@/contexts/AuthContext";
 import CompliancePostureChart from "@/components/dashboard/CompliancePostureChart";
+import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -136,8 +137,20 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <span className="spinner size-9" />
+      <div className="mx-auto max-w-[1500px] space-y-7">
+        <PageHeader
+          eyebrow={
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+              <span className="size-1.5 rounded-full bg-teal-600" />
+              Operations overview
+            </div>
+          }
+          title={`${new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}, ${user?.name?.split(' ')[0] || 'there'}`}
+          description="Here's the current state of your client operations and compliance workload."
+        />
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <span className="spinner size-9" />
+        </div>
       </div>
     );
   }
@@ -189,26 +202,24 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-7">
-      <section className="flex w-full flex-col items-start justify-between gap-4 text-left sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1 text-left">
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <span className="size-1.5 rounded-full bg-teal-600" />
             Operations overview
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
-            {greeting}, {user?.name?.split(" ")[0] || "there"}
-          </h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            Here&apos;s the current state of your client operations and compliance workload.
-          </p>
-        </div>
-        <Button asChild variant="primary" className="shrink-0">
-          <Link href="/dashboard/clients/new">
-            <Plus />
-            New client
-          </Link>
-        </Button>
-      </section>
+        }
+        title={`${greeting}, ${user?.name?.split(" ")[0] || "there"}`}
+        description="Here's the current state of your client operations and compliance workload."
+        actions={
+          <Button asChild variant="primary" className="shrink-0">
+            <Link href="/dashboard/clients/new">
+              <Plus />
+              New client
+            </Link>
+          </Button>
+        }
+      />
 
       {stats.portfolio && (
         <section className="grid gap-3 sm:grid-cols-3">

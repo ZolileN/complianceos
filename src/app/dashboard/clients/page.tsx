@@ -7,6 +7,7 @@ import { Check, Copy, Plus, Search, UsersRound } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
+import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -97,39 +98,39 @@ export default function ClientsPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <UsersRound className="size-3.5" />
             Portfolio
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Clients</h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            {clients.length} {clients.length === 1 ? 'company' : 'companies'} in your workspace
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {tenantSlug && (
-            <Button
-              variant={linkCopied ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={handleCopyInviteLink}
-              title={`Share: /onboard/${tenantSlug}`}
-            >
-              {linkCopied ? <Check /> : <Copy />}
-              {linkCopied ? 'Link copied' : 'Share invite link'}
-            </Button>
-          )}
-          {canAddClient && (
-            <Button asChild variant="primary">
-              <Link href="/dashboard/clients/new">
-                <Plus />
-                Add client
-              </Link>
-            </Button>
-          )}
-        </div>
-      </section>
+        }
+        title="Clients"
+        description={`${clients.length} ${clients.length === 1 ? 'company' : 'companies'} in your workspace`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {tenantSlug && (
+              <Button
+                variant={linkCopied ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={handleCopyInviteLink}
+                title={`Share: /onboard/${tenantSlug}`}
+              >
+                {linkCopied ? <Check /> : <Copy />}
+                {linkCopied ? 'Link copied' : 'Share invite link'}
+              </Button>
+            )}
+            {canAddClient && (
+              <Button asChild variant="primary">
+                <Link href="/dashboard/clients/new">
+                  <Plus />
+                  Add client
+                </Link>
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />

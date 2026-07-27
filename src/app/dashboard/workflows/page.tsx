@@ -7,6 +7,7 @@ import { GitBranch, Pencil, Rocket, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { WORKFLOW_CATEGORIES } from '@/lib/constants';
+import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -263,26 +264,24 @@ export default function WorkflowsPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <GitBranch className="size-3.5" />
             Processes
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
-            Workflows
-          </h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            Standardized processes for your practice
-          </p>
-        </div>
-        {templates.length === 0 && !loading && (
-          <Button variant="primary" onClick={seedTemplates}>
-            <Rocket />
-            Load default templates
-          </Button>
-        )}
-      </section>
+        }
+        title="Workflows"
+        description="Standardized processes for your practice"
+        actions={
+          templates.length === 0 && !loading ? (
+            <Button variant="primary" onClick={seedTemplates}>
+              <Rocket />
+              Load default templates
+            </Button>
+          ) : undefined
+        }
+      />
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

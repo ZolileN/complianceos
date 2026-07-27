@@ -195,9 +195,9 @@ export default function MarketplacePage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <section className="page-heading-row">
+        <div className="page-heading-row__content">
+          <h1 className="page-title flex items-center gap-2.5">
             <Zap className="size-6 text-[var(--accent)]" />
             Skill Marketplace
           </h1>
@@ -205,14 +205,14 @@ export default function MarketplacePage() {
             Install skills to automate document, WhatsApp, and compliance workflows.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="page-heading-row__actions flex flex-wrap gap-2">
           <Badge variant="outline">{skills.length} skills</Badge>
           <Badge variant="success">
             {skills.filter((s) => s.installed).length} installed
           </Badge>
           <Badge variant="info">{executions.length} executions</Badge>
         </div>
-      </div>
+      </section>
 
       <div className="tabs">
         {(

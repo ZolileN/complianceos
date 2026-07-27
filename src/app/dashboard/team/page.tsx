@@ -7,6 +7,7 @@ import { Plus, Users, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
+import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -172,8 +173,17 @@ export default function TeamPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1000px] space-y-4">
-        <div className="skeleton h-10 w-56" />
+      <div className="mx-auto max-w-[1000px] space-y-6">
+        <PageHeader
+          eyebrow={
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+              <Users className="size-3.5" />
+              People
+            </div>
+          }
+          title="Team management"
+          description="Manage your advisory firm staff and roles"
+        />
         <div className="skeleton h-64 rounded-xl" />
       </div>
     );
@@ -181,26 +191,24 @@ export default function TeamPage() {
 
   return (
     <div className="mx-auto max-w-[1000px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <Users className="size-3.5" />
             People
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">
-            Team management
-          </h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            Manage your advisory firm staff and roles
-          </p>
-        </div>
-        {canManage && (
-          <Button variant="primary" onClick={() => setShowAddModal(true)}>
-            <Plus />
-            Add team member
-          </Button>
-        )}
-      </section>
+        }
+        title="Team management"
+        description="Manage your advisory firm staff and roles"
+        actions={
+          canManage ? (
+            <Button variant="primary" onClick={() => setShowAddModal(true)}>
+              <Plus />
+              Add team member
+            </Button>
+          ) : undefined
+        }
+      />
 
       <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">

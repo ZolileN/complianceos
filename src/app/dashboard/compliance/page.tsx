@@ -63,7 +63,23 @@ function CompliancePageContent() {
   };
 
   if (loading) {
-    return <div className="flex-center" style={{ minHeight: '50vh' }}><span className="spinner" style={{ width: 40, height: 40 }} /></div>;
+    return (
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <section className="page-heading-row">
+          <div className="page-heading-row__content">
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
+              <ShieldCheck className="size-3.5" />
+              Portfolio monitoring
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Compliance</h1>
+            <p className="mt-1.5 text-sm text-slate-500">Deadlines, evidence and risk across every client.</p>
+          </div>
+        </section>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <span className="spinner" style={{ width: 40, height: 40 }} />
+        </div>
+      </div>
+    );
   }
 
   const filteredItems = items.filter(item => filter === 'all' || item.status === filter);
@@ -125,8 +141,8 @@ function CompliancePageContent() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <div className="page-header" style={{ marginBottom: 0 }}>
-        <div>
+      <section className="page-heading-row">
+        <div className="page-heading-row__content">
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <ShieldCheck className="size-3.5" />
             Portfolio monitoring
@@ -134,7 +150,8 @@ function CompliancePageContent() {
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Compliance</h1>
           <p className="mt-1.5 text-sm text-slate-500">Deadlines, evidence and risk across every client.</p>
         </div>
-        
+
+        <div className="page-heading-row__actions">
         {/* Table vs Timeline View Toggle */}
         <div className="flex rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] p-1 shadow-sm">
           <Button
@@ -154,7 +171,8 @@ function CompliancePageContent() {
             Timeline
           </Button>
         </div>
-      </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[

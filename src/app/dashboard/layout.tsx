@@ -224,14 +224,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [loading, user, tenant, signOut, router]);
 
-  if (loading) {
-    return (
-      <div className={`precision-ops ${theme === 'dark' ? 'dark' : ''} flex-center`} style={{ minHeight: '100vh' }}>
-        <span className="spinner" style={{ width: 40, height: 40 }} />
-      </div>
-    );
-  }
-
   const statusBadge = (s: string) => {
     const m: Record<string, string> = { active: 'badge-green', inactive: 'badge-gray', onboarding: 'badge-blue' };
     return m[s] || 'badge-gray';
@@ -249,7 +241,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section-label">Workspace</div>
-          {getFilteredNavItems().map((item) => {
+          {(loading ? [] : getFilteredNavItems()).map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = icons[item.icon] || LayoutGrid;
             return (
@@ -394,7 +386,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       {/* Main */}
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        {loading ? (
+          <div className="flex min-h-[50vh] items-center justify-center">
+            <span className="spinner" style={{ width: 40, height: 40 }} />
+          </div>
+        ) : (
+          children
+        )}
+      </main>
 
       <style jsx>{`
         @media (max-width: 768px) {

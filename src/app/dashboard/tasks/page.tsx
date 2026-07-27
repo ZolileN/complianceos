@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirm } from '@/contexts/ConfirmContext';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/lib/constants';
+import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -176,22 +177,22 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
-      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
+      <PageHeader
+        eyebrow={
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">
             <CheckSquare className="size-3.5" />
             Operations
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-slate-950">Tasks</h1>
-          <p className="mt-1.5 text-sm text-slate-500">
-            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across your board
-          </p>
-        </div>
-        <Button variant="primary" onClick={openNew}>
-          <Plus />
-          New task
-        </Button>
-      </section>
+        }
+        title="Tasks"
+        description={`${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'} across your board`}
+        actions={
+          <Button variant="primary" onClick={openNew}>
+            <Plus />
+            New task
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="kanban-board">
