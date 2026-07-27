@@ -47,6 +47,7 @@ type EmailInboxPanelProps = {
   tenantSlug?: string | null;
   inboundAddress?: string | null;
   onRefresh: () => void;
+  onEmailRead?: (id: string) => void;
 };
 
 function senderInitial(fromAddress: string) {
@@ -86,6 +87,7 @@ export default function EmailInboxPanel({
   tenantSlug,
   inboundAddress,
   onRefresh,
+  onEmailRead,
 }: EmailInboxPanelProps) {
   const { toast } = useToast();
   const [activeEmailId, setActiveEmailId] = useState<string | null>(null);
@@ -113,24 +115,22 @@ export default function EmailInboxPanel({
   });
 
   const selectedEmailId = activeEmailId ?? filteredEmails[0]?.id ?? null;
+  const isDetailLoading = detailLoading && detail?.id !== selectedEmailId;
 
-  const loadDetail = useCallback(
-    async (id: string) => {
-      setDetailLoading(true);
-      try {
-        const res = await fetch(`/api/emails/${id}`);
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Failed to load email');
-        setDetail(json.data);
-        onRefresh();
-      } catch (err) {
-        toast((err as Error).message || 'Failed to load email', 'error');
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [onRefresh, toast]
-  );
+  const loadDetail = useCallback(async (id: string, options?: { refreshList?: boolean }) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/emails/${id}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load email');
+      setDetail(json.data);
+      if (options?.refreshList) onRefresh();
+    } catch (err) {
+      toast((err as Error).message || 'Failed to load email', 'error');
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [onRefresh, toast]);
 
   useEffect(() => {
     if (!selectedEmailId) return;
@@ -143,7 +143,7 @@ export default function EmailInboxPanel({
         if (!res.ok) throw new Error(json.error || 'Failed to load email');
         if (!cancelled) {
           setDetail(json.data);
-          onRefresh();
+          if (json.data?.status === 'read') onEmailRead?.(selectedEmailId);
         }
       } catch (err) {
         if (!cancelled) {
@@ -156,7 +156,8 @@ export default function EmailInboxPanel({
     return () => {
       cancelled = true;
     };
-  }, [selectedEmailId, onRefresh, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmailId]);
 
   const patchStatus = async (status: string) => {
     if (!selectedEmailId) return;
@@ -172,7 +173,7 @@ export default function EmailInboxPanel({
       }
       toast(status === 'archived' ? 'Email archived' : 'Status updated', 'success');
       onRefresh();
-      if (selectedEmailId) loadDetail(selectedEmailId);
+      if (selectedEmailId) loadDetail(selectedEmailId, { refreshList: true });
     } catch (err) {
       toast((err as Error).message || 'Update failed', 'error');
     }
@@ -281,16 +282,14 @@ export default function EmailInboxPanel({
 
         {/* Detail column */}
         <div className="flex min-h-[560px] flex-col bg-gradient-to-b from-slate-50/50 to-white">
-          {!selectedEmailId || detailLoading ? (
+          {!selectedEmailId ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slate-400">
-              {detailLoading ? (
-                <div className="skeleton h-8 w-48 rounded" />
-              ) : (
-                <>
-                  <MailOpen className="size-10 opacity-40" />
-                  <p className="text-sm">Select an email to read</p>
-                </>
-              )}
+              <MailOpen className="size-10 opacity-40" />
+              <p className="text-sm">Select an email to read</p>
+            </div>
+          ) : isDetailLoading ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slate-400">
+              <div className="skeleton h-8 w-48 rounded" />
             </div>
           ) : detail ? (
             <>

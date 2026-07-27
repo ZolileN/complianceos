@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import {
   Archive,
@@ -158,16 +158,20 @@ export default function InboxPage() {
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  const activeConversation =
+    conversations.find((c) => c.id === activeConvo) ?? conversations[0] ?? null;
+  const activeConversationId = activeConversation?.id ?? null;
+
   useEffect(() => {
-    if (!activeConvo) return;
+    if (!activeConversationId) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/messages?conversation_id=${activeConvo}`);
+        const res = await fetch(`/api/messages?conversation_id=${activeConversationId}`);
         const { data } = await res.json();
         if (!cancelled) {
           setMessages((prev) => {
-            const isNewConvo = lastConvoRef.current !== activeConvo;
+            const isNewConvo = lastConvoRef.current !== activeConversationId;
             const hasNewMessage = data && data.length > prev.length;
             const lastMessageIsOutbound =
               data && data.length > 0 && data[data.length - 1].direction === 'outbound';
@@ -192,7 +196,7 @@ export default function InboxPage() {
               }, 50);
             }
 
-            lastConvoRef.current = activeConvo;
+            lastConvoRef.current = activeConversationId;
             return data || [];
           });
         }
@@ -203,25 +207,25 @@ export default function InboxPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeConvo, msgRefreshKey]);
+  }, [activeConversationId, msgRefreshKey]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (channel === 'whatsapp') {
         setConvoRefreshKey((k) => k + 1);
-        if (activeConvo) setMsgRefreshKey((k) => k + 1);
+        if (activeConversationId) setMsgRefreshKey((k) => k + 1);
       } else {
         setEmailRefreshKey((k) => k + 1);
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [activeConvo, channel]);
+  }, [activeConversationId, channel]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !activeConvo || !tenant) return;
+    if (!newMessage.trim() || !activeConversationId || !tenant) return;
     setSending(true);
-    const convo = conversations.find((c) => c.id === activeConvo);
+    const convo = conversations.find((c) => c.id === activeConversationId);
     try {
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
@@ -229,7 +233,7 @@ export default function InboxPage() {
         body: JSON.stringify({
           to: convo?.whatsapp_number,
           message: newMessage,
-          conversation_id: activeConvo,
+          conversation_id: activeConversationId,
         }),
       });
       if (!res.ok) {
@@ -246,16 +250,14 @@ export default function InboxPage() {
     }
   };
 
-  const activeConversation = conversations.find((c) => c.id === activeConvo);
-
   const patchConversation = async (
     body: { status?: string; assignToMe?: boolean },
     successMsg: string
   ) => {
-    if (!activeConvo) return;
+    if (!activeConversationId) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/conversations/${activeConvo}`, {
+      const res = await fetch(`/api/conversations/${activeConversationId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -313,7 +315,7 @@ export default function InboxPage() {
       ? `${user.tenantSlug}@${process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN}`
       : null);
 
-  const refreshEmails = () => setEmailRefreshKey((k) => k + 1);
+  const refreshEmails = useCallback(() => setEmailRefreshKey((k) => k + 1), []);
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
@@ -345,6 +347,11 @@ export default function InboxPage() {
           tenantSlug={user?.tenantSlug}
           inboundAddress={tenantInboundAddress}
           onRefresh={refreshEmails}
+          onEmailRead={(id) =>
+            setEmails((prev) =>
+              prev.map((email) => (email.id === id ? { ...email, status: 'read' } : email))
+            )
+          }
         />
       ) : loading ? (
         <div className="skeleton h-[500px] rounded-xl" />
@@ -367,33 +374,6 @@ export default function InboxPage() {
                 Set up WhatsApp
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      ) : conversations.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-              <MessageSquareText className="size-5" />
-            </div>
-            <h2 className="text-base font-semibold text-slate-950">No conversations yet</h2>
-            <p className="max-w-md text-sm leading-6 text-slate-500">
-              When clients message you on WhatsApp, their conversations appear here
-              automatically.
-            </p>
-            <div className="mt-4 flex w-full max-w-md flex-col gap-2.5 text-left">
-              <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-slate-600">
-                <span className="font-semibold text-slate-800">1. Share an invite</span>
-                <span className="mt-1 block">
-                  Go to Clients and share your invite link so clients can self-onboard.
-                </span>
-              </div>
-              <div className="rounded-lg border border-teal-100 bg-teal-50/70 px-4 py-3 text-sm text-slate-600">
-                <span className="font-semibold text-slate-800">2. Wait for the first message</span>
-                <span className="mt-1 block">
-                  Once a client messages you, the thread links to their profile here.
-                </span>
-              </div>
-            </div>
           </CardContent>
         </Card>
       ) : (
@@ -424,12 +404,52 @@ export default function InboxPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            {conversations.map((c) => {
+            {conversations.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+                <MessageSquareText className="size-8 text-slate-300" />
+                {statusFilter === 'open' && !debouncedQuery ? (
+                  <>
+                    <h2 className="text-sm font-semibold text-slate-800">No conversations yet</h2>
+                    <p className="max-w-xs text-sm leading-6 text-slate-500">
+                      When clients message you on WhatsApp, their conversations appear here
+                      automatically.
+                    </p>
+                    <div className="mt-2 flex w-full flex-col gap-2 text-left text-sm text-slate-600">
+                      <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2">
+                        <span className="font-semibold text-slate-800">Sandbox tip</span>
+                        <span className="mt-1 block">
+                          On Twilio sandbox, the client must send the join code to your sandbox
+                          number before you can receive their replies.
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-teal-100 bg-teal-50/70 px-3 py-2">
+                        <span className="font-semibold text-slate-800">Webhook</span>
+                        <span className="mt-1 block">
+                          Ensure Twilio inbound webhook points to{' '}
+                          <code className="text-xs">/api/webhooks/twilio</code> on your production
+                          domain.
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-sm font-semibold text-slate-800">
+                      No {statusFilter === 'all' ? '' : statusFilter} conversations
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Try another filter or switch to <button type="button" className="text-teal-700 underline" onClick={() => setStatusFilter('all')}>All</button>.
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : (
+              conversations.map((c) => {
               const name = clientName(c) || c.whatsapp_number;
               return (
                 <div
                   key={c.id}
-                  className={`conversation-item ${activeConvo === c.id ? 'active' : ''}`}
+                  className={`conversation-item ${activeConversationId === c.id ? 'active' : ''}`}
                   onClick={() => setActiveConvo(c.id)}
                 >
                   <div className="conversation-avatar">
@@ -444,11 +464,12 @@ export default function InboxPage() {
                   </span>
                 </div>
               );
-            })}
+            })
+            )}
           </div>
 
           <div className="chat-panel" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
-            {!activeConvo ? (
+            {!activeConversationId ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
                 <MessageSquareText className="size-8 opacity-40" />
                 <p className="text-sm">Select a conversation</p>
