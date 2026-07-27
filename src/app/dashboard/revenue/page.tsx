@@ -69,7 +69,36 @@ export default function RevenuePage() {
     }
   }, [toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [sumRes, qRes, invRes, retRes, cliRes] = await Promise.all([
+          fetch('/api/revenue/summary'),
+          fetch('/api/quotes'),
+          fetch('/api/invoices'),
+          fetch('/api/retainers'),
+          fetch('/api/clients'),
+        ]);
+        const [sum, q, inv, ret, cli] = await Promise.all([
+          sumRes.json(), qRes.json(), invRes.json(), retRes.json(), cliRes.json(),
+        ]);
+        if (cancelled) return;
+        if (sum.data) setSummary(sum.data);
+        if (q.data) setQuotes(q.data);
+        if (inv.data) setInvoices(inv.data);
+        if (ret.data) setRetainers(ret.data);
+        if (cli.data) setClients(cli.data);
+      } catch (err) {
+        console.error(err);
+        toast('Failed to load revenue data', 'error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [toast]);
 
   const unitPriceCents = Math.round(parseFloat(form.unitPriceRands || '0') * 100);
   const retainerCents = Math.round(parseFloat(form.retainerAmountRands || '0') * 100);

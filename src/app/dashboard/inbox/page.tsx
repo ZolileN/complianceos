@@ -134,7 +134,7 @@ export default function InboxPage() {
         const { data } = await res.json();
         if (!cancelled) {
           setEmails(data || []);
-          if (data?.[0] && !activeEmail) setActiveEmail(data[0].id);
+          if (data?.[0]) setActiveEmail((prev) => prev || data[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -143,7 +143,7 @@ export default function InboxPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [tenant, channel, debouncedQuery, activeEmail]);
+  }, [tenant, channel, debouncedQuery]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);

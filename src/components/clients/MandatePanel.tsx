@@ -36,7 +36,18 @@ export default function MandatePanel({ clientId, clientName, clientEmail }: {
     setLoading(false);
   }, [clientId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/mandates?client_id=${clientId}`);
+      const { data } = await res.json();
+      if (!cancelled) {
+        setMandates(data || []);
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
 
   async function createMandate() {
     const res = await fetch('/api/mandates', {

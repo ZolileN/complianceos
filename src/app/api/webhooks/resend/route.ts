@@ -17,7 +17,8 @@ type ResendInboundPayload = {
 };
 
 function parseTenantSlug(toAddresses: string[]): string | null {
-  const domain = (process.env.INBOUND_EMAIL_DOMAIN || 'inbound.praxis.mlkcomputer.com').toLowerCase();
+  const domain = process.env.INBOUND_EMAIL_DOMAIN?.trim().toLowerCase();
+  if (!domain) return null;
   for (const addr of toAddresses) {
     const lower = addr.toLowerCase();
     const at = lower.indexOf('@');
