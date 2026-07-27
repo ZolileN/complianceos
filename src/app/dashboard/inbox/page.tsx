@@ -153,6 +153,8 @@ export default function InboxPage() {
       }
     })();
     return () => { cancelled = true; };
+    // toast is stable from ToastContext; omit to avoid refetch loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant, channel, debouncedQuery, emailRefreshKey]);
 
   const lastConvoRef = useRef<string | null>(null);

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { inboundAddressForTenant, inboundEmailDomain } from '@/lib/inbound-email';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -55,7 +58,11 @@ export async function GET() {
       website: tenant.website,
     };
 
-    return NextResponse.json({ data: safeTenant });
+    return NextResponse.json({
+      data: safeTenant,
+      inboundAddress: inboundAddressForTenant(tenant.slug),
+      inboundEmailDomain: inboundEmailDomain(),
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error fetching company profile';
     return NextResponse.json({ error: msg }, { status: 500 });

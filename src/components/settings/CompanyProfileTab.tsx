@@ -11,6 +11,8 @@ interface CompanyProfileTabProps {
   onSave: (e: React.FormEvent) => void;
   onCopyOnboardingLink: () => void;
   onboardingUrl: string;
+  inboundEmailDomain?: string | null;
+  onCopy: (value: string, successMessage: string) => void;
 }
 
 export default function CompanyProfileTab({
@@ -21,9 +23,107 @@ export default function CompanyProfileTab({
   onSave,
   onCopyOnboardingLink,
   onboardingUrl,
+  inboundEmailDomain,
+  onCopy,
 }: CompanyProfileTabProps) {
+  const slugChanged = profileForm.slug !== company.slug;
+  const inboundAddress = inboundEmailDomain
+    ? `${profileForm.slug}@${inboundEmailDomain}`
+    : null;
+
   return (
     <div className="stack">
+      <div
+        className="card"
+        style={{ border: '1px solid rgba(20, 184, 166, 0.2)', background: 'rgba(20, 184, 166, 0.03)' }}
+      >
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: 8 }}>Workspace identifiers</h3>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 16 }}>
+          Your workspace slug routes client onboarding, and your inbound email address delivers mail into
+          Inbox → Email for this firm.
+        </p>
+        <div className="stack" style={{ gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              background: 'rgba(0,0,0,0.15)',
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                Workspace slug
+              </div>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.85rem',
+                  color: 'var(--accent)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {profileForm.slug || '—'}
+              </span>
+            </div>
+            {profileForm.slug ? (
+              <button
+                type="button"
+                onClick={() => onCopy(profileForm.slug, 'Workspace slug copied to clipboard')}
+                className="btn btn-secondary btn-sm"
+                style={{ flexShrink: 0 }}
+              >
+                Copy
+              </button>
+            ) : null}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              background: 'rgba(0,0,0,0.15)',
+              padding: '10px 16px',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                Inbound email address
+              </div>
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.85rem',
+                  color: 'var(--accent)',
+                  wordBreak: 'break-all',
+                }}
+              >
+                {inboundAddress || 'Inbound email not configured — contact your platform admin'}
+              </span>
+              {slugChanged && inboundAddress ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Preview — save profile changes to apply a new slug.
+                </div>
+              ) : null}
+            </div>
+            {inboundAddress ? (
+              <button
+                type="button"
+                onClick={() => onCopy(inboundAddress, 'Inbound email address copied to clipboard')}
+                className="btn btn-secondary btn-sm"
+                style={{ flexShrink: 0 }}
+              >
+                Copy
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 16 }}>🏢 Profile Details</h3>
         <form onSubmit={onSave} className="stack">

@@ -69,6 +69,7 @@ function SettingsPageContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<CompanyData | null>(null);
+  const [inboundEmailDomain, setInboundEmailDomain] = useState<string | null>(null);
   const [personal, setPersonal] = useState<PersonalData | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -116,6 +117,7 @@ function SettingsPageContent() {
             const persData = persDataObj.data;
 
             setCompany(compData);
+            setInboundEmailDomain(compDataObj.inboundEmailDomain || null);
             setProfileForm({
               name: compData.name || '',
               slug: compData.slug || '',
@@ -367,6 +369,11 @@ function SettingsPageContent() {
     toast('Client onboarding link copied to clipboard!', 'success');
   };
 
+  const copyText = (value: string, successMessage: string) => {
+    navigator.clipboard.writeText(value);
+    toast(successMessage, 'success');
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-[800px] space-y-4">
@@ -442,6 +449,8 @@ function SettingsPageContent() {
           onSave={handleSaveProfile}
           onCopyOnboardingLink={copyOnboardingLink}
           onboardingUrl={onboardingUrl}
+          inboundEmailDomain={inboundEmailDomain}
+          onCopy={copyText}
         />
       )}
 
