@@ -9,11 +9,13 @@ import {
   Clock,
   Download,
   FileText,
+  Link2,
   Mail,
   MailOpen,
   Reply,
   Send,
   User,
+  UserPlus,
 } from 'lucide-react';
 
 import { useToast } from '@/contexts/ToastContext';
@@ -53,6 +55,12 @@ type InboundEmailDetail = InboundEmailListItem & {
   bodyHtml?: string | null;
   replies: EmailReply[];
   attachments: EmailAttachment[];
+};
+
+type ClientOption = {
+  id: string;
+  company_name: string;
+  email?: string | null;
 };
 
 type EmailInboxPanelProps = {
@@ -110,6 +118,11 @@ export default function EmailInboxPanel({
   const [replyText, setReplyText] = useState('');
   const [replying, setReplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [clientOptions, setClientOptions] = useState<ClientOption[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [linkingClientId, setLinkingClientId] = useState<string | null>(null);
+  const [setClientEmail, setSetClientEmail] = useState(true);
 
   const tenantInboundAddress =
     inboundAddress ||
@@ -173,6 +186,67 @@ export default function EmailInboxPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEmailId]);
 
+  useEffect(() => {
+    setClientSearch('');
+    setClientOptions([]);
+  }, [selectedEmailId]);
+
+  useEffect(() => {
+    if (!detail || detail.client) {
+      setClientOptions([]);
+      return;
+    }
+    const query = clientSearch.trim() || detail.fromAddress;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setClientsLoading(true);
+      try {
+        const res = await fetch(`/api/clients?search=${encodeURIComponent(query)}&limit=20`);
+        const json = await res.json();
+        if (!cancelled) {
+          setClientOptions(
+            (json.data || []).map((c: { id: string; company_name: string; email?: string | null }) => ({
+              id: c.id,
+              company_name: c.company_name,
+              email: c.email,
+            }))
+          );
+        }
+      } catch {
+        if (!cancelled) setClientOptions([]);
+      } finally {
+        if (!cancelled) setClientsLoading(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [detail, clientSearch]);
+
+  const linkClient = async (clientId: string) => {
+    if (!selectedEmailId) return;
+    setLinkingClientId(clientId);
+    try {
+      const res = await fetch(`/api/emails/${selectedEmailId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, setClientEmail }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to link client');
+      setDetail((prev) =>
+        prev ? { ...prev, client: json.data.client } : prev
+      );
+      toast('Client linked — you can now save attachments to Documents', 'success');
+      onRefresh();
+    } catch (err) {
+      toast((err as Error).message || 'Failed to link client', 'error');
+    } finally {
+      setLinkingClientId(null);
+    }
+  };
+
   const patchStatus = async (status: string) => {
     if (!selectedEmailId) return;
     try {
@@ -199,7 +273,7 @@ export default function EmailInboxPanel({
   ) => {
     const linkedClientId = detail?.client?.id;
     if (!linkedClientId) {
-      toast('No client associated with this email. Link the sender to a client first.', 'error');
+      toast('Link this email to a client first using the panel above.', 'error');
       return;
     }
     try {
@@ -393,6 +467,69 @@ export default function EmailInboxPanel({
               </div>
 
               <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                {!detail.client ? (
+                  <Card className="border-amber-200 bg-amber-50/60 shadow-none">
+                    <CardContent className="space-y-3 p-4">
+                      <div className="flex items-start gap-2">
+                        <UserPlus className="mt-0.5 size-4 shrink-0 text-amber-700" />
+                        <div>
+                          <h3 className="text-sm font-semibold text-amber-950">
+                            Link sender to a client
+                          </h3>
+                          <p className="mt-1 text-sm text-amber-900/80">
+                            Associate <code className="text-xs">{detail.fromAddress}</code> with a
+                            client to save attachments to Documents and run OCR.
+                          </p>
+                        </div>
+                      </div>
+                      <input
+                        className="input w-full text-sm"
+                        placeholder="Search clients by name or email..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                      />
+                      <label className="flex items-center gap-2 text-xs text-amber-900/90">
+                        <input
+                          type="checkbox"
+                          checked={setClientEmail}
+                          onChange={(e) => setSetClientEmail(e.target.checked)}
+                        />
+                        Set sender email as client contact (if empty)
+                      </label>
+                      <div className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-amber-100 bg-white/80 p-1">
+                        {clientsLoading ? (
+                          <p className="px-2 py-3 text-center text-xs text-slate-500">Searching...</p>
+                        ) : clientOptions.length === 0 ? (
+                          <p className="px-2 py-3 text-center text-xs text-slate-500">
+                            No clients found. Try another search or create a client in Clients first.
+                          </p>
+                        ) : (
+                          clientOptions.map((client) => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              disabled={linkingClientId === client.id}
+                              onClick={() => linkClient(client.id)}
+                              className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-amber-50 disabled:opacity-60"
+                            >
+                              <span>
+                                <span className="font-medium text-slate-900">{client.company_name}</span>
+                                {client.email ? (
+                                  <span className="ml-2 text-xs text-slate-500">{client.email}</span>
+                                ) : null}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-teal-700">
+                                <Link2 className="size-3.5" />
+                                {linkingClientId === client.id ? 'Linking...' : 'Link'}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
+
                 <Card className="border-slate-200 shadow-none">
                   <CardContent className="p-5">
                     <div className="mb-3 flex items-center gap-3">

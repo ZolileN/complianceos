@@ -31,7 +31,14 @@ export async function GET(request: NextRequest) {
 
   const where: Prisma.ClientWhereInput = {
     tenantId,
-    ...(search ? { companyName: { contains: search } } : {}),
+    ...(search
+      ? {
+          OR: [
+            { companyName: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
     ...(!includeInactive ? { status: { not: 'inactive' } } : {}),
   };
 

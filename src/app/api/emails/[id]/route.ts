@@ -98,3 +98,75 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     );
   }
 }
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const user = await requireTenantSession();
+  if (isRbacResponse(user)) return user;
+  const forbidden = requireStaff(user);
+  if (forbidden) return forbidden;
+
+  const { id } = await context.params;
+
+  let body: { clientId?: string; setClientEmail?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { clientId, setClientEmail } = body;
+  if (!clientId) {
+    return NextResponse.json({ error: 'clientId is required' }, { status: 400 });
+  }
+
+  try {
+    const email = await prisma.inboundEmail.findFirst({
+      where: { id, tenantId: user.tenantId! },
+      select: { id: true, fromAddress: true },
+    });
+    if (!email) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, tenantId: user.tenantId! },
+      select: { id: true, companyName: true, email: true, assignedConsultantId: true },
+    });
+    if (!client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
+
+    if (
+      user.role === 'consultant' &&
+      client.assignedConsultantId &&
+      client.assignedConsultantId !== user.id
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    await prisma.inboundEmail.update({
+      where: { id: email.id },
+      data: { clientId: client.id },
+    });
+
+    if (setClientEmail && !client.email?.trim()) {
+      await prisma.client.update({
+        where: { id: client.id },
+        data: { email: email.fromAddress },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        client: { id: client.id, company_name: client.companyName },
+      },
+    });
+  } catch (error: unknown) {
+    console.error('PATCH /api/emails/[id] error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to link client' },
+      { status: 500 }
+    );
+  }
+}
