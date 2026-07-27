@@ -319,11 +319,13 @@ export async function startCheckout(tenantId: string, plan: TenantPlan) {
     result = await createCheckout({ tenantId, plan });
   } catch (err) {
     const message = err instanceof Error ? err.message : '';
-    // Stitch test credentials are often stale; fall back to Ozow when available.
+    // Stitch credentials can go stale (secret regenerates when viewed);
+    // fall back to Ozow when available.
     const stitchAuthFailed =
       activeProvider.id === 'stitch' &&
       (/invalid_client/i.test(message) ||
-        /Stitch credentials are invalid/i.test(message));
+        /Stitch Express auth failed/i.test(message) ||
+        /Stitch credentials/i.test(message));
     if (stitchAuthFailed && ozowCheckoutAvailable() && ozowProvider.createCheckout) {
       console.warn(
         '[billing] Stitch auth failed; falling back to Ozow checkout for this request'

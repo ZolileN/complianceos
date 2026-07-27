@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkStitchCredentials } from '@/lib/billing/stitch-health';
 
-describe('checkStitchCredentials', () => {
+describe('checkStitchCredentials (Stitch Express)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -17,28 +17,28 @@ describe('checkStitchCredentials', () => {
     expect(result.error).toBe('not_configured');
   });
 
-  it('maps invalid_client into an actionable diagnostic', async () => {
-    vi.stubEnv('STITCH_CLIENT_ID', 'test-dead-client');
-    vi.stubEnv('STITCH_CLIENT_SECRET', 'secret');
+  it('maps rejected credentials into an actionable diagnostic', async () => {
+    vi.stubEnv('STITCH_CLIENT_ID', 'test-client');
+    vi.stubEnv('STITCH_CLIENT_SECRET', 'stale-secret');
 
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
-        status: 400,
-        text: async () => JSON.stringify({ error: 'invalid_client' }),
+        status: 401,
+        text: async () => JSON.stringify({ success: false }),
       })
     );
 
     const result = await checkStitchCredentials();
     expect(result.ok).toBe(false);
     expect(result.error).toBe('invalid_client');
-    expect(result.detail).toContain('Stitch Dashboard');
+    expect(result.detail).toContain('Stitch Express dashboard');
   });
 
-  it('reports ok when a token is issued', async () => {
-    vi.stubEnv('STITCH_CLIENT_ID', 'test-live-client');
-    vi.stubEnv('STITCH_CLIENT_SECRET', 'secret');
+  it('reports ok when an Express access token is issued', async () => {
+    vi.stubEnv('STITCH_CLIENT_ID', 'test-client');
+    vi.stubEnv('STITCH_CLIENT_SECRET', 'good-secret');
 
     vi.stubGlobal(
       'fetch',
@@ -46,7 +46,7 @@ describe('checkStitchCredentials', () => {
         ok: true,
         status: 200,
         text: async () =>
-          JSON.stringify({ access_token: 'tok', expires_in: 3600 }),
+          JSON.stringify({ success: true, data: { accessToken: 'tok' } }),
       })
     );
 
