@@ -20,6 +20,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { DOCUMENT_CATEGORIES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import EmailInboxPanel from '@/components/inbox/EmailInboxPanel';
 import type { Conversation, Message } from '@/types';
 
 function getRelativeDateText(msgDateStr: string) {
@@ -79,11 +80,10 @@ export default function InboxPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
   const [channel, setChannel] = useState<Channel>('whatsapp');
   const [emails, setEmails] = useState<InboundEmail[]>([]);
-  const [activeEmail, setActiveEmail] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [inboundAddress, setInboundAddress] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,7 +132,6 @@ export default function InboxPage() {
       if (emailRefreshKey === 0) setEmailLoading(true);
       try {
         const params = new URLSearchParams({ status: 'all' });
-        if (debouncedQuery) params.set('q', debouncedQuery);
         const res = await fetch(`/api/emails?${params}`);
         const json = await res.json();
         if (!res.ok) {
@@ -141,7 +140,6 @@ export default function InboxPage() {
         if (!cancelled) {
           setEmails(json.data || []);
           setInboundAddress(json.inboundAddress || null);
-          if (json.data?.[0]) setActiveEmail((prev) => prev || json.data[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -155,7 +153,7 @@ export default function InboxPage() {
     return () => { cancelled = true; };
     // toast is stable from ToastContext; omit to avoid refetch loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant, channel, debouncedQuery, emailRefreshKey]);
+  }, [tenant, channel, emailRefreshKey]);
 
   const lastConvoRef = useRef<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -315,6 +313,8 @@ export default function InboxPage() {
       ? `${user.tenantSlug}@${process.env.NEXT_PUBLIC_INBOUND_EMAIL_DOMAIN}`
       : null);
 
+  const refreshEmails = () => setEmailRefreshKey((k) => k + 1);
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <section>
@@ -339,60 +339,13 @@ export default function InboxPage() {
       </section>
 
       {channel === 'email' ? (
-        emailLoading ? (
-          <div className="skeleton h-[400px] rounded-xl" />
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardContent className="p-0 divide-y">
-                <div className="p-3">
-                  <input className="input w-full" placeholder="Search emails..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                </div>
-                {emails.length === 0 ? (
-                  <div className="space-y-2 p-6 text-center text-sm text-slate-500">
-                    <p>
-                      No inbound emails yet. Send to your tenant address
-                      {tenantInboundAddress ? (
-                        <>
-                          :{' '}
-                          <code className="text-xs">{tenantInboundAddress}</code>
-                        </>
-                      ) : (
-                        ' (configure INBOUND_EMAIL_DOMAIN on the server)'
-                      )}
-                    </p>
-                    {user?.tenantSlug ? (
-                      <p className="text-xs text-slate-400">
-                        Viewing inbox for <code>{user.tenantSlug}</code> workspace
-                      </p>
-                    ) : null}
-                  </div>
-                ) : emails.map((em) => (
-                  <button key={em.id} type="button" onClick={() => setActiveEmail(em.id)} className={`w-full text-left p-4 hover:bg-slate-50 ${activeEmail === em.id ? 'bg-teal-50' : ''}`}>
-                    <div className="font-medium text-sm">{em.subject || '(no subject)'}</div>
-                    <div className="text-xs text-slate-500">{em.fromAddress}</div>
-                    <div className="text-xs text-slate-400 mt-1">{new Date(em.receivedAt).toLocaleString()}</div>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                {activeEmail ? (() => {
-                  const em = emails.find((e) => e.id === activeEmail);
-                  if (!em) return null;
-                  return (
-                    <div className="space-y-3">
-                      <h2 className="text-lg font-semibold">{em.subject || '(no subject)'}</h2>
-                      <p className="text-sm text-slate-500">From {em.fromAddress}{em.client ? ` · ${em.client.company_name}` : ''}</p>
-                      <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">{em.bodyText || 'No text body'}</pre>
-                    </div>
-                  );
-                })() : <p className="text-sm text-slate-500">Select an email</p>}
-              </CardContent>
-            </Card>
-          </div>
-        )
+        <EmailInboxPanel
+          emails={emails}
+          loading={emailLoading}
+          tenantSlug={user?.tenantSlug}
+          inboundAddress={tenantInboundAddress}
+          onRefresh={refreshEmails}
+        />
       ) : loading ? (
         <div className="skeleton h-[500px] rounded-xl" />
       ) : whatsappConnected === false ? (

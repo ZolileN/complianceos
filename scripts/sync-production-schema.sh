@@ -13,4 +13,4 @@ fi
 echo "Syncing Prisma schema to database..."
 npx prisma db push
 
-echo "Done. New tables (if missing): Quote, Invoice, Retainer, Mandate, InboundEmail and related."
+echo "Done. New tables (if missing): Quote, Invoice, Retainer, Mandate, InboundEmail, InboundEmailReply and related."

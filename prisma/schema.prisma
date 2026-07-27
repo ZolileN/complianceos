@@ -75,6 +75,7 @@ model User {
   auditLogs     AuditLog[]
   notifications Notification[]
   adminAuditLogs AdminAuditLog[]
+  inboundEmailReplies InboundEmailReply[]
 }
 
 model VerificationToken {
@@ -126,6 +127,7 @@ model Tenant {
   retainers           Retainer[]
   mandates            Mandate[]
   inboundEmails       InboundEmail[]
+  inboundEmailReplies InboundEmailReply[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -835,8 +837,27 @@ model InboundEmail {
   receivedAt DateTime @default(now())
   createdAt  DateTime @default(now())
 
+  replies InboundEmailReply[]
+
   @@index([tenantId, status])
   @@index([clientId])
+}
+
+model InboundEmailReply {
+  id             String       @id @default(cuid())
+  inboundEmailId String
+  inboundEmail   InboundEmail @relation(fields: [inboundEmailId], references: [id], onDelete: Cascade)
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bodyText       String
+  resendId       String?
+  sentAt         DateTime     @default(now())
+
+  @@index([inboundEmailId, sentAt])
+  @@index([tenantId])
 }
 
 
