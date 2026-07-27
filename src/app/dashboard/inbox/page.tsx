@@ -327,7 +327,10 @@ export default function InboxPage() {
                   <input className="input w-full" placeholder="Search emails..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
                 {emails.length === 0 ? (
-                  <p className="p-6 text-sm text-slate-500 text-center">No inbound emails. Route mail to <code>{'{tenant-slug}'}@inbound.praxis.mlkcomputer.com</code></p>
+                  <p className="p-6 text-sm text-slate-500 text-center">
+                    No inbound emails yet. Send to your tenant address, e.g.{' '}
+                    <code className="text-xs">mlk-computer-consulting@soleiistau.resend.app</code>
+                  </p>
                 ) : emails.map((em) => (
                   <button key={em.id} type="button" onClick={() => setActiveEmail(em.id)} className={`w-full text-left p-4 hover:bg-slate-50 ${activeEmail === em.id ? 'bg-teal-50' : ''}`}>
                     <div className="font-medium text-sm">{em.subject || '(no subject)'}</div>
