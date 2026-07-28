@@ -7,6 +7,7 @@ import Logo from '@/components/Logo';
 import BookDemoModal from '@/components/BookDemoModal';
 import ContactModal from '@/components/ContactModal';
 import ContactSalesModal from '@/components/ContactSalesModal';
+import RefundPolicyModal from '@/components/RefundPolicyModal';
 import ScrollLink from '@/components/ScrollLink';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -94,13 +95,17 @@ export default function LandingShell({ children }: { children: React.ReactNode }
               Company
             </h4>
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
-              <li><a href="#book-demo">Book demo</a></li>
               <li><a href="#contact">Contact</a></li>
+              <li><Link href="/refund-policy">Refund policy</Link></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-[var(--border-primary)] px-6 py-4 text-center text-xs text-[var(--text-muted)]">
           © {new Date().getFullYear()} PraxisOne. All rights reserved.
+          <span className="mx-2" aria-hidden="true">·</span>
+          <Link href="/refund-policy" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
+            Refund policy
+          </Link>
           <span className="mx-2" aria-hidden="true">·</span>
           A product of{' '}
           <a
@@ -117,6 +122,7 @@ export default function LandingShell({ children }: { children: React.ReactNode }
       <BookDemoModal />
       <ContactModal />
       <ContactSalesModal />
+      <RefundPolicyModal />
     </div>
   );
 }
