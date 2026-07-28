@@ -175,7 +175,7 @@ model PendingSignup {
   fullName         String
   email            String
   passwordHash     String
-  status           String   @default("pending") // pending | paid | completed | expired
+  status           String   @default("pending") // pending | paid | provisioning | completed | expired
   paymentReference String   @unique
   paymentPayload   String?  /// JSON Ozow form payload for redirect
   provider         String   @default("ozow")

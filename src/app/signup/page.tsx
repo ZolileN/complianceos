@@ -40,7 +40,9 @@ function SignupForm() {
   const isTrialPlan = plan === 'starter';
   const isPaidPlan = plan === 'growth' || plan === 'professional';
   const isRecoveringPaidSignup =
-    billingParam === 'success' && Boolean(pendingParam);
+    Boolean(pendingParam) &&
+    (billingParam === 'success' ||
+      (billingParam === 'error' && reasonParam === 'provision_failed'));
 
   const [firmName, setFirmName] = useState('');
   const [fullName, setFullName] = useState('');
@@ -50,10 +52,7 @@ function SignupForm() {
   const [error, setError] = useState(() => {
     if (billingParam === 'cancelled')
       return 'Payment was cancelled. You can try again when ready.';
-    if (billingParam === 'error') {
-      if (reasonParam === 'provision_failed') {
-        return 'Payment succeeded but workspace setup failed. Please try again or contact support.';
-      }
+    if (billingParam === 'error' && reasonParam !== 'provision_failed') {
       return 'Payment could not be completed. Please try again.';
     }
     return '';

@@ -25,6 +25,36 @@ export function slugifyFirmName(firmName: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
+type TenantSlugClient = {
+  tenant: {
+    findUnique: (args: { where: { slug: string } }) => Promise<{ id: string } | null>;
+  };
+};
+
+/** Pick a unique tenant slug, appending a short suffix when the base is taken. */
+export async function allocateUniqueTenantSlug(
+  firmName: string,
+  db: TenantSlugClient = prisma
+): Promise<string> {
+  const base = slugifyFirmName(firmName);
+  if (!base) {
+    throw new Error('Invalid firm name');
+  }
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const slug =
+      attempt === 0
+        ? base
+        : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const existing = await db.tenant.findUnique({ where: { slug } });
+    if (!existing) return slug;
+  }
+
+  throw new Error(
+    'Could not allocate a unique workspace URL — try a slightly different firm name'
+  );
+}
+
 export type CreateTenantInput = {
   firmName: string;
   fullName: string;
@@ -63,16 +93,6 @@ export async function createTenantWithAdmin(
     throw new Error('User already exists with this email');
   }
 
-  const slug = slugifyFirmName(firmName);
-  if (!slug) {
-    throw new Error('Invalid firm name');
-  }
-
-  const existingTenant = await prisma.tenant.findUnique({ where: { slug } });
-  if (existingTenant) {
-    throw new Error('A firm with this name already exists');
-  }
-
   const hashedPassword = input.passwordHash
     ? input.passwordHash
     : await bcrypt.hash(input.password!, 10);
@@ -93,6 +113,8 @@ export async function createTenantWithAdmin(
     : trial;
 
   return prisma.$transaction(async (tx) => {
+    const slug = await allocateUniqueTenantSlug(firmName, tx);
+
     const tenant = await tx.tenant.create({
       data: {
         name: firmName,

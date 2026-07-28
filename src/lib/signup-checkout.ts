@@ -3,6 +3,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getBillingProvider } from '@/lib/billing/provider';
 import {
@@ -245,28 +246,37 @@ export type CompletePaidSignupResult = {
   tenantSlug?: string;
 };
 
-export function signupCompleteLoginUrl(email: string, appUrl?: string): string {
-  const base = (appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
-  const dest = new URL(`${base}/login`);
-  dest.searchParams.set('registered', '1');
-  dest.searchParams.set('email', email);
-  return dest.toString();
+const PROVISIONING_WAIT_MS = 1500;
+const PROVISIONING_MAX_ATTEMPTS = 8;
+
+async function waitForProvisioning(paymentReference: string) {
+  for (let attempt = 0; attempt < PROVISIONING_MAX_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, PROVISIONING_WAIT_MS));
+    const pending = await prisma.pendingSignup.findUnique({
+      where: { paymentReference },
+    });
+    if (!pending) {
+      throw new Error('Signup session not found');
+    }
+    if (pending.status === 'completed') {
+      return { outcome: 'already_completed' as const, email: pending.email };
+    }
+    if (pending.status === 'paid') {
+      return null;
+    }
+  }
+  throw new Error('Workspace setup is still in progress — please try again in a moment');
 }
 
-/**
- * Idempotently provision a tenant after payment. Uses the password hash captured
- * at checkout time so the customer can sign in immediately.
- */
-export async function completePaidPendingSignup(
-  paymentReference: string
-): Promise<CompletePaidSignupResult> {
-  const pending = await prisma.pendingSignup.findUnique({
-    where: { paymentReference },
-  });
-  if (!pending) {
-    throw new Error('Signup session not found');
-  }
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+  );
+}
 
+async function finalizePaidPendingSignup(
+  pending: NonNullable<Awaited<ReturnType<typeof prisma.pendingSignup.findUnique>>>
+): Promise<CompletePaidSignupResult> {
   if (pending.expiresAt < new Date()) {
     await prisma.pendingSignup.update({
       where: { id: pending.id },
@@ -290,32 +300,111 @@ export async function completePaidPendingSignup(
     return { outcome: 'already_exists', email: pending.email };
   }
 
-  if (pending.status !== 'paid') {
+  if (pending.status !== 'paid' && pending.status !== 'provisioning') {
     throw new Error('Payment required before creating your workspace');
   }
 
   const plan = isTenantPlan(pending.plan) ? pending.plan : 'growth';
-  const result = await createTenantWithAdmin({
-    firmName: pending.firmName,
-    fullName: pending.fullName,
-    email: pending.email,
-    passwordHash: pending.passwordHash,
-    plan,
-    startActive: true,
-    billingProvider: pending.provider || 'manual',
-    providerSubscriptionId: pending.paymentReference,
-  });
 
-  await prisma.pendingSignup.update({
-    where: { id: pending.id },
-    data: { status: 'completed' },
-  });
+  try {
+    const result = await createTenantWithAdmin({
+      firmName: pending.firmName,
+      fullName: pending.fullName,
+      email: pending.email,
+      passwordHash: pending.passwordHash,
+      plan,
+      startActive: true,
+      billingProvider: pending.provider || 'manual',
+      providerSubscriptionId: pending.paymentReference,
+    });
 
-  return {
-    outcome: 'created',
-    email: pending.email,
-    tenantSlug: result.tenant.slug,
-  };
+    await prisma.pendingSignup.update({
+      where: { id: pending.id },
+      data: { status: 'completed' },
+    });
+
+    return {
+      outcome: 'created',
+      email: pending.email,
+      tenantSlug: result.tenant.slug,
+    };
+  } catch (error: unknown) {
+    if (isUniqueConstraintError(error)) {
+      const user = await prisma.user.findUnique({ where: { email: pending.email } });
+      if (user) {
+        await prisma.pendingSignup.update({
+          where: { id: pending.id },
+          data: { status: 'completed' },
+        });
+        return { outcome: 'already_exists', email: pending.email };
+      }
+    }
+
+    await prisma.pendingSignup.updateMany({
+      where: { id: pending.id, status: 'provisioning' },
+      data: { status: 'paid' },
+    });
+    throw error;
+  }
+}
+
+export function signupCompleteLoginUrl(email: string, appUrl?: string): string {
+  const base = (appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '');
+  const dest = new URL(`${base}/login`);
+  dest.searchParams.set('registered', '1');
+  dest.searchParams.set('email', email);
+  return dest.toString();
+}
+
+/**
+ * Idempotently provision a tenant after payment. Uses the password hash captured
+ * at checkout time so the customer can sign in immediately.
+ */
+export async function completePaidPendingSignup(
+  paymentReference: string
+): Promise<CompletePaidSignupResult> {
+  for (let attempt = 0; attempt < PROVISIONING_MAX_ATTEMPTS; attempt += 1) {
+    const pending = await prisma.pendingSignup.findUnique({
+      where: { paymentReference },
+    });
+    if (!pending) {
+      throw new Error('Signup session not found');
+    }
+
+    if (pending.status === 'completed') {
+      return { outcome: 'already_completed', email: pending.email };
+    }
+
+    if (pending.status === 'provisioning') {
+      const waited = await waitForProvisioning(paymentReference);
+      if (waited) return waited;
+      continue;
+    }
+
+    if (pending.status !== 'paid') {
+      throw new Error('Payment required before creating your workspace');
+    }
+
+    const claimed = await prisma.pendingSignup.updateMany({
+      where: {
+        id: pending.id,
+        status: 'paid',
+        expiresAt: { gt: new Date() },
+      },
+      data: { status: 'provisioning' },
+    });
+
+    if (claimed.count === 0) {
+      continue;
+    }
+
+    return finalizePaidPendingSignup({
+      ...pending,
+      status: 'provisioning',
+    });
+  }
+
+  throw new Error('Workspace setup is still in progress — please try again in a moment');
 }
 
 export async function completePaidPendingSignupById(
