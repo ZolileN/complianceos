@@ -33,16 +33,40 @@ Due dates today are **approximations** (see `src/lib/compliance-catalog.ts`), an
 
 **Goal:** Replace approximate CIPC due dates and manual reg-number validation with live registry data.
 
+### 1.0 Obtaining CIPC API credentials (verified July 2026)
+
+> **Important:** The documented developer portal at [guide.cipc.co.za](https://guide.cipc.co.za) is **currently unreachable** (HTTPS TLS handshake failure; HTTP returns Cloudflare 409). Do not block Phase 1 on self-service portal signup until CIPC confirms the portal is live.
+
+**What still works today:**
+
+| Service | URL | Status |
+|---------|-----|--------|
+| CIPC main site | [cipc.co.za](https://www.cipc.co.za) | Up |
+| eServices (manual filings) | [eservices.cipc.co.za](https://eservices.cipc.co.za) | Up |
+| Legacy Enterprise SOAP | [webservices1.cipc.co.za/Enterprise.asmx](https://webservices1.cipc.co.za/Enterprise.asmx) | Up (requires CIPC agreement) |
+| Azure API gateway (backend) | `cipc-apm-rs-dev.azure-api.net` | Responds (needs subscription key) |
+| Developer portal | [guide.cipc.co.za](https://guide.cipc.co.za) | **Down / inaccessible** |
+
+**How to get API access (recommended order):**
+
+1. **Contact CIPC directly** — log a case at [enquiries.cipc.co.za](https://www.enquiries.cipc.co.za) or email **Enquiries@cipc.co.za**. Request API subscription access for company profile and beneficial ownership lookups. Mention you need an `Ocp-Apim-Subscription-Key` for the Azure API Management gateway. CIPC's 2022 API gateway TOR listed technical enquiries to **DNkuna@cipc.co.za**.
+2. **Try guide.cipc.co.za periodically** — if/when the portal is restored, self-service signup may be at `/getting-started/sign-up-on-portal` and API subscription at `/getting-started/subscribe-to-apis`.
+3. **Third-party CIPC data provider (commercial fallback)** — if direct CIPC API access is slow or unavailable, providers such as [Datanamix CIPC Company Search Plus](https://www.datanamix.com/cipc-company-search-plus/) offer REST APIs with CIPC-sourced data. Abstract behind `src/lib/integrations/cipc/` so the provider is swappable.
+4. **BizPortal (not suitable for automation)** — [bizportal.gov.za](https://www.bizportal.gov.za) allows logged-in searches only, capped at **20 per day** per CIPC Notice 36/2021. Useful for manual spot-checks, not PraxisOne sync.
+
+**Prerequisite (separate from API):** register as a CIPC eServices customer at [eservices.cipc.co.za](https://eservices.cipc.co.za) for manual filings. This customer code is not the same as API credentials.
+
 ### 1.1 CIPC API client
 
 | Task | Detail |
 |------|--------|
-| Register for CIPC API access | OAuth2 + `Ocp-Apim-Subscription-Key` via [guide.cipc.co.za](https://guide.cipc.co.za) |
+| Obtain API credentials | Via CIPC enquiry (see §1.0); portal self-service when guide.cipc.co.za is restored |
 | Add `src/lib/integrations/cipc/` | `client.ts`, `types.ts`, `company-profile.ts`, `beneficial-ownership.ts` |
+| Provider abstraction | Support direct CIPC gateway **or** third-party aggregator via env `CIPC_PROVIDER=direct\|aggregator` |
 | Token management | Cache OAuth token with refresh; no credentials in source |
 | Error handling | Rate limits, 404 (invalid reg no), timeout → structured errors for UI |
 
-**Endpoints (initial):**
+**Endpoints (initial — direct CIPC gateway):**
 
 - `POST /enterprise/v1/companyprofile` — enterprise name, status, directors, registration date, financial year end
 - `GET /sandbox/boreg/enterprise/register/{enterprise_number}` — beneficial ownership statement status
@@ -234,6 +258,9 @@ Phase 1 and Phase 2.1 can be parallelised after the CIPC client foundation exist
 
 ## References
 
-- [CIPC API documentation](https://guide.cipc.co.za)
+- [CIPC API documentation](https://guide.cipc.co.za) — **portal currently inaccessible**; docs may still describe the intended API shape
+- [CIPC enterprise search discontinuation notice](https://www.cipc.co.za/?p=9863) — BizPortal 20/day limit; subscription service promised
+- [CIPC API gateway TOR (2022)](https://www.cipc.co.za/wp-content/uploads/2022/07/Annexure_H-API-CIPC_Bid_No-21-2021-2022.pdf) — technical contact DNkuna@cipc.co.za
+- [CIPC legacy Enterprise Web Service](https://webservices1.cipc.co.za/Enterprise.asmx)
 - [SARS third-party data](https://www.sars.gov.za/businesses-and-employers/third-party-data/) (not in scope for filing; reference only)
 - Product PRD: `prd.txt` (Phases 2–3 — AI docs & compliance monitoring)
