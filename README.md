@@ -33,14 +33,48 @@ Approved implementation plan (read-only CIPC + SARS document intelligence; **sub
 
 ## 🛠 Tech Stack
 
-*   **Framework:** Next.js 15+ (App Router)
+### Application core
+
+*   **Framework:** Next.js 16 (App Router)
 *   **Language:** TypeScript
-*   **Styling:** Tailwind CSS (v4) with global CSS variables for a premium, glassmorphic theme.
-*   **Database ORM:** Prisma (v5)
-*   **Database Engine:** PostgreSQL (Supabase)
-*   **Authentication:** NextAuth.js (v4) with credentials provider.
-*   **File Storage:** UploadThing
-*   **Document Processing:** pdf-parse
+*   **Runtime:** React 19
+*   **Database ORM:** Prisma 5
+*   **Database:** PostgreSQL (Neon in production)
+*   **Authentication:** NextAuth.js v4 (credentials provider, multi-tenant RBAC)
+*   **File storage:** UploadThing v7 (`@uploadthing/react`, server `UTApi`)
+*   **Document processing:** pdfjs-dist / pdf-parse (server-side OCR pipeline)
+
+### UI & design system
+
+*   **Styling:** Tailwind CSS v4 — CSS-first config via `@import "tailwindcss"` in `src/app/globals.css` (PostCSS: `@tailwindcss/postcss`)
+*   **Component library:** [shadcn/ui](https://ui.shadcn.com) (**new-york** style, neutral palette) — `Button`, `Card`, `Badge`, etc. in `src/components/ui/`
+*   **Primitives:** Radix UI (`@radix-ui/react-slot`)
+*   **Utilities:** `class-variance-authority`, `clsx`, `tailwind-merge` (`cn()` helper)
+*   **Icons:** Lucide React
+*   **Theme:** Custom **Precision Ops** design system — CSS variables, light/dark modes, glassmorphic dashboard chrome (`.precision-ops` in `globals.css`)
+*   **Layout:** Shared `PageHeader` + `.page-heading-row` for stable left-aligned page titles
+
+### UploadThing + Tailwind v4 integration
+
+Do **not** import `@uploadthing/react/styles.css` on individual pages — it injects a conflicting global Tailwind bundle and can break responsive layout (e.g. page headings shifting right on client navigation).
+
+Instead, wire UploadThing into the main Tailwind build in `src/app/globals.css`:
+
+```css
+@import "tailwindcss";
+@import "uploadthing/tw/v4";
+@source "../node_modules/@uploadthing/react/dist";
+```
+
+### Integrations & platform services
+
+*   **Email:** Resend (transactional + inbound webhook, reply, attachment proxy)
+*   **WhatsApp:** Twilio (send/receive, OTP number connect)
+*   **Billing (ZAR):** Stitch Express + Ozow hosted checkout; plan entitlements in `src/lib/plans.ts`
+*   **Cache / queue:** Upstash Redis (skill events, admin telemetry)
+*   **Observability:** Sentry
+*   **Hosting:** Vercel
+*   **Skills / automation:** OpenAI (optional) + internal skill engine with human-approval steps
 
 ## 📂 Project Structure
 
@@ -69,7 +103,7 @@ Ensure you have the following installed:
     *   `DATABASE_URL` (PostgreSQL connection string)
     *   `NEXTAUTH_SECRET` and `NEXTAUTH_URL`
     *   `NEXT_PUBLIC_APP_URL` (public origin for onboarding/invite links — production: `https://praxis.mlkcomputer.com`)
-    *   `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID`
+    *   `UPLOADTHING_TOKEN` (UploadThing v7 — base64 token from the UploadThing dashboard; used by file router + `UTApi` deletes)
     *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
     *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
     *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP **only** when this flag is set; for Twilio sandbox/trial testing. Leave unset in production).
