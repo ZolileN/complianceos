@@ -10,10 +10,11 @@ Approved implementation plan (read-only CIPC + SARS document intelligence; **sub
 
 - [`docs/SARS_CIPC_AUTOMATION_PLAN.md`](docs/SARS_CIPC_AUTOMATION_PLAN.md)
 
-| Phase | Scope |
-|-------|--------|
-| **Phase 1** | CIPC API — company profile, BO status, registry sync, real AR due dates |
-| **Phase 2** | SARS document OCR (ITA34, VAT confirmations, letters) + inbound email/WhatsApp routing |
+| Phase | Scope | Blocked on CIPC API? |
+|-------|--------|----------------------|
+| **Phase 1A** | SARS document OCR, inbound routing, workflow auto-complete | No — start immediately |
+| **Phase 1B** | CIPC registry integration (`ocr` / `direct` / `aggregator` providers) | Build now; activate when credentials arrive |
+| **Ops track** | CIPC enquiry or commercial aggregator contract | Parallel — [guide.cipc.co.za](https://guide.cipc.co.za) is currently down |
 
 ## ✅ Phase A hardening (CI, billing, skill approvals)
 

@@ -295,8 +295,9 @@ Upcoming VAT Deadline
 Expired BEE Certificate
 
 SARS & CIPC Automation (approved — see docs/SARS_CIPC_AUTOMATION_PLAN.md)
-●​ Phase 1: CIPC read-only API (company profile, BO status, registry sync)
-●​ Phase 2: SARS document & correspondence intelligence (ITA34, VAT confirmations, inbound routing)
+●​ Phase 1A: SARS document & correspondence intelligence (no API credentials needed)
+●​ Phase 1B: CIPC registry integration with provider abstraction (ocr / direct / aggregator)
+●​ Ops track: CIPC API enquiry or commercial aggregator (guide.cipc.co.za currently down)
 ●​ Out of scope: automated filing/submission to SARS or CIPC (manual via eFiling / eServices)
 
 Phase 3
