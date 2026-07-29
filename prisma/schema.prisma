@@ -178,7 +178,7 @@ model PendingSignup {
   status           String   @default("pending") // pending | paid | provisioning | completed | expired
   paymentReference String   @unique
   paymentPayload   String?  /// JSON Ozow form payload for redirect
-  provider         String   @default("ozow")
+  provider         String   @default("paystack")
   expiresAt        DateTime
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

@@ -1,8 +1,10 @@
 /**
  * Billing provider interface + factory.
  * BILLING_PROVIDER=manual|paystack|ozow
- * Default: Paystack (primary rail) when PAYSTACK_SECRET_KEY set, else Ozow, else manual.
- * startCheckout falls back to Ozow when a Paystack checkout fails.
+ *
+ * Paystack is the primary checkout rail whenever PAYSTACK_SECRET_KEY is set.
+ * Ozow is used only when Paystack is not configured, or as a runtime fallback
+ * in startCheckout when a Paystack initialize call fails.
  */
 
 import type { TenantPlan } from '@/lib/plans';
@@ -49,17 +51,21 @@ export function paystackCheckoutAvailable(): boolean {
 export function getBillingProvider(): BillingProvider {
   const configured = (process.env.BILLING_PROVIDER || '').toLowerCase();
 
-  if (configured === 'paystack') return paystackProvider;
-  if (configured === 'ozow') return ozowProvider;
   if (configured === 'manual') return manualProvider;
 
-  // Auto: Paystack is the primary rail; Ozow is the fallback (startCheckout
-  // retries failed Paystack checkouts on Ozow when it is configured).
+  // Paystack wins whenever credentials exist — even if BILLING_PROVIDER=ozow
+  // (legacy env from before Paystack go-live).
   if (paystackCheckoutAvailable()) {
     return paystackProvider;
   }
-  if (ozowCheckoutAvailable()) {
+
+  if (configured === 'paystack') {
+    return paystackProvider;
+  }
+
+  if (configured === 'ozow' || ozowCheckoutAvailable()) {
     return ozowProvider;
   }
+
   return manualProvider;
 }
