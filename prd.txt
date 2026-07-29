@@ -294,6 +294,11 @@ System identifies:
 Upcoming VAT Deadline
 Expired BEE Certificate
 
+SARS & CIPC Automation (approved — see docs/SARS_CIPC_AUTOMATION_PLAN.md)
+●​ Phase 1: CIPC read-only API (company profile, BO status, registry sync)
+●​ Phase 2: SARS document & correspondence intelligence (ITA34, VAT confirmations, inbound routing)
+●​ Out of scope: automated filing/submission to SARS or CIPC (manual via eFiling / eServices)
+
 Phase 3
 Compliance Monitoring Engine
 Track:

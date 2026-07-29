@@ -4,6 +4,17 @@ ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline 
 
 **Two dashboards:** tenant staff (`/dashboard`) and platform ops (`/admin`). There is no client login portal — clients interact via WhatsApp, email, public onboarding (`/onboard/{slug}`), and mandate signing (`/sign/{token}`).
 
+## 📋 SARS & CIPC automation roadmap
+
+Approved implementation plan (read-only CIPC + SARS document intelligence; **submissions remain manual**):
+
+- [`docs/SARS_CIPC_AUTOMATION_PLAN.md`](docs/SARS_CIPC_AUTOMATION_PLAN.md)
+
+| Phase | Scope |
+|-------|--------|
+| **Phase 1** | CIPC API — company profile, BO status, registry sync, real AR due dates |
+| **Phase 2** | SARS document OCR (ITA34, VAT confirmations, letters) + inbound email/WhatsApp routing |
+
 ## ✅ Phase A hardening (CI, billing, skill approvals)
 
 *   **CI:** GitHub Actions runs `lint`, `typecheck`, and Vitest unit tests on PRs (`npm test`).
