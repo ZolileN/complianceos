@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen, Upload, X } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, FolderOpen, Inbox, Upload, X } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -175,10 +176,18 @@ export default function DocumentsPage() {
         title="Documents"
         description={`${totalCount} ${totalCount === 1 ? 'file' : 'files'} stored`}
         actions={
-          <Button variant="primary" onClick={() => setShowUpload(true)}>
-            <Upload />
-            Upload
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/documents/unassigned">
+                <Inbox className="size-4" />
+                Unassigned queue
+              </Link>
+            </Button>
+            <Button variant="primary" onClick={() => setShowUpload(true)}>
+              <Upload />
+              Upload
+            </Button>
+          </div>
         }
       />
 

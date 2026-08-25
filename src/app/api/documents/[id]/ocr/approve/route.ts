@@ -10,6 +10,8 @@ import {
   notifyComplianceStakeholders,
 } from '@/lib/compliance-monitor';
 import { requireStaff } from '@/lib/rbac';
+import { evaluateWorkflowDocumentTriggers } from '@/lib/workflowEngine';
+import type { SarsDocumentKind } from '@/lib/sars-document-parsers';
 
 async function upsertObligation(opts: {
   clientId: string;
@@ -91,6 +93,27 @@ async function upsertObligation(opts: {
   return item;
 }
 
+function resolveSarsObligation(
+  category: string,
+  kind: SarsDocumentKind | ''
+): { category: string; name: string } | null {
+  if (kind === 'vat201_confirmation') return { category: 'SARS', name: 'VAT' };
+  if (kind === 'emp201_confirmation') return { category: 'SARS', name: 'PAYE' };
+  if (category === 'sars_submission') return { category: 'SARS', name: 'VAT' };
+  if (category === 'sars_assessment' || category === 'sars_correspondence') {
+    return { category: 'SARS', name: 'Income Tax' };
+  }
+  return null;
+}
+
+function parseSaDate(raw: string): Date | null {
+  const trimmed = raw.trim();
+  const sa = trimmed.match(/^(\d{2})[\/\-.](\d{2})[\/\-.](\d{4})$/);
+  if (sa) return new Date(`${sa[3]}-${sa[2]}-${sa[1]}`);
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
@@ -156,14 +179,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       updateData.directors = JSON.stringify(directorObjects);
     }
 
-    if (Object.keys(updateData).length === 0) {
+    const isSarsCategory = ['sars_assessment', 'sars_submission', 'sars_correspondence'].includes(
+      document.category
+    );
+
+    if (Object.keys(updateData).length === 0 && !isSarsCategory) {
       return NextResponse.json({ error: 'No actionable client fields found in OCR metadata' }, { status: 400 });
     }
 
-    const updatedClient = await prisma.client.update({
-      where: { id: document.clientId },
-      data: updateData
-    });
+    let updatedClient = document.client;
+    if (Object.keys(updateData).length > 0) {
+      updatedClient = await prisma.client.update({
+        where: { id: document.clientId },
+        data: updateData,
+      });
+    }
 
     // --- AUTOMATED COMPLIANCE ALERTS (canonical obligation names) ---
     const now = new Date();
@@ -197,7 +227,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         ...clientMeta,
       });
     } else if (document.category === 'cor_document' && metadata.registration_date) {
-      // Annual Returns are due within 30 days after the anniversary of the registration date
       const regParts = metadata.registration_date.split('/');
       let regDateStr = metadata.registration_date;
       if (regParts.length === 3 && regParts[0].length === 2) {
@@ -227,6 +256,39 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           ...clientMeta,
         });
       }
+    } else if (isSarsCategory) {
+      const sarsKind = (metadata.sars_document_kind || '') as SarsDocumentKind;
+      const obligation = resolveSarsObligation(document.category, sarsKind);
+      if (obligation) {
+        let dueDate: Date | null = null;
+        let status = 'compliant';
+
+        if (metadata.due_date) {
+          dueDate = parseSaDate(metadata.due_date);
+          if (dueDate && dueDate < now) status = 'action_required';
+        } else if (metadata.expiry_date) {
+          dueDate = parseSaDate(metadata.expiry_date);
+          if (dueDate && dueDate < now) status = 'action_required';
+        } else if (obligation.name === 'VAT' || obligation.name === 'PAYE') {
+          const rolled = nextDueAfterCompliant(obligation.category, obligation.name, null);
+          dueDate = rolled;
+        } else if (metadata.tax_year && obligation.name === 'Income Tax') {
+          const year = parseInt(metadata.tax_year.slice(0, 4), 10);
+          if (!isNaN(year)) {
+            dueDate = new Date(year + 1, 1, 28);
+          }
+        }
+
+        await upsertObligation({
+          clientId: document.clientId,
+          tenantId,
+          category: obligation.category,
+          name: obligation.name,
+          status,
+          dueDate,
+          ...clientMeta,
+        });
+      }
     }
 
     await logAuditAction({
@@ -236,6 +298,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       entityType: 'Document',
       entityId: id,
       details: { ocrApproved: true, updatedClientFields: Object.keys(updateData) },
+    });
+
+    evaluateWorkflowDocumentTriggers(tenantId, document.clientId).catch((err: unknown) => {
+      console.error('[OCR Approve] Workflow trigger failed:', err);
     });
 
     return NextResponse.json({ success: true, data: updatedClient });

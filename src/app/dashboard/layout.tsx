@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import TenantSupportWidget from '@/components/support/TenantSupportWidget';
+import CookieConsent from '@/components/CookieConsent';
 
 const icons: Record<string, LucideIcon> = {
   grid: LayoutGrid,
@@ -398,6 +399,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {!loading && user && tenant ? <TenantSupportWidget /> : null}
+      <CookieConsent />
 
       <style jsx>{`
         @media (max-width: 768px) {

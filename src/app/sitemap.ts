@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 import { PUBLIC_PAGE_PATHS, SITE_URL } from '@/lib/public-routes';
+import { HELP_ARTICLE_SLUGS } from '@/lib/help-articles';
 
 const PAGE_META: Record<string, { changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']; priority: number }> = {
   '/': { changeFrequency: 'weekly', priority: 1 },
@@ -19,7 +20,7 @@ const PAGE_META: Record<string, { changeFrequency: MetadataRoute.Sitemap[number]
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
 
-  return PUBLIC_PAGE_PATHS.map((path) => {
+  const staticPages = PUBLIC_PAGE_PATHS.map((path) => {
     const meta = PAGE_META[path] ?? { changeFrequency: 'monthly' as const, priority: 0.5 };
     return {
       url: path === '/' ? SITE_URL : `${SITE_URL}${path}`,
@@ -28,4 +29,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: meta.priority,
     };
   });
+
+  const helpArticles = HELP_ARTICLE_SLUGS.map((slug) => ({
+    url: `${SITE_URL}/help/${slug}`,
+    lastModified,
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...helpArticles];
 }

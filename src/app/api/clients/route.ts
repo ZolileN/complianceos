@@ -13,6 +13,7 @@ import {
   readOnlyResponse,
 } from '@/lib/entitlements';
 import { requireStaff } from '@/lib/rbac';
+import { INBOUND_QUEUE_REGISTRATION } from '@/lib/unassigned-documents';
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
 
   const where: Prisma.ClientWhereInput = {
     tenantId,
+    registrationNumber: { not: INBOUND_QUEUE_REGISTRATION },
     ...(search
       ? {
           OR: [
