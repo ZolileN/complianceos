@@ -175,6 +175,8 @@ export default function DocumentsPage() {
         }
         title="Documents"
         description={`${totalCount} ${totalCount === 1 ? 'file' : 'files'} stored`}
+        helpSlug="upload-ocr"
+        helpLabel="Documents"
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>

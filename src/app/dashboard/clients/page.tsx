@@ -107,6 +107,8 @@ export default function ClientsPage() {
         }
         title="Clients"
         description={`${clients.length} ${clients.length === 1 ? 'company' : 'companies'} in your workspace`}
+        helpSlug="add-clients"
+        helpLabel="Clients"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {tenantSlug && (

@@ -147,6 +147,8 @@ export default function DashboardPage() {
           }
           title={`${new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening'}, ${user?.name?.split(' ')[0] || 'there'}`}
           description="Here's the current state of your client operations and compliance workload."
+          helpSlug="create-workspace"
+          helpLabel="Dashboard"
         />
         <div className="flex min-h-[40vh] items-center justify-center">
           <span className="spinner size-9" />
@@ -211,6 +213,8 @@ export default function DashboardPage() {
         }
         title={`${greeting}, ${user?.name?.split(" ")[0] || "there"}`}
         description="Here's the current state of your client operations and compliance workload."
+        helpSlug="create-workspace"
+        helpLabel="Dashboard"
         actions={
           <Button asChild variant="primary" className="shrink-0">
             <Link href="/dashboard/clients/new">

@@ -2,12 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import LandingShell from '@/components/landing/LandingShell';
+import HelpCenterSearch from '@/components/help/HelpCenterSearch';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  HELP_CENTER_ARTICLES,
-  HELP_CENTER_CATEGORIES,
-} from '@/lib/help-center-content';
 
 const PAGE_TITLE = 'Help Center | PraxisOne';
 const PAGE_DESCRIPTION =
@@ -36,8 +32,8 @@ export default function HelpCenterPage() {
           How can we help?
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[var(--text-secondary)]">
-          Quick guides for firms using PraxisOne. Sign in for full dashboard access, or start a
-          free Starter trial.
+          Search guides for clients, compliance, documents, WhatsApp, and billing — or browse by
+          category below.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -47,40 +43,12 @@ export default function HelpCenterPage() {
           <Link href="/login">
             <Button variant="outline">Sign in</Button>
           </Link>
-          <a href="#contact">
+          <a href="/#contact">
             <Button variant="ghost">Contact support</Button>
           </a>
         </div>
 
-        <div className="mt-14 space-y-12">
-          {HELP_CENTER_CATEGORIES.map((category) => {
-            const articles = HELP_CENTER_ARTICLES.filter((a) => a.category === category);
-            if (articles.length === 0) return null;
-            return (
-              <section key={category}>
-                <h2 className="mb-4 text-lg font-semibold text-[var(--text-primary)]">{category}</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {articles.map((article) => (
-                    <Card key={article.title} className="h-full">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-base">{article.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription className="mb-4">{article.summary}</CardDescription>
-                        <Link
-                          href={article.href}
-                          className="text-sm font-medium text-teal-700 hover:underline dark:text-teal-400"
-                        >
-                          Learn more →
-                        </Link>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+        <HelpCenterSearch />
 
         <div className="mt-14 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] p-6 text-sm text-[var(--text-secondary)]">
           <p className="font-medium text-[var(--text-primary)]">Still need help?</p>
