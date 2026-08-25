@@ -299,21 +299,16 @@ export default function LandingPageContent() {
             subtitle="Portfolio compliance, critical deadlines, and team workload — the same view your administrators use every day."
           />
           <div className="overflow-hidden rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] shadow-xl">
-            <div className="flex items-center gap-2 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-2.5">
-              <span className="size-2.5 rounded-full bg-red-400" />
-              <span className="size-2.5 rounded-full bg-amber-400" />
-              <span className="size-2.5 rounded-full bg-emerald-400" />
-              <span className="ml-2 text-[10px] text-[var(--text-muted)]">
-                app.praxisone.com
-              </span>
+            <div className="relative aspect-video w-full bg-black">
+              <iframe
+                className="absolute inset-0 h-full w-full"
+                src="https://www.youtube.com/embed/-s-HptJYAO4"
+                title="PraxisOne dashboard tour"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
             </div>
-            <Image
-              src="/images/landing/dashboard-tour.jpg"
-              alt="PraxisOne dashboard showing compliance posture and portfolio metrics"
-              width={1024}
-              height={516}
-              className="h-auto w-full"
-            />
           </div>
         </div>
       </section>
