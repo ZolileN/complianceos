@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  Download,
   List,
   ShieldAlert,
   ShieldCheck,
@@ -152,6 +153,16 @@ function CompliancePageContent() {
         </div>
 
         <div className="page-heading-row__actions">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            window.location.href = '/api/compliance/export';
+          }}
+        >
+          <Download className="size-4" />
+          Export CSV
+        </Button>
         {/* Table vs Timeline View Toggle */}
         <div className="flex rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] p-1 shadow-sm">
           <Button
