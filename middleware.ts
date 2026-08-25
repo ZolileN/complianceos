@@ -78,6 +78,6 @@ export const config = {
      * (negative-lookahead exclusions for nested api/cron paths are unreliable).
      * Cron handlers still require Authorization: Bearer $CRON_SECRET.
      */
-    "/((?!$|login|signup|forgot-password|reset-password|onboard|pay|sign|monitoring|\\.well-known|api/auth|api/onboard|api/mandates/sign|api/uploadthing|api/webhooks|api/whatsapp/webhook|api/billing/ozow/webhook|api/billing/ozow/return|api/billing/paystack/callback|api/billing/paystack/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!$|login|signup|forgot-password|reset-password|onboard|pay|sign|refund-policy|privacy|terms|cookies|security|help|monitoring|\\.well-known|api/auth|api/onboard|api/mandates/sign|api/uploadthing|api/webhooks|api/whatsapp/webhook|api/billing/ozow/webhook|api/billing/ozow/return|api/billing/paystack/callback|api/billing/paystack/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
