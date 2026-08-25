@@ -49,6 +49,7 @@ function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState(() => {
     if (billingParam === 'cancelled')
       return 'Payment was cancelled. You can try again when ready.';
@@ -119,8 +120,9 @@ function SignupForm() {
       fullName.trim() &&
       email.trim() &&
       password.length >= 6 &&
-      password === confirmPassword,
-    [firmName, fullName, email, password, confirmPassword]
+      password === confirmPassword &&
+      acceptedTerms,
+    [firmName, fullName, email, password, confirmPassword, acceptedTerms]
   );
 
   const handlePay = async () => {
@@ -351,6 +353,34 @@ function SignupForm() {
                   minLength={6}
                 />
               </div>
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-[var(--text-secondary)]">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-4 rounded border-[var(--border-primary)]"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  required
+                />
+                <span>
+                  I agree to the{' '}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-teal-700 hover:underline dark:text-teal-400"
+                  >
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-teal-700 hover:underline dark:text-teal-400"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
               {isTrialPlan && (
                 <Button
                   type="submit"

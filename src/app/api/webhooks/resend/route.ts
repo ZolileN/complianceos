@@ -7,8 +7,10 @@ import {
   fetchReceivedEmailContent,
   normalizeEmailAddress,
   parseTenantSlugFromRecipients,
+  type InboundEmailAttachmentMeta,
   type ResendReceivedMeta,
 } from '@/lib/inbound-email';
+import { processInboundEmailAttachments } from '@/lib/inbound-document-processor';
 import { isLikelySarsInbound } from '@/lib/sars-document-parsers';
 import { matchClientFromInboundText } from '@/lib/inbound-sars-routing';
 
@@ -94,11 +96,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let attachmentMeta = (data.attachments || []).map((a) => ({
-      id: a.id,
-      name: a.filename,
-      contentType: a.content_type,
-    })).filter((a) => a.id);
+    let attachmentMeta: InboundEmailAttachmentMeta[] = (data.attachments || [])
+      .filter((a) => a.id)
+      .map((a) => ({
+        id: a.id!,
+        name: a.filename || 'attachment',
+        contentType: a.content_type || 'application/octet-stream',
+      }));
 
     if (messageId) {
       const fromApi = await fetchReceivedEmailAttachments(messageId);
@@ -142,7 +146,24 @@ export async function POST(request: NextRequest) {
       clientId: matchedClient?.id,
     });
 
-    return NextResponse.json({ received: true, id: email.id, tenantSlug: tenant.slug });
+    const attachmentResult = await processInboundEmailAttachments({
+      tenantId: tenant.id,
+      inboundEmailId: email.id,
+      messageId,
+      clientId: matchedClient?.id ?? null,
+      fromAddress,
+      subject,
+      bodyText: bodyText || data.text || '',
+      attachments: attachmentMeta,
+    });
+
+    return NextResponse.json({
+      received: true,
+      id: email.id,
+      tenantSlug: tenant.slug,
+      attachmentsProcessed: attachmentResult.processed,
+      documentIds: attachmentResult.documentIds,
+    });
   } catch (error) {
     console.error('Resend inbound webhook error:', error);
     return NextResponse.json(

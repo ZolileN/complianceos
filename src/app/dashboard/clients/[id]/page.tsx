@@ -39,6 +39,7 @@ import { WORKFLOW_CATEGORIES } from '@/lib/constants';
 import { UploadDropzone } from '@/lib/uploadthing';
 import { Badge } from '@/components/ui/badge';
 import MandatePanel from '@/components/clients/MandatePanel';
+import CipcRegistryPanel from '@/components/clients/CipcRegistryPanel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -519,6 +520,12 @@ function ClientDetailPageContent() {
               )}
             </CardContent>
           </Card>
+          <div className="md:col-span-2">
+            <CipcRegistryPanel
+              clientId={client.id}
+              registrationNumber={client.registration_number}
+            />
+          </div>
         </div>
       )}
 

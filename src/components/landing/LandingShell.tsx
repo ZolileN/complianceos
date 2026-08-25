@@ -8,6 +8,7 @@ import BookDemoModal from '@/components/BookDemoModal';
 import ContactModal from '@/components/ContactModal';
 import ContactSalesModal from '@/components/ContactSalesModal';
 import RefundPolicyModal from '@/components/RefundPolicyModal';
+import CookieConsent from '@/components/CookieConsent';
 import ScrollLink from '@/components/ScrollLink';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
@@ -195,6 +196,7 @@ export default function LandingShell({ children }: { children: React.ReactNode }
       <ContactModal />
       <ContactSalesModal />
       <RefundPolicyModal />
+      <CookieConsent />
     </div>
   );
 }
