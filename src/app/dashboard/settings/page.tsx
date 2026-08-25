@@ -374,6 +374,21 @@ function SettingsPageContent() {
     toast(successMessage, 'success');
   };
 
+  const replayFirmOnboarding = async () => {
+    try {
+      const res = await fetch('/api/settings/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      if (!res.ok) throw new Error('Could not reset setup wizard');
+      toast('Setup wizard will appear when you return to the dashboard', 'success');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      toast(err instanceof Error ? err.message : 'Could not reset wizard', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-[800px] space-y-4">
@@ -441,17 +456,32 @@ function SettingsPageContent() {
       </div>
 
       {activeTab === 'profile' && company && isAdminOrOps && (
-        <CompanyProfileTab
-          company={company}
-          profileForm={profileForm}
-          setProfileForm={setProfileForm}
-          saving={saving}
-          onSave={handleSaveProfile}
-          onCopyOnboardingLink={copyOnboardingLink}
-          onboardingUrl={onboardingUrl}
-          inboundEmailDomain={inboundEmailDomain}
-          onCopy={copyText}
-        />
+        <>
+          <CompanyProfileTab
+            company={company}
+            profileForm={profileForm}
+            setProfileForm={setProfileForm}
+            saving={saving}
+            onSave={handleSaveProfile}
+            onCopyOnboardingLink={copyOnboardingLink}
+            onboardingUrl={onboardingUrl}
+            inboundEmailDomain={inboundEmailDomain}
+            onCopy={copyText}
+          />
+          <div className="card mt-4 p-4 text-sm text-[var(--text-secondary)]">
+            <p className="font-medium text-[var(--text-primary)]">Firm setup wizard</p>
+            <p className="mt-1">
+              Replay the guided tour for new workspaces — configure profile, team, clients, and inbox.
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm mt-3"
+              onClick={replayFirmOnboarding}
+            >
+              Show setup wizard again
+            </button>
+          </div>
+        </>
       )}
 
       {activeTab === 'whatsapp' && company && isAdminOrOps && (

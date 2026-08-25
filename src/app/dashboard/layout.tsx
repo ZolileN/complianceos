@@ -9,7 +9,9 @@ import Logo from '@/components/Logo';
 import {
   Bell,
   Banknote,
+  BookOpen,
   CheckSquare2,
+  CircleHelp,
   CreditCard,
   FileText,
   Gauge,
@@ -32,6 +34,9 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import TenantSupportWidget from '@/components/support/TenantSupportWidget';
 import CookieConsent from '@/components/CookieConsent';
+import HelpSearchDialog from '@/components/help/HelpSearchDialog';
+import FirmOnboardingWizard from '@/components/help/FirmOnboardingWizard';
+import { helpForDashboardPath, helpArticlePath } from '@/lib/dashboard-help';
 
 const icons: Record<string, LucideIcon> = {
   grid: LayoutGrid,
@@ -62,6 +67,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [helpSearchOpen, setHelpSearchOpen] = useState(false);
+
+  const contextualHelp = helpForDashboardPath(pathname);
 
   useEffect(() => {
     if (user?.role === 'client') {
@@ -321,6 +329,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
         </div>
         <div className="header-actions" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {contextualHelp ? (
+            <Link
+              href={helpArticlePath(contextualHelp.slug)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-icon"
+              title={`Help: ${contextualHelp.label}`}
+              aria-label={`Help: ${contextualHelp.label}`}
+            >
+              <CircleHelp size={18} />
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-ghost btn-icon"
+            title="Search help"
+            aria-label="Search help articles"
+            onClick={() => setHelpSearchOpen(true)}
+          >
+            <BookOpen size={18} />
+          </button>
           <button
             type="button"
             className="btn btn-ghost btn-icon"
@@ -400,6 +429,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {!loading && user && tenant ? <TenantSupportWidget /> : null}
       <CookieConsent />
+      <HelpSearchDialog open={helpSearchOpen} onClose={() => setHelpSearchOpen(false)} />
+      {!loading && user && tenant ? <FirmOnboardingWizard /> : null}
 
       <style jsx>{`
         @media (max-width: 768px) {

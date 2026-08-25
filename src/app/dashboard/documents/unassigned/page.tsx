@@ -116,6 +116,8 @@ export default function UnassignedDocumentsPage() {
       <PageHeader
         title="Unassigned documents"
         description="SARS PDFs received by email that could not be matched to a client automatically."
+        helpSlug="sars-document-intelligence"
+        helpLabel="Unassigned documents"
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
