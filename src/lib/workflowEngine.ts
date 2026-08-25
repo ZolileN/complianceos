@@ -15,8 +15,10 @@ export { checkDocumentMatch };
  */
 const COMPLIANCE_MAPPING: Record<string, { category: string; name: string }> = {
   'Tax Compliance': { category: 'SARS', name: 'Income Tax' },
+  'Assessment Received': { category: 'SARS', name: 'Income Tax' },
   'BEE Certification': { category: 'BEE', name: 'Certificate Expiry' },
   'Annual Returns': { category: 'CIPC', name: 'Annual Returns' },
+  'Submit to SARS': { category: 'SARS', name: 'Income Tax' },
 };
 
 export async function evaluateWorkflowDocumentTriggers(tenantId: string, clientId: string) {

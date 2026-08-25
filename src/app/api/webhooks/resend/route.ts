@@ -9,6 +9,8 @@ import {
   parseTenantSlugFromRecipients,
   type ResendReceivedMeta,
 } from '@/lib/inbound-email';
+import { isLikelySarsInbound } from '@/lib/sars-document-parsers';
+import { matchClientFromInboundText } from '@/lib/inbound-sars-routing';
 
 type ResendInboundPayload = {
   type?: string;
@@ -51,13 +53,27 @@ export async function POST(request: NextRequest) {
     }
 
     const fromAddress = normalizeEmailAddress(data.from || 'unknown');
-    const matchedClient = await prisma.client.findFirst({
+    let matchedClient = await prisma.client.findFirst({
       where: {
         tenantId: tenant.id,
         email: { equals: fromAddress, mode: 'insensitive' },
       },
       select: { id: true },
     });
+
+    const subject = data.subject || '';
+    const previewText = data.text || '';
+
+    if (!matchedClient && isLikelySarsInbound(fromAddress, subject, previewText)) {
+      const sarsClientId = await matchClientFromInboundText(
+        tenant.id,
+        `${subject}\n${previewText}`,
+        undefined
+      );
+      if (sarsClientId) {
+        matchedClient = { id: sarsClientId };
+      }
+    }
 
     const messageId = data.email_id || null;
     if (messageId) {

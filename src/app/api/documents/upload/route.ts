@@ -21,6 +21,11 @@ import {
 } from '@/lib/entitlements';
 import { fetchReceivedAttachmentDownloadUrl } from '@/lib/inbound-email';
 import { getAppBaseUrl } from '@/lib/appUrl';
+import {
+  classifySarsDocument,
+  parseSarsDocumentFields,
+  type SarsClassification,
+} from '@/lib/sars-document-parsers';
 
 if (typeof global !== 'undefined') {
   const g = global as unknown as Record<string, unknown>;
@@ -205,6 +210,9 @@ export async function POST(request: NextRequest) {
       bee_certificate: { cat: 'BEE', name: 'Certificate Expiry' },
       tax_certificate: { cat: 'SARS', name: 'Income Tax' },
       cor_document: { cat: 'CIPC', name: 'Annual Returns' },
+      sars_assessment: { cat: 'SARS', name: 'Income Tax' },
+      sars_submission: { cat: 'SARS', name: 'VAT' },
+      sars_correspondence: { cat: 'SARS', name: 'Income Tax' },
     };
 
     if (category && mapping[category]) {
@@ -597,6 +605,30 @@ export async function triggerOcrSimulation(documentId: string) {
         if (taxNum)             metadata.tax_number           = taxNum;
         if (registeredAddress)  metadata.registered_address  = registeredAddress;
         if (directors)          metadata.directors            = directors;
+      } else if (
+        cleanCategory === 'sars_assessment' ||
+        cleanCategory === 'sars_submission' ||
+        cleanCategory === 'sars_correspondence' ||
+        cleanCategory === 'other'
+      ) {
+        const classification =
+          classifySarsDocument(ocrText, (docRaw as { name?: string }).name || '') ||
+          categoryToSarsClassification(cleanCategory);
+
+        if (classification) {
+          metadata = parseSarsDocumentFields(classification.kind, ocrText);
+          if (cleanCategory === 'other') {
+            await db.document.update({
+              where: { id: documentId },
+              data: { category: classification.category },
+            });
+          }
+        } else {
+          metadata = {
+            document_type: 'General Document',
+            detected_text_length: String(ocrText.length),
+          };
+        }
       } else if (cleanCategory === 'bank_statement') {
         const bankMatch = ocrText.match(/(Capitec|FNB|First\s*National\s*Bank|Standard\s*Bank|Absa|Nedbank)/i);
         const bankName = bankMatch ? bankMatch[1].trim() : "Capitec Bank";
@@ -670,6 +702,27 @@ export async function triggerOcrSimulation(documentId: string) {
 }
 
 // Date helper to parse SA date styles
+function categoryToSarsClassification(category: string): SarsClassification | null {
+  const labels: Record<string, SarsClassification> = {
+    sars_assessment: {
+      kind: 'ita34',
+      category: 'sars_assessment',
+      documentType: 'ITA34 Notice of Assessment',
+    },
+    sars_submission: {
+      kind: 'vat201_confirmation',
+      category: 'sars_submission',
+      documentType: 'VAT201 Submission Confirmation',
+    },
+    sars_correspondence: {
+      kind: 'sars_letter',
+      category: 'sars_correspondence',
+      documentType: 'SARS Correspondence',
+    },
+  };
+  return labels[category] ?? null;
+}
+
 function parseOcrDate(dateStr: string): string {
   try {
     const cleanStr = dateStr.trim().replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');

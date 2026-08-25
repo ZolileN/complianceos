@@ -29,7 +29,7 @@ import {
   TENANT_PLANS,
   type TenantPlan,
 } from '@/lib/plans';
-import { LANDING_FAQS } from '@/lib/landing-content';
+import { LANDING_FAQS, LANDING_TESTIMONIALS } from '@/lib/landing-content';
 
 function SectionHeader({
   tag,
@@ -382,6 +382,37 @@ export default function LandingPageContent() {
               </Card>
             );
           })}
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section
+        id="testimonials"
+        className="border-y border-[var(--border-primary)] bg-[var(--bg-secondary)] py-20"
+      >
+        <div className="mx-auto max-w-[1200px] px-6">
+          <SectionHeader
+            tag="What firms say"
+            title="Built for teams under deadline pressure"
+            subtitle="South African accounting, tax, and compliance firms use PraxisOne to stay organised and audit-ready."
+          />
+          <div className="grid gap-6 md:grid-cols-3">
+            {LANDING_TESTIMONIALS.map((item) => (
+              <Card key={item.quote} className="h-full">
+                <CardContent className="pt-6">
+                  <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+                    &ldquo;{item.quote}&rdquo;
+                  </p>
+                  <p className="mt-4 text-sm font-semibold text-[var(--text-primary)]">
+                    {item.role}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {item.firmType} · {item.region}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 

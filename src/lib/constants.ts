@@ -33,6 +33,9 @@ export const DOCUMENT_CATEGORIES = [
   { value: 'bee_certificate', label: 'BEE Certificate', icon: '🐝' },
   { value: 'financial_statement', label: 'Financial Statement', icon: '📊' },
   { value: 'mandate', label: 'Mandate', icon: '✍️' },
+  { value: 'sars_assessment', label: 'SARS Assessment (ITA34)', icon: '📑' },
+  { value: 'sars_submission', label: 'SARS Submission Confirmation', icon: '✅' },
+  { value: 'sars_correspondence', label: 'SARS Correspondence', icon: '✉️' },
   { value: 'other', label: 'Other', icon: '📄' },
 ] as const;
 
