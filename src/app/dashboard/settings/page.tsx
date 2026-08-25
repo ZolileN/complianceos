@@ -11,6 +11,7 @@ import PersonalProfileTab from '@/components/settings/PersonalProfileTab';
 import BillingPlanTab from '@/components/settings/BillingPlanTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { getOnboardingUrl } from '@/lib/appUrl';
+import { openFirmOnboardingWizard } from '@/components/help/FirmOnboardingWizard';
 import type {
   CompanyData,
   PersonalData,
@@ -382,8 +383,8 @@ function SettingsPageContent() {
         body: JSON.stringify({ action: 'reset' }),
       });
       if (!res.ok) throw new Error('Could not reset setup wizard');
-      toast('Setup wizard will appear when you return to the dashboard', 'success');
-      router.push('/dashboard');
+      openFirmOnboardingWizard(1);
+      toast('Setup wizard opened', 'success');
     } catch (err: unknown) {
       toast(err instanceof Error ? err.message : 'Could not reset wizard', 'error');
     }

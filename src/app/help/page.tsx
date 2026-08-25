@@ -43,9 +43,9 @@ export default function HelpCenterPage() {
           <Link href="/login">
             <Button variant="outline">Sign in</Button>
           </Link>
-          <a href="/#contact">
+          <Link href="/#contact">
             <Button variant="ghost">Contact support</Button>
-          </a>
+          </Link>
         </div>
 
         <HelpCenterSearch />
