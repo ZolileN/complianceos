@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import LandingShell from '@/components/landing/LandingShell';
 import LandingPageContent from '@/components/landing/LandingPageContent';
 import { LANDING_FAQS } from '@/lib/landing-content';
+import { SITE_URL } from '@/lib/public-routes';
 
-const SITE_URL = 'https://praxis.mlkcomputer.com';
 const PAGE_TITLE = 'Compliance Software for South African Firms | PraxisOne';
 const PAGE_DESCRIPTION =
   'Manage CIPC and SARS deadlines, clients, documents, workflows and WhatsApp in one platform built for South African accounting firms. Start a 14-day trial.';

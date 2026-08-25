@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 
-const SITE_URL = 'https://praxis.mlkcomputer.com';
+import { SITE_URL } from '@/lib/public-routes';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
+      allow: ['/', '/signup', '/help', '/security', '/privacy', '/terms', '/cookies', '/refund-policy'],
       disallow: [
         '/admin',
         '/api/',
@@ -15,7 +15,8 @@ export default function robots(): MetadataRoute.Robots {
         '/login',
         '/onboard/',
         '/reset-password',
-        '/signup',
+        '/pay/',
+        '/sign/',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,

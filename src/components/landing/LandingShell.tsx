@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Moon, Sun } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
 import Logo from '@/components/Logo';
 import BookDemoModal from '@/components/BookDemoModal';
 import ContactModal from '@/components/ContactModal';
@@ -12,8 +12,21 @@ import ScrollLink from '@/components/ScrollLink';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 
+const NAV_LINKS = [
+  ['#features', 'Features'],
+  ['#solutions', 'Solutions'],
+  ['#how-it-works', 'How it works'],
+  ['#dashboard', 'Dashboard'],
+  ['#pricing', 'Plans'],
+  ['#testimonials', 'Testimonials'],
+  ['#faq', 'FAQ'],
+] as const;
+
 export default function LandingShell({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
 
   return (
     <div className={`precision-ops min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
@@ -23,14 +36,7 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             <Logo size={32} showText tone={theme === 'dark' ? 'dark' : 'light'} />
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
-            {[
-              ['#features', 'Features'],
-              ['#solutions', 'Solutions'],
-              ['#how-it-works', 'How it works'],
-              ['#dashboard', 'Dashboard'],
-              ['#pricing', 'Plans'],
-              ['#faq', 'FAQ'],
-            ].map(([href, label]) => (
+            {NAV_LINKS.map(([href, label]) => (
               <ScrollLink
                 key={href}
                 href={href}
@@ -39,8 +45,25 @@ export default function LandingShell({ children }: { children: React.ReactNode }
                 {label}
               </ScrollLink>
             ))}
+            <Link
+              href="/help"
+              className="text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-teal-700 dark:hover:text-teal-400"
+            >
+              Help
+            </Link>
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileNavOpen((open) => !open)}
+              aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileNavOpen}
+            >
+              {mobileNavOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -51,13 +74,13 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             >
               {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <Link href="/login">
+            <Link href="/login" className="hidden sm:block">
               <Button variant="ghost" size="sm">
                 Sign in
               </Button>
             </Link>
-            <a href="#book-demo">
-              <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+            <a href="#book-demo" className="hidden sm:block">
+              <Button variant="outline" size="sm">
                 Book demo
               </Button>
             </a>
@@ -68,6 +91,42 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             </Link>
           </div>
         </div>
+
+        {mobileNavOpen ? (
+          <nav className="border-t border-[var(--border-primary)] bg-[var(--bg-card)] px-6 py-4 md:hidden">
+            <ul className="space-y-3">
+              {NAV_LINKS.map(([href, label]) => (
+                <li key={href}>
+                  <ScrollLink
+                    href={href}
+                    onClick={closeMobileNav}
+                    className="block text-sm font-medium text-[var(--text-secondary)]"
+                  >
+                    {label}
+                  </ScrollLink>
+                </li>
+              ))}
+              <li>
+                <Link
+                  href="/help"
+                  onClick={closeMobileNav}
+                  className="block text-sm font-medium text-[var(--text-secondary)]"
+                >
+                  Help
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/login"
+                  onClick={closeMobileNav}
+                  className="block text-sm font-medium text-[var(--text-secondary)]"
+                >
+                  Sign in
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        ) : null}
       </header>
 
       <main>{children}</main>
@@ -88,20 +147,33 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
               <li><ScrollLink href="#features">Features</ScrollLink></li>
               <li><ScrollLink href="#dashboard">Dashboard</ScrollLink></li>
+              <li><Link href="/help">Help center</Link></li>
+              <li><Link href="/security">Security</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-              Company
+              Legal
             </h4>
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
               <li><a href="#contact">Contact</a></li>
+              <li><Link href="/privacy">Privacy policy</Link></li>
+              <li><Link href="/terms">Terms of service</Link></li>
+              <li><Link href="/cookies">Cookie policy</Link></li>
               <li><Link href="/refund-policy">Refund policy</Link></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-[var(--border-primary)] px-6 py-4 text-center text-xs text-[var(--text-muted)]">
           © {new Date().getFullYear()} PraxisOne. All rights reserved.
+          <span className="mx-2" aria-hidden="true">·</span>
+          <Link href="/privacy" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
+            Privacy
+          </Link>
+          <span className="mx-2" aria-hidden="true">·</span>
+          <Link href="/terms" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
+            Terms
+          </Link>
           <span className="mx-2" aria-hidden="true">·</span>
           <Link href="/refund-policy" className="hover:text-teal-700 hover:underline dark:hover:text-teal-400">
             Refund policy
