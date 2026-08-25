@@ -28,7 +28,8 @@ export interface CipcRegistryProvider {
 }
 
 export function getCipcProviderMode(): CipcProviderMode {
-  const raw = (process.env.CIPC_PROVIDER || 'ocr').toLowerCase();
-  if (raw === 'direct' || raw === 'aggregator') return raw;
+  const raw = (process.env.CIPC_PROVIDER ?? '').toLowerCase();
+  if (raw === 'direct') return 'direct';
+  if (raw === 'aggregator') return 'aggregator';
   return 'ocr';
 }
