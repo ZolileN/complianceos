@@ -43,6 +43,11 @@ export function checkDocumentMatch(
   const mapToCategory = (docStr: string) => {
     const s = docStr.toLowerCase();
     if (s.includes('id') || s.includes('identity')) return 'id_document';
+    if (s.includes('ita34') || s.includes('assessment')) return 'sars_assessment';
+    if (s.includes('vat201') || s.includes('emp201') || s.includes('efiling') || s.includes('submission confirmation'))
+      return 'sars_submission';
+    if (s.includes('sars') && (s.includes('letter') || s.includes('query') || s.includes('audit')))
+      return 'sars_correspondence';
     if (s.includes('tax') || s.includes('assessment')) return 'tax_certificate';
     if (s.includes('bank') || s.includes('turnover')) return 'bank_statement';
     if (s.includes('cor') || s.includes('annual return')) return 'cor_document';

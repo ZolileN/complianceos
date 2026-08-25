@@ -128,6 +128,9 @@ export type DocumentCategory =
   | 'bee_certificate'
   | 'financial_statement'
   | 'mandate'
+  | 'sars_assessment'
+  | 'sars_submission'
+  | 'sars_correspondence'
   | 'other';
 
 export interface Document {
