@@ -18,7 +18,7 @@ export const COOKIE_POLICY_SECTIONS = [
   {
     title: 'Third-party cookies',
     paragraphs: [
-      'Payment checkout: when you pay for a subscription, Paystack (and Ozow where available) may set cookies on their secure hosted payment pages.',
+      'Payment checkout: when you pay for a subscription, Paystack may set cookies on its secure hosted payment page.',
       'File uploads and embedded checkout flows may use cookies necessary for those features to work.',
       'We do not use third-party advertising cookies on the PraxisOne application.',
     ],

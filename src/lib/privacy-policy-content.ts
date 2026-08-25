@@ -15,7 +15,7 @@ export const PRIVACY_POLICY_SECTIONS = [
       'Client data: information your firm uploads about its clients (company details, directors, tax references, documents, messages, and compliance records). Your firm is the responsible party for client data; we process it on your instructions as an operator.',
       'Usage data: authentication logs, audit events, feature usage, and technical diagnostics needed to operate and secure the service.',
       'Communications: WhatsApp and email messages routed through the platform, including attachments your firm chooses to store.',
-      'Billing data: subscription plan, payment references, and billing contact details. Card and bank payment details are handled by our payment partners (Paystack and, where available, Ozow) and are not stored on our servers.',
+      'Billing data: subscription plan, payment references, and billing contact details. Card and bank payment details are handled by Paystack and are not stored on our servers.',
     ],
   },
   {
