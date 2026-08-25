@@ -16,7 +16,12 @@ import {
 import { useToast } from '@/contexts/ToastContext';
 import { Button } from '@/components/ui/button';
 
-const OPEN_EVENT = 'praxisone:open-firm-onboarding';
+import {
+  FIRM_ONBOARDING_OPEN_EVENT,
+  setFirmOnboardingVisibility,
+} from '@/lib/firm-onboarding-events';
+
+export { openFirmOnboardingWizard } from '@/lib/firm-onboarding-events';
 
 type OnboardingState = {
   showWizard: boolean;
@@ -75,12 +80,6 @@ async function fetchOnboardingState(): Promise<OnboardingState | null> {
   return json.data as OnboardingState;
 }
 
-export function openFirmOnboardingWizard(startStep = 0) {
-  window.dispatchEvent(
-    new CustomEvent(OPEN_EVENT, { detail: { startStep } })
-  );
-}
-
 export default function FirmOnboardingWizard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -98,6 +97,7 @@ export default function FirmOnboardingWizard() {
       const initialStep = startStep ?? Math.min(data.lastStep || 0, STEPS.length - 1);
       setStep(initialStep);
       setVisible(true);
+      setFirmOnboardingVisibility(true);
       const href = STEPS[initialStep]?.href;
       if (href) router.push(href);
     } catch {
@@ -118,8 +118,8 @@ export default function FirmOnboardingWizard() {
         (event as CustomEvent<{ startStep?: number }>).detail?.startStep ?? 0;
       void openWizard(startStep);
     };
-    window.addEventListener(OPEN_EVENT, onReplay);
-    return () => window.removeEventListener(OPEN_EVENT, onReplay);
+    window.addEventListener(FIRM_ONBOARDING_OPEN_EVENT, onReplay);
+    return () => window.removeEventListener(FIRM_ONBOARDING_OPEN_EVENT, onReplay);
   }, [openWizard]);
 
   const persistStep = async (nextStep: number, action?: 'complete' | 'dismiss') => {
@@ -145,6 +145,7 @@ export default function FirmOnboardingWizard() {
 
   const close = (action: 'complete' | 'dismiss') => {
     setVisible(false);
+    setFirmOnboardingVisibility(false);
     void persistStep(step, action);
   };
 
@@ -168,7 +169,7 @@ export default function FirmOnboardingWizard() {
     <div
       role="dialog"
       aria-labelledby="firm-onboarding-title"
-      className="fixed bottom-6 right-6 z-[150] w-[min(100vw-2rem,26rem)] overflow-hidden rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] shadow-2xl"
+      className="fixed bottom-6 left-6 z-[1100] w-[min(100vw-2rem,26rem)] overflow-hidden rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card)] shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-[var(--border-primary)] px-4 py-3">
         <div className="min-w-0 pr-2">

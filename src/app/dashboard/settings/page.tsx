@@ -11,7 +11,7 @@ import PersonalProfileTab from '@/components/settings/PersonalProfileTab';
 import BillingPlanTab from '@/components/settings/BillingPlanTab';
 import { Card, CardContent } from '@/components/ui/card';
 import { getOnboardingUrl } from '@/lib/appUrl';
-import { openFirmOnboardingWizard } from '@/components/help/FirmOnboardingWizard';
+import { openFirmOnboardingWizard } from '@/lib/firm-onboarding-events';
 import type {
   CompanyData,
   PersonalData,

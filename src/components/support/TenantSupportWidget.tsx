@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { FIRM_ONBOARDING_VISIBILITY_EVENT } from '@/lib/firm-onboarding-events';
 import Link from 'next/link';
 import {
   AtSign,
@@ -27,6 +28,20 @@ export default function TenantSupportWidget() {
   const [panel, setPanel] = useState<Panel>('menu');
   const [contactOpen, setContactOpen] = useState(false);
   const [improvementOpen, setImprovementOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    const onVisibility = (event: Event) => {
+      const open = (event as CustomEvent<{ open: boolean }>).detail?.open ?? false;
+      setOnboardingOpen(open);
+      if (open) {
+        setOpen(false);
+        setPanel('menu');
+      }
+    };
+    window.addEventListener(FIRM_ONBOARDING_VISIBILITY_EVENT, onVisibility);
+    return () => window.removeEventListener(FIRM_ONBOARDING_VISIBILITY_EVENT, onVisibility);
+  }, []);
 
   const inquiryDefaults = {
     name: user?.name || '',
@@ -50,6 +65,8 @@ export default function TenantSupportWidget() {
     setImprovementOpen(true);
     closeWidget();
   };
+
+  if (onboardingOpen) return null;
 
   return (
     <>
