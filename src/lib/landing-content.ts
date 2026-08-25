@@ -7,7 +7,7 @@ export const LANDING_FAQS = [
   {
     question: 'How do Growth and Professional plans work?',
     answer:
-      'You complete signup details, pay your first month via secure Ozow checkout, then your workspace is created immediately.',
+      'You complete signup details, pay your first month via secure Paystack checkout, then your workspace is created immediately. Ozow is available as an alternative payment option where configured.',
   },
   {
     question: 'Is PraxisOne POPIA compliant?',
@@ -37,7 +37,7 @@ export const LANDING_FAQS = [
   {
     question: 'What payment methods do you accept?',
     answer:
-      'Paid plans are billed in South African Rand via Ozow and Paystack hosted checkout. Enterprise pricing is available on request.',
+      'Paid plans are billed in South African Rand via Paystack hosted checkout (card and supported bank options). Ozow is available as an alternative where configured. Enterprise pricing is available on request.',
   },
 ] as const;
 

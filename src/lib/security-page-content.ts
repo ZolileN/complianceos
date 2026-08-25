@@ -10,34 +10,34 @@ export const SECURITY_PAGE_SECTIONS = [
   {
     title: 'Tenant isolation',
     paragraphs: [
-      'Every firm operates in a dedicated tenant workspace. Database queries are scoped by tenant ID; users cannot access another firm\'s data through the application.',
-      'Role-based access control (RBAC) limits what each user can see: administrators, operations managers, and consultants have different permissions.',
-      'Platform admin tools manage fleet configuration (billing, suspension, limits) without access to client document vaults.',
+      'Every firm operates in a dedicated workspace. Data is kept separate between firms; users cannot access another firm\'s records through the application.',
+      'Role-based access limits what each user can see: administrators, operations managers, and consultants have different permissions.',
+      'Platform administration covers billing and workspace configuration — not your client document vaults.',
     ],
   },
   {
     title: 'Authentication and access',
     paragraphs: [
-      'Passwords are hashed before storage. Sessions use industry-standard tokens via NextAuth.',
-      'Administrators can revoke user sessions and reset passwords. Suspended tenants and disabled users are blocked at the gateway.',
-      'Cron jobs and webhooks authenticate with secrets — they never rely on browser sessions alone.',
+      'Passwords are stored using industry-standard hashing. Sessions are protected with secure tokens.',
+      'Administrators can revoke user sessions and reset passwords. Suspended workspaces and disabled users are blocked from signing in.',
+      'Automated system integrations authenticate with secrets and never rely on a user\'s browser session alone.',
     ],
   },
   {
     title: 'Data protection',
     paragraphs: [
-      'All traffic is encrypted in transit using TLS (HTTPS).',
-      'Documents are stored in encrypted object storage via UploadThing.',
-      'Database hosting uses managed PostgreSQL (Neon) with provider-level encryption at rest.',
+      'All traffic between your browser and PraxisOne is encrypted in transit (HTTPS).',
+      'Documents are stored in encrypted cloud storage.',
+      'Workspace data is held in managed databases with encryption at rest.',
       'Audit logs record significant create, update, and delete actions for administrative transparency.',
     ],
   },
   {
-    title: 'Infrastructure and monitoring',
+    title: 'Monitoring and reliability',
     paragraphs: [
-      'The application runs on Vercel with serverless functions and edge middleware.',
-      'Sentry monitors errors and performance in production. Cron failures and Redis outages are alerted.',
-      'Redis (Upstash) backs skill-event queues and admin telemetry in production; the platform degrades gracefully if Redis is unavailable.',
+      'The platform runs on enterprise cloud infrastructure with continuous monitoring for errors and performance.',
+      'Scheduled background tasks are monitored so billing, compliance reminders, and automations are alerted if they fail.',
+      'If a non-critical supporting service is temporarily unavailable, core workspace access continues where possible.',
     ],
   },
   {

@@ -12,14 +12,14 @@ export const COOKIE_POLICY_SECTIONS = [
     paragraphs: [
       'Essential cookies: required for authentication, session security, and core platform functionality. The service cannot operate without these.',
       'Preference cookies: remember theme (light/dark) and similar UI choices on your device.',
-      'Analytics: we use Vercel Analytics to collect aggregated, privacy-oriented usage metrics. This helps us understand performance and improve the product without building individual advertising profiles.',
+      'Analytics: we collect aggregated, privacy-oriented usage metrics to understand performance and improve the product. We do not use these cookies to build advertising profiles.',
     ],
   },
   {
     title: 'Third-party cookies',
     paragraphs: [
-      'Payment checkout (Ozow, Paystack) may set cookies when you are redirected to their hosted payment pages.',
-      'File uploads (UploadThing) and embedded services may use cookies necessary for their functionality.',
+      'Payment checkout: when you pay for a subscription, Paystack (and Ozow where available) may set cookies on their secure hosted payment pages.',
+      'File uploads and embedded checkout flows may use cookies necessary for those features to work.',
       'We do not use third-party advertising cookies on the PraxisOne application.',
     ],
   },
@@ -27,7 +27,7 @@ export const COOKIE_POLICY_SECTIONS = [
     title: 'Managing cookies',
     paragraphs: [
       'You can block or delete cookies in your browser settings. Blocking essential cookies will prevent you from signing in or using the dashboard.',
-      'To opt out of analytics, use your browser\'s "Do Not Track" setting or a privacy extension. Vercel Analytics is designed to respect privacy preferences where supported.',
+      'To limit analytics tracking, use your browser\'s "Do Not Track" setting or a privacy extension.',
     ],
   },
   {

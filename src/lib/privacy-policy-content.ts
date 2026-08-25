@@ -15,7 +15,7 @@ export const PRIVACY_POLICY_SECTIONS = [
       'Client data: information your firm uploads about its clients (company details, directors, tax references, documents, messages, and compliance records). Your firm is the responsible party for client data; we process it on your instructions as an operator.',
       'Usage data: authentication logs, audit events, feature usage, and technical diagnostics needed to operate and secure the service.',
       'Communications: WhatsApp and email messages routed through the platform, including attachments your firm chooses to store.',
-      'Billing data: subscription plan, payment references, and billing contact details. Card or bank details are handled by our payment providers (Ozow, Paystack) and are not stored on our servers.',
+      'Billing data: subscription plan, payment references, and billing contact details. Card and bank payment details are handled by our payment partners (Paystack and, where available, Ozow) and are not stored on our servers.',
     ],
   },
   {
@@ -39,8 +39,9 @@ export const PRIVACY_POLICY_SECTIONS = [
   {
     title: 'Sub-processors and hosting',
     paragraphs: [
-      'We use trusted infrastructure providers to deliver the service, including hosting (Vercel), database (Neon PostgreSQL), file storage (UploadThing), email (Resend), WhatsApp (Twilio), caching (Upstash Redis), observability (Sentry), and AI processing (OpenAI, when enabled on your plan).',
-      'Data is processed in jurisdictions permitted by our agreements with these providers. We require appropriate safeguards for cross-border transfers where applicable.',
+      'We work with carefully selected service providers to host the platform, store files securely, deliver email and WhatsApp messages, process payments, and (on eligible plans) assist with document automation.',
+      'These partners process data only as needed to provide the service. We require appropriate contractual safeguards, including for cross-border transfers where applicable.',
+      'A current list of categories of sub-processors is available on request.',
     ],
   },
   {
