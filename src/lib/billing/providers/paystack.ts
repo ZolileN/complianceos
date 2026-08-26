@@ -14,6 +14,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import type { BillingProvider, CheckoutResult } from '@/lib/billing/provider';
 import { getPlanDefinition } from '@/lib/plans';
 import { prisma } from '@/lib/prisma';
+import { resolveTenantBillingEmail } from '@/lib/billing/tenant-email';
 
 const PAYSTACK_API = () =>
   (process.env.PAYSTACK_API_URL ?? 'https://api.paystack.co').replace(/\/$/, '');
@@ -137,12 +138,11 @@ export const paystackProvider: BillingProvider = {
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, email: true, slug: true },
+      select: { name: true, slug: true },
     });
     if (!tenant) throw new Error('Tenant not found');
-    if (!tenant.email) {
-      throw new Error('Tenant email is required for Paystack checkout');
-    }
+
+    const billingEmail = await resolveTenantBillingEmail(tenantId);
 
     const reference = `PX-${tenant.slug.slice(0, 24)}-${plan.slice(0, 4)}-${Date.now()}`
       .replace(/[^a-zA-Z0-9\-_.]/g, '')
@@ -150,7 +150,7 @@ export const paystackProvider: BillingProvider = {
 
     const { checkoutUrl } = await createPaystackPayment({
       amountCents: def.priceZarCents,
-      email: tenant.email,
+      email: billingEmail,
       payerName: tenant.name,
       merchantReference: reference,
       metadata: { tenant_id: tenantId, plan },

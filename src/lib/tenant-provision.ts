@@ -120,6 +120,7 @@ export async function createTenantWithAdmin(
         name: firmName,
         slug,
         plan,
+        email,
         settings,
         subscription: {
           create: subscriptionData,
