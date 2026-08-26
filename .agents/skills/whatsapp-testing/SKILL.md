@@ -16,14 +16,16 @@ Critical routes:
 - `POST /api/webhooks/twilio` — inbound WhatsApp messages from Twilio
 
 ## Prerequisites
-Environment variables in `.env.local`:
+Environment variables in `.env.local` (see `.env.example`):
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_WHATSAPP_NUMBER`
 - `TWILIO_VERIFY_SERVICE_SID`
-- `TWILIO_WEBHOOK_URL` (public URL used for signature validation)
+- `TWILIO_WEBHOOK_URL` (optional locally; set to exact public URL in production for signature validation)
 - `DATABASE_URL`
 - `NEXTAUTH_SECRET` / `NEXTAUTH_URL`
+
+Deprecated: `POST /api/whatsapp/webhook` (Meta) — returns HTTP 410. Use `/api/webhooks/twilio` only.
 
 ## Verification Steps
 
