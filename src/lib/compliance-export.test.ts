@@ -5,6 +5,7 @@ import {
   csvEscape,
   mapComplianceItemsToRows,
 } from '@/lib/compliance-export';
+import { buildBrandedCompliancePdf } from '@/lib/compliance-report-pdf';
 
 describe('compliance export helpers', () => {
   it('escapes CSV values with commas', () => {
@@ -40,5 +41,34 @@ describe('compliance export helpers', () => {
     ]);
     expect(csv.split('\n')).toHaveLength(2);
     expect(csv).toContain('Acme');
+  });
+
+  it('builds a branded PDF buffer', async () => {
+    const pdf = await buildBrandedCompliancePdf(
+      [
+        {
+          client: 'Acme Trading (Pty) Ltd',
+          registrationNumber: '2020/123456/07',
+          category: 'SARS',
+          obligation: 'VAT',
+          status: 'critical',
+          dueDate: '2026-03-31',
+          lastChecked: '2026-02-01',
+        },
+        {
+          client: 'Beta Services CC',
+          registrationNumber: '2018/987654/23',
+          category: 'CIPC',
+          obligation: 'Annual Returns',
+          status: 'compliant',
+          dueDate: '2027-04-26',
+          lastChecked: '2026-02-01',
+        },
+      ],
+      { tenantName: 'Demo Firm' }
+    );
+
+    expect(pdf.length).toBeGreaterThan(1000);
+    expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
   });
 });
