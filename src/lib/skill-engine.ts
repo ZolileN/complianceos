@@ -376,6 +376,18 @@ export async function executeSkill(
     );
   }
 
+  if (skillSlug === 'cipc-ar-checker' && context.triggerEvent === 'compliance.deadline_approaching') {
+    const clientId = typeof context.input?.clientId === 'string' ? context.input.clientId : null;
+    if (clientId) {
+      const { getCipcProviderMode } = await import('@/lib/integrations/cipc/types');
+      const mode = getCipcProviderMode();
+      if (mode !== 'ocr') {
+        const { syncClientRegistry } = await import('@/lib/integrations/cipc/sync');
+        await syncClientRegistry(context.tenantId, clientId, mode).catch(console.error);
+      }
+    }
+  }
+
   // 3. Create execution record
   const execution = await prisma.skillExecution.create({
     data: {

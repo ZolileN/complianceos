@@ -1,4 +1,5 @@
 import type { BoStatus, CipcRegistryProvider, CompanyProfile } from './types';
+import { getCipcOAuthToken } from './oauth';
 
 /**
  * Direct CIPC Azure APIM gateway provider.
@@ -17,16 +18,30 @@ export class CipcDirectProvider implements CipcRegistryProvider {
     return Boolean(this.baseUrl && this.subscriptionKey);
   }
 
-  async getCompanyProfile(enterpriseNumber: string): Promise<CompanyProfile | null> {
+  private async authHeaders(): Promise<Record<string, string> | null> {
     if (!this.configured()) return null;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Ocp-Apim-Subscription-Key': this.subscriptionKey,
+    };
+
+    const token = await getCipcOAuthToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
+  async getCompanyProfile(enterpriseNumber: string): Promise<CompanyProfile | null> {
+    const headers = await this.authHeaders();
+    if (!headers) return null;
 
     try {
       const res = await fetch(`${this.baseUrl}/enterprise/v1/companyprofile`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': this.subscriptionKey,
-        },
+        headers,
         body: JSON.stringify({ enterpriseNumber }),
       });
       if (!res.ok) return null;
@@ -46,15 +61,14 @@ export class CipcDirectProvider implements CipcRegistryProvider {
   }
 
   async getBeneficialOwnershipStatus(enterpriseNumber: string): Promise<BoStatus | null> {
-    if (!this.configured()) return null;
+    const headers = await this.authHeaders();
+    if (!headers) return null;
 
     try {
       const encoded = encodeURIComponent(enterpriseNumber);
       const res = await fetch(
         `${this.baseUrl}/sandbox/boreg/enterprise/register/${encoded}`,
-        {
-          headers: { 'Ocp-Apim-Subscription-Key': this.subscriptionKey },
-        }
+        { headers }
       );
       if (!res.ok) return null;
       const data = (await res.json()) as Record<string, string | boolean>;
