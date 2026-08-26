@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       const sarsClientId = await matchClientFromInboundText(
         tenant.id,
         `${subject}\n${previewText}`,
-        undefined
+        { senderEmail: fromAddress, subject }
       );
       if (sarsClientId) {
         matchedClient = { id: sarsClientId };

@@ -12,6 +12,10 @@ export function isInboundQueueClient(client: {
 
 export function parseDocumentInboundMeta(ocrMetadata: string | null | undefined): {
   inboundEmailId?: string;
+  inboundMessageId?: string;
+  inboundWhatsappConversationId?: string;
+  senderPhone?: string;
+  source?: string;
   unassigned?: boolean;
 } {
   if (!ocrMetadata) return {};
@@ -20,6 +24,15 @@ export function parseDocumentInboundMeta(ocrMetadata: string | null | undefined)
     return {
       inboundEmailId:
         typeof meta.inbound_email_id === 'string' ? meta.inbound_email_id : undefined,
+      inboundMessageId:
+        typeof meta.inbound_message_id === 'string' ? meta.inbound_message_id : undefined,
+      inboundWhatsappConversationId:
+        typeof meta.inbound_whatsapp_conversation_id === 'string'
+          ? meta.inbound_whatsapp_conversation_id
+          : undefined,
+      senderPhone:
+        typeof meta.sender_phone === 'string' ? meta.sender_phone : undefined,
+      source: typeof meta.source === 'string' ? meta.source : undefined,
       unassigned: meta.unassigned === true || meta.unassigned === 'true',
     };
   } catch {

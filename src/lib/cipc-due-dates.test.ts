@@ -41,4 +41,18 @@ describe('unassigned documents helpers', () => {
     expect(meta.inboundEmailId).toBe('email-1');
     expect(meta.unassigned).toBe(true);
   });
+
+  it('parses WhatsApp inbound metadata from OCR JSON', () => {
+    const meta = parseDocumentInboundMeta(
+      JSON.stringify({
+        inbound_message_id: 'msg-1',
+        sender_phone: '+27821234567',
+        source: 'inbound_whatsapp',
+        unassigned: true,
+      })
+    );
+    expect(meta.inboundMessageId).toBe('msg-1');
+    expect(meta.senderPhone).toBe('+27821234567');
+    expect(meta.source).toBe('inbound_whatsapp');
+  });
 });

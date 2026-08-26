@@ -1,0 +1,10 @@
+SARS eFiling
+VAT201 return submitted successfully
+
+VAT Registration Number: 4012345678
+Tax Period: February 2026
+Reference Number: VAT-REF-2026-02
+Date Submitted: 25/02/2026
+
+Taxpayer: Beta Services CC
+Registration Number: 2018/987654/23

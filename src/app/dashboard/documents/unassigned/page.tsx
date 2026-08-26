@@ -21,6 +21,7 @@ type UnassignedDoc = {
   file_type?: string | null;
   ocr_status: string;
   created_at: string;
+  source?: string;
   from_address?: string;
   subject?: string;
   received_at?: string;
@@ -115,7 +116,7 @@ export default function UnassignedDocumentsPage() {
     <div>
       <PageHeader
         title="Unassigned documents"
-        description="SARS PDFs received by email that could not be matched to a client automatically."
+        description="SARS PDFs received by email or WhatsApp that could not be matched to a client automatically."
         helpSlug="sars-document-intelligence"
         helpLabel="Unassigned documents"
       />
@@ -139,7 +140,7 @@ export default function UnassignedDocumentsPage() {
             <FileText className="size-10 text-slate-300" />
             <p className="text-sm text-slate-600">No unassigned SARS documents in the queue.</p>
             <p className="text-xs text-slate-400">
-              PDF attachments from unmatched inbound emails appear here after automatic processing.
+              PDF attachments from unmatched inbound email or WhatsApp messages appear here after automatic processing.
             </p>
           </CardContent>
         </Card>
@@ -149,7 +150,7 @@ export default function UnassignedDocumentsPage() {
             <table className="w-full min-w-[800px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
-                  {['Document', 'From', 'OCR', 'Assign to client', 'Actions'].map((label) => (
+                  {['Document', 'Source', 'From', 'OCR', 'Assign to client', 'Actions'].map((label) => (
                     <th
                       key={label}
                       className="px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 uppercase"
@@ -188,6 +189,9 @@ export default function UnassignedDocumentsPage() {
                           {doc.category.replace(/_/g, ' ')}
                         </Badge>
                       </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-sm capitalize text-slate-600">
+                      {(doc.source || 'email').replace(/_/g, ' ')}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-600">
                       <div>{doc.from_address || '—'}</div>

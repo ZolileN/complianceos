@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { stripWhatsAppPrefix, validateTwilioSignature, normaliseToE164 } from '@/lib/twilio';
 import { emitSkillEvent } from '@/lib/skill-triggers';
 import { pushTenantLog } from '@/lib/redis';
+import { processInboundWhatsAppAttachments } from '@/lib/inbound-document-processor';
+import { matchClientFromInboundText } from '@/lib/inbound-sars-routing';
 
 function emptyTwiml() {
   return new NextResponse('<Response></Response>', {
@@ -184,30 +186,47 @@ export async function POST(req: Request) {
     let content = body;
     let messageType = 'text';
     let mediaUrl: string | null = null;
+    const whatsappAttachments: Array<{
+      mediaUrl: string;
+      contentType: string;
+      fileName?: string;
+    }> = [];
 
     if (numMedia > 0) {
-      const mediaUrlField = params.MediaUrl0 || '';
-      const mediaContentType = params.MediaContentType0 || '';
+      for (let i = 0; i < numMedia; i++) {
+        const mediaUrlField = params[`MediaUrl${i}`] || '';
+        const mediaContentType = params[`MediaContentType${i}`] || '';
+        if (!mediaUrlField) continue;
+
+        whatsappAttachments.push({
+          mediaUrl: mediaUrlField,
+          contentType: mediaContentType,
+          fileName: params[`MediaFilename${i}`] || undefined,
+        });
+      }
+
+      const first = whatsappAttachments[0];
+      const mediaContentType = first?.contentType || '';
 
       if (mediaContentType.startsWith('image/')) {
         messageType = 'image';
         content = body || 'Image';
-        mediaUrl = mediaUrlField;
+        mediaUrl = first.mediaUrl;
       } else if (
         mediaContentType.startsWith('application/') ||
         mediaContentType.startsWith('text/')
       ) {
         messageType = 'document';
         content = body || 'Document';
-        mediaUrl = mediaUrlField;
+        mediaUrl = first.mediaUrl;
       } else {
         messageType = 'document';
         content = body || 'Media';
-        mediaUrl = mediaUrlField;
+        mediaUrl = first.mediaUrl;
       }
     }
 
-    await prisma.message.create({
+    const message = await prisma.message.create({
       data: {
         conversationId: conversation.id,
         tenantId,
@@ -220,6 +239,37 @@ export async function POST(req: Request) {
       },
     });
 
+    let matchedClientId = conversation.clientId;
+    if (!matchedClientId && whatsappAttachments.length > 0) {
+      matchedClientId = await matchClientFromInboundText(
+        tenantId,
+        content,
+        {
+          senderPhone,
+          subject: content,
+        }
+      );
+      if (matchedClientId) {
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: { clientId: matchedClientId },
+        });
+      }
+    }
+
+    let attachmentResult = { processed: 0, skipped: 0, documentIds: [] as string[] };
+    if (whatsappAttachments.length > 0) {
+      attachmentResult = await processInboundWhatsAppAttachments({
+        tenantId,
+        messageId: message.id,
+        conversationId: conversation.id,
+        clientId: matchedClientId,
+        senderPhone,
+        bodyText: content,
+        attachments: whatsappAttachments,
+      });
+    }
+
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: { lastMessageAt: new Date(), status: 'open' },
@@ -229,7 +279,12 @@ export async function POST(req: Request) {
       tenantId,
       `Inbound WhatsApp message received from ${senderPhone}`,
       'webhook',
-      { messageId: messageSid, type: messageType, snippet: content.substring(0, 60) }
+      {
+        messageId: messageSid,
+        type: messageType,
+        snippet: content.substring(0, 60),
+        attachmentsProcessed: attachmentResult.processed,
+      }
     );
 
     emitSkillEvent(tenantId, 'message.received', 'system', 'system', {

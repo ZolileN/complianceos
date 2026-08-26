@@ -7,12 +7,22 @@ import {
 import { isLikelySarsInbound } from '@/lib/sars-document-parsers';
 import { getOrCreateInboundQueueClient } from '@/lib/unassigned-documents';
 
-const PDF_TYPES = new Set([
-  'application/pdf',
-  'application/x-pdf',
-]);
+const PDF_TYPES = new Set(['application/pdf', 'application/x-pdf']);
 
-function isPdfAttachment(attachment: InboundEmailAttachmentMeta): boolean {
+export type InboundAttachmentLike = {
+  id: string;
+  name: string;
+  contentType: string;
+  size?: number;
+};
+
+export type ProcessInboundAttachmentsResult = {
+  processed: number;
+  skipped: number;
+  documentIds: string[];
+};
+
+function isPdfAttachment(attachment: InboundAttachmentLike): boolean {
   const type = attachment.contentType.toLowerCase();
   if (PDF_TYPES.has(type)) return true;
   return attachment.name.toLowerCase().endsWith('.pdf');
@@ -27,11 +37,63 @@ function guessCategoryFromName(name: string): string {
   return 'other';
 }
 
-export type ProcessInboundAttachmentsResult = {
-  processed: number;
-  skipped: number;
-  documentIds: string[];
+function isLikelySarsContent(
+  fromAddress: string,
+  subject: string,
+  bodyText: string,
+  attachments: InboundAttachmentLike[]
+): boolean {
+  return (
+    isLikelySarsInbound(fromAddress, subject, bodyText) ||
+    attachments.some((a) => guessCategoryFromName(a.name) !== 'other')
+  );
+}
+
+type CreateInboundDocumentOpts = {
+  tenantId: string;
+  targetClientId: string;
+  unassigned: boolean;
+  attachment: InboundAttachmentLike;
+  filePath: string;
+  ocrMetadata: Record<string, unknown>;
 };
+
+async function createInboundDocument(
+  opts: CreateInboundDocumentOpts
+): Promise<string | null> {
+  const duplicate = await prisma.document.findFirst({
+    where: {
+      tenantId: opts.tenantId,
+      clientId: opts.targetClientId,
+      filePath: opts.filePath,
+    },
+    select: { id: true },
+  });
+  if (duplicate) return null;
+
+  const category = guessCategoryFromName(opts.attachment.name);
+  const doc = await prisma.document.create({
+    data: {
+      tenantId: opts.tenantId,
+      clientId: opts.targetClientId,
+      name: opts.attachment.name,
+      filePath: opts.filePath,
+      fileType: opts.attachment.contentType || 'application/pdf',
+      category,
+      version: 1,
+      fileSize: opts.attachment.size ? BigInt(opts.attachment.size) : BigInt(0),
+      ocrStatus: 'pending',
+      ocrMetadata: JSON.stringify(opts.ocrMetadata),
+    },
+    select: { id: true },
+  });
+
+  triggerOcrSimulation(doc.id).catch((err: unknown) => {
+    console.error('[InboundProcessor] OCR failed for', doc.id, err);
+  });
+
+  return doc.id;
+}
 
 /**
  * Auto-save inbound PDF attachments to the document vault and queue OCR.
@@ -52,11 +114,7 @@ export async function processInboundEmailAttachments(opts: {
     return { processed: 0, skipped: 0, documentIds: [] };
   }
 
-  const isSars =
-    isLikelySarsInbound(opts.fromAddress, opts.subject, opts.bodyText) ||
-    pdfAttachments.some((a) => guessCategoryFromName(a.name) !== 'other');
-
-  if (!isSars) {
+  if (!isLikelySarsContent(opts.fromAddress, opts.subject, opts.bodyText, pdfAttachments)) {
     return { processed: 0, skipped: pdfAttachments.length, documentIds: [] };
   }
 
@@ -70,19 +128,6 @@ export async function processInboundEmailAttachments(opts: {
   for (const attachment of pdfAttachments) {
     const filePath = `/api/emails/${opts.inboundEmailId}/attachments/${attachment.id}`;
 
-    const duplicate = await prisma.document.findFirst({
-      where: {
-        tenantId: opts.tenantId,
-        clientId: targetClientId,
-        filePath,
-      },
-      select: { id: true },
-    });
-    if (duplicate) {
-      skipped += 1;
-      continue;
-    }
-
     if (opts.messageId) {
       const downloadable = await fetchReceivedAttachmentDownloadUrl(
         opts.messageId,
@@ -94,31 +139,101 @@ export async function processInboundEmailAttachments(opts: {
       }
     }
 
-    const category = guessCategoryFromName(attachment.name);
-    const doc = await prisma.document.create({
-      data: {
-        tenantId: opts.tenantId,
-        clientId: targetClientId,
-        name: attachment.name,
-        filePath,
-        fileType: attachment.contentType || 'application/pdf',
-        category,
-        version: 1,
-        fileSize: attachment.size ? BigInt(attachment.size) : BigInt(0),
-        ocrStatus: 'pending',
-        ocrMetadata: JSON.stringify({
-          inbound_email_id: opts.inboundEmailId,
-          unassigned,
-          source: 'inbound_email',
-        }),
+    const docId = await createInboundDocument({
+      tenantId: opts.tenantId,
+      targetClientId,
+      unassigned,
+      attachment,
+      filePath,
+      ocrMetadata: {
+        inbound_email_id: opts.inboundEmailId,
+        unassigned,
+        source: 'inbound_email',
       },
-      select: { id: true },
     });
 
-    documentIds.push(doc.id);
-    triggerOcrSimulation(doc.id).catch((err: unknown) => {
-      console.error('[InboundProcessor] OCR failed for', doc.id, err);
+    if (docId) {
+      documentIds.push(docId);
+    } else {
+      skipped += 1;
+    }
+  }
+
+  return {
+    processed: documentIds.length,
+    skipped,
+    documentIds,
+  };
+}
+
+export type WhatsAppMediaAttachment = {
+  mediaUrl: string;
+  contentType: string;
+  fileName?: string;
+};
+
+/**
+ * Auto-save inbound WhatsApp PDF attachments to the document vault and queue OCR.
+ */
+export async function processInboundWhatsAppAttachments(opts: {
+  tenantId: string;
+  messageId: string;
+  conversationId: string;
+  clientId: string | null;
+  senderPhone: string;
+  bodyText: string;
+  attachments: WhatsAppMediaAttachment[];
+}): Promise<ProcessInboundAttachmentsResult> {
+  const pdfAttachments = opts.attachments
+    .map((a, index) => ({
+      id: `wa-${opts.messageId}-${index}`,
+      name: a.fileName || `whatsapp-document-${index + 1}.pdf`,
+      contentType: a.contentType,
+    }))
+    .filter(isPdfAttachment);
+
+  if (pdfAttachments.length === 0) {
+    return { processed: 0, skipped: 0, documentIds: [] };
+  }
+
+  if (
+    !isLikelySarsContent(opts.senderPhone, '', opts.bodyText, pdfAttachments)
+  ) {
+    return { processed: 0, skipped: pdfAttachments.length, documentIds: [] };
+  }
+
+  const targetClientId =
+    opts.clientId ?? (await getOrCreateInboundQueueClient(opts.tenantId));
+  const unassigned = !opts.clientId;
+
+  const documentIds: string[] = [];
+  let skipped = 0;
+
+  for (let index = 0; index < pdfAttachments.length; index++) {
+    const attachment = pdfAttachments[index];
+    const media = opts.attachments[index];
+    const filePath = `/api/whatsapp/media/${encodeURIComponent(media.mediaUrl)}`;
+
+    const docId = await createInboundDocument({
+      tenantId: opts.tenantId,
+      targetClientId,
+      unassigned,
+      attachment,
+      filePath,
+      ocrMetadata: {
+        inbound_message_id: opts.messageId,
+        inbound_whatsapp_conversation_id: opts.conversationId,
+        sender_phone: opts.senderPhone,
+        unassigned,
+        source: 'inbound_whatsapp',
+      },
     });
+
+    if (docId) {
+      documentIds.push(docId);
+    } else {
+      skipped += 1;
+    }
   }
 
   return {
