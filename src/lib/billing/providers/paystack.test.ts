@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    tenant: { findUnique: vi.fn() },
+    tenant: { findUnique: vi.fn(), update: vi.fn() },
     subscription: { upsert: vi.fn() },
+    user: { findFirst: vi.fn() },
   },
 }));
 
@@ -15,8 +16,12 @@ import {
 import { createHmac } from 'crypto';
 
 const prismaMock = prisma as unknown as {
-  tenant: { findUnique: ReturnType<typeof vi.fn> };
+  tenant: {
+    findUnique: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
   subscription: { upsert: ReturnType<typeof vi.fn> };
+  user: { findFirst: ReturnType<typeof vi.fn> };
 };
 
 describe('paystackProvider.createCheckout', () => {
@@ -26,10 +31,17 @@ describe('paystackProvider.createCheckout', () => {
     vi.stubEnv('PAYSTACK_SECRET_KEY', 'sk_test_secret');
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://praxis.example.com');
 
-    prismaMock.tenant.findUnique.mockResolvedValue({
-      name: 'Acme Firm',
-      email: 'owner@example.com',
-      slug: 'acme-firm',
+    prismaMock.tenant.findUnique.mockImplementation(
+      ({ select }: { select?: { email?: boolean; name?: boolean } }) => {
+        if (select?.email !== undefined && select?.name === undefined) {
+          return Promise.resolve({ email: 'owner@example.com' });
+        }
+        return Promise.resolve({ name: 'Acme Firm', slug: 'acme-firm' });
+      }
+    );
+    prismaMock.tenant.update.mockResolvedValue({});
+    prismaMock.user.findFirst.mockResolvedValue({
+      email: 'admin@example.com',
     });
     prismaMock.subscription.upsert.mockResolvedValue({});
   });
@@ -81,6 +93,45 @@ describe('paystackProvider.createCheckout', () => {
     expect(upsertArg.create.providerSubscriptionId).toBe(
       result.providerSubscriptionId
     );
+  });
+
+  it('falls back to an administrator email when tenant.email is unset', async () => {
+    prismaMock.tenant.findUnique.mockImplementation(
+      ({ select }: { select?: { email?: boolean; name?: boolean } }) => {
+        if (select?.email !== undefined && select?.name === undefined) {
+          return Promise.resolve({ email: null });
+        }
+        return Promise.resolve({ name: 'Acme Firm', slug: 'acme-firm' });
+      }
+    );
+    prismaMock.user.findFirst.mockResolvedValue({ email: 'admin@example.com' });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: true,
+        data: {
+          authorization_url: 'https://checkout.paystack.com/admin',
+          reference: 'PX-acme-firm-grow-2',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await paystackProvider.createCheckout!({
+      tenantId: 'tenant-1',
+      plan: 'growth',
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      email: string;
+    };
+    expect(body.email).toBe('admin@example.com');
+    expect(prismaMock.tenant.update).toHaveBeenCalledWith({
+      where: { id: 'tenant-1' },
+      data: { email: 'admin@example.com' },
+    });
   });
 
   it('surfaces initialize failures clearly', async () => {

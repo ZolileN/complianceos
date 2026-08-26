@@ -6,6 +6,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { getPlanDefinition, isTenantPlan } from '@/lib/plans';
+import { resolveTenantBillingEmail } from '@/lib/billing/tenant-email';
 import { createPaystackPayment } from '@/lib/billing/providers/paystack';
 import { paystackCheckoutAvailable } from '@/lib/billing/provider';
 import { isPlatformAdminSlug } from '@/lib/platform-admin-constants';
@@ -45,9 +46,16 @@ export async function sendRenewalNotices(now = new Date()) {
 
     const plan = isTenantPlan(sub.plan) ? sub.plan : null;
     const def = plan ? getPlanDefinition(plan) : null;
-    const email = sub.tenant.email;
 
-    if (!plan || !def || def.priceZarCents == null || !email) {
+    if (!plan || !def || def.priceZarCents == null) {
+      skipped += 1;
+      continue;
+    }
+
+    let email: string;
+    try {
+      email = await resolveTenantBillingEmail(sub.tenantId, { backfill: false });
+    } catch {
       skipped += 1;
       continue;
     }

@@ -3,8 +3,7 @@
  * BILLING_PROVIDER=manual|paystack|ozow
  *
  * Paystack is the primary checkout rail whenever PAYSTACK_SECRET_KEY is set.
- * Ozow is used only when Paystack is not configured, or as a runtime fallback
- * in startCheckout when a Paystack initialize call fails.
+ * Ozow is used only when Paystack is not configured (no secret key).
  */
 
 import type { TenantPlan } from '@/lib/plans';

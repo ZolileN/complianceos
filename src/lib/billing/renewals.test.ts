@@ -9,6 +9,10 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
+vi.mock('@/lib/billing/tenant-email', () => ({
+  resolveTenantBillingEmail: vi.fn(),
+}));
+
 vi.mock('@/lib/email', () => ({
   sendRenewalEmail: vi.fn(),
 }));
@@ -18,6 +22,7 @@ vi.mock('@/lib/billing/providers/paystack', () => ({
 }));
 
 import { prisma } from '@/lib/prisma';
+import { resolveTenantBillingEmail } from '@/lib/billing/tenant-email';
 import { sendRenewalEmail } from '@/lib/email';
 import { createPaystackPayment } from '@/lib/billing/providers/paystack';
 import { sendRenewalNotices } from '@/lib/billing/renewals';
@@ -29,6 +34,8 @@ const prismaMock = prisma as unknown as {
     update: ReturnType<typeof vi.fn>;
   };
 };
+const resolveTenantBillingEmailMock =
+  resolveTenantBillingEmail as unknown as ReturnType<typeof vi.fn>;
 const sendRenewalEmailMock = sendRenewalEmail as unknown as ReturnType<
   typeof vi.fn
 >;
@@ -49,6 +56,7 @@ describe('sendRenewalNotices', () => {
       checkoutUrl: 'https://checkout.paystack.com/renew1',
       reference: 'PXRN-acme-grow-1',
     });
+    resolveTenantBillingEmailMock.mockResolvedValue('owner@acme.co.za');
   });
 
   it('creates a Paystack checkout link and emails tenants due for renewal', async () => {
@@ -88,7 +96,10 @@ describe('sendRenewalNotices', () => {
     );
   });
 
-  it('skips tenants without an email address', async () => {
+  it('skips tenants without a resolvable billing email', async () => {
+    resolveTenantBillingEmailMock.mockRejectedValue(
+      new Error('No billing email found')
+    );
     prismaMock.subscription.findMany.mockResolvedValue([
       {
         tenantId: 't2',
@@ -106,6 +117,7 @@ describe('sendRenewalNotices', () => {
 
   it('falls back to the dashboard link when Paystack fails', async () => {
     createPaystackPaymentMock.mockRejectedValue(new Error('paystack down'));
+    resolveTenantBillingEmailMock.mockResolvedValue('fb@firm.co.za');
     prismaMock.subscription.findMany.mockResolvedValue([
       {
         tenantId: 't3',
