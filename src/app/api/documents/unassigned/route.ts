@@ -40,6 +40,14 @@ export async function GET(request: NextRequest) {
     ),
   ];
 
+  const messageIds = [
+    ...new Set(
+      docs
+        .map((d) => parseDocumentInboundMeta(d.ocrMetadata).inboundMessageId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
   const emails =
     inboundIds.length > 0
       ? await prisma.inboundEmail.findMany({
@@ -53,13 +61,35 @@ export async function GET(request: NextRequest) {
         })
       : [];
 
+  const messages =
+    messageIds.length > 0
+      ? await prisma.message.findMany({
+          where: { id: { in: messageIds }, tenantId },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            conversation: {
+              select: { whatsappNumber: true },
+            },
+          },
+        })
+      : [];
+
   const emailById = new Map(emails.map((e) => [e.id, e]));
+  const messageById = new Map(messages.map((m) => [m.id, m]));
 
   const data = docs.map((doc) => {
     const inboundMeta = parseDocumentInboundMeta(doc.ocrMetadata);
     const email = inboundMeta.inboundEmailId
       ? emailById.get(inboundMeta.inboundEmailId)
       : undefined;
+    const message = inboundMeta.inboundMessageId
+      ? messageById.get(inboundMeta.inboundMessageId)
+      : undefined;
+
+    const source = inboundMeta.source || (email ? 'inbound_email' : message ? 'inbound_whatsapp' : 'unknown');
+
     return {
       id: doc.id,
       name: doc.name,
@@ -68,10 +98,15 @@ export async function GET(request: NextRequest) {
       file_type: doc.fileType,
       ocr_status: doc.ocrStatus,
       created_at: doc.createdAt,
+      source,
       inbound_email_id: inboundMeta.inboundEmailId,
-      from_address: email?.fromAddress,
-      subject: email?.subject,
-      received_at: email?.receivedAt,
+      inbound_message_id: inboundMeta.inboundMessageId,
+      from_address:
+        email?.fromAddress ||
+        inboundMeta.senderPhone ||
+        message?.conversation.whatsappNumber,
+      subject: email?.subject || (message ? message.content : undefined),
+      received_at: email?.receivedAt || message?.createdAt,
     };
   });
 

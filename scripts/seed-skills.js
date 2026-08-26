@@ -85,7 +85,7 @@ const CORE_SKILLS = [
     isPublished: true,
     triggers: ['compliance.deadline_approaching'],
     requiredPermissions: ['compliance.read', 'compliance.write'],
-    skillDefinition: 'Acknowledges CIPC deadline events; due dates are managed by the compliance monitor (no live CIPC API).',
+    skillDefinition: 'Checks CIPC annual return status on deadline events. When a live CIPC provider is configured, refreshes registry data before acknowledging.',
     steps: [
       { name: 'Acknowledge Deadline Event', stepOrder: 0, stepType: 'database_query', config: '{"query":"log_compliance_event"}' },
     ],

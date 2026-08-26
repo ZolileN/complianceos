@@ -234,9 +234,36 @@ model Client {
   retainers           Retainer[]
   mandates            Mandate[]
   inboundEmails       InboundEmail[]
+  registrySnapshot    ClientRegistrySnapshot?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ClientRegistrySnapshot {
+  id               String   @id @default(cuid())
+  clientId         String   @unique
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenantId         String
+  enterpriseNumber String
+  companyName      String?
+  status           String?
+  registrationDate String?
+  financialYearEnd String?
+  taxNumber        String?
+  boFiled          Boolean?
+  boLastFiledDate  String?
+  directorsHash    String?
+  provider         String
+  rawPayload       String?
+  lastSyncedAt     DateTime @default(now())
+  lastError        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([enterpriseNumber])
 }
 
 model WorkflowTemplate {

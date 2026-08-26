@@ -15,6 +15,7 @@ export const PUBLIC_PAGE_PATHS = [
   '/cookies',
   '/security',
   '/help',
+  '/dpa',
 ] as const;
 
 export const SITE_URL = 'https://praxis.mlkcomputer.com';

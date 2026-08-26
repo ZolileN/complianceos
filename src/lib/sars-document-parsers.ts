@@ -57,7 +57,7 @@ export function classifySarsDocument(text: string, fileName = ''): SarsClassific
 
   if (
     /emp\s*201|emp201/i.test(haystack) ||
-    (/paye/i.test(haystack) && /submitted|confirmation|reference/i.test(haystack))
+    (/\bpaye\b/i.test(haystack) && /submitted|confirmation|reference/i.test(haystack))
   ) {
     return buildClassification('emp201_confirmation');
   }

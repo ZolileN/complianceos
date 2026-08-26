@@ -47,13 +47,23 @@ export function createCipcProvider(
   });
 }
 
+/** Provider fallback chain: configured mode → OCR vault. */
 export async function lookupCompanyProfile(
   tenantId: string,
-  enterpriseNumber: string
+  enterpriseNumber: string,
+  modeOverride?: CipcProviderMode
 ) {
-  const mode = getCipcProviderMode();
-  const provider = createCipcProvider(mode, tenantId);
-  return provider.getCompanyProfile(enterpriseNumber);
+  const mode = modeOverride ?? getCipcProviderMode();
+  const primary = createCipcProvider(mode, tenantId);
+  const profile = await primary.getCompanyProfile(enterpriseNumber);
+  if (profile) return profile;
+
+  if (mode !== 'ocr') {
+    const ocr = createCipcProvider('ocr', tenantId);
+    return ocr.getCompanyProfile(enterpriseNumber);
+  }
+
+  return null;
 }
 
 export { getCipcProviderMode };

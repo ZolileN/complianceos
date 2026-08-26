@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   classifySarsDocument,
@@ -7,6 +9,53 @@ import {
   isSarsEmailAddress,
   parseSarsDocumentFields,
 } from '@/lib/sars-document-parsers';
+import {
+  extractCompanyHintFromSubject,
+  extractRegistrationNumbers,
+} from '@/lib/inbound-sars-routing';
+
+const FIXTURE_DIR = join(__dirname, '__fixtures__', 'sars');
+
+function loadFixture(name: string): string {
+  return readFileSync(join(FIXTURE_DIR, name), 'utf8');
+}
+
+describe('SARS OCR fixtures', () => {
+  it('classifies ITA34 fixture text', () => {
+    const text = loadFixture('ita34-sample.txt');
+    const result = classifySarsDocument(text, 'ITA34_Acme.pdf');
+    expect(result?.kind).toBe('ita34');
+    const fields = parseSarsDocumentFields('ita34', text);
+    expect(fields.tax_number).toBe('9012345678');
+    expect(fields.tax_year).toBe('2025');
+    expect(extractRegistrationNumbers(text)).toContain('2020/123456/07');
+  });
+
+  it('classifies VAT201 fixture text', () => {
+    const text = loadFixture('vat201-sample.txt');
+    const result = classifySarsDocument(text, 'VAT201_confirmation.pdf');
+    expect(result?.kind).toBe('vat201_confirmation');
+    const fields = parseSarsDocumentFields('vat201_confirmation', text);
+    expect(fields.vat_number).toBe('4012345678');
+    expect(fields.reference_number).toBeTruthy();
+  });
+
+  it('classifies SARS letter fixture text', () => {
+    const text = loadFixture('sars-letter-sample.txt');
+    const result = classifySarsDocument(text);
+    expect(result?.kind).toBe('sars_letter');
+    const ids = extractTaxIdentifiers(text);
+    expect(ids.taxNumbers).toContain('9123456789');
+  });
+});
+
+describe('extractCompanyHintFromSubject', () => {
+  it('extracts company name from SARS subject lines', () => {
+    expect(
+      extractCompanyHintFromSubject('RE: ITA34 assessment for Acme Trading (Pty) Ltd')
+    ).toContain('Acme Trading');
+  });
+});
 
 describe('classifySarsDocument', () => {
   it('detects ITA34 assessments', () => {

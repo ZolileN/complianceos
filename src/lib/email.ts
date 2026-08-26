@@ -185,6 +185,56 @@ export async function sendComplianceAlertEmail(
   }
 }
 
+/** Scheduled compliance portfolio report with CSV + PDF attachments. */
+export async function sendComplianceReportEmail(
+  email: string,
+  opts: {
+    tenantName: string;
+    dateLabel: string;
+    itemCount: number;
+    criticalCount: number;
+    csvContent: string;
+    pdfBuffer: Buffer;
+  }
+) {
+  const resend = getResend();
+  if (!resend) return { success: false, error: 'Email not configured' };
+
+  try {
+    const data = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `[PraxisOne] Weekly compliance report — ${opts.tenantName}`,
+      html: emailShell(
+        'Weekly compliance report',
+        `
+          <p>Your scheduled compliance portfolio report for <strong>${opts.tenantName}</strong> is attached.</p>
+          <p>Report date: ${opts.dateLabel}</p>
+          <ul>
+            <li>Total obligations: ${opts.itemCount}</li>
+            <li>Critical items: ${opts.criticalCount}</li>
+          </ul>
+          <p style="font-size: 0.9em; color: #666;">CSV and PDF exports are attached for your records.</p>
+        `
+      ),
+      attachments: [
+        {
+          filename: `compliance-report-${opts.dateLabel}.csv`,
+          content: Buffer.from(opts.csvContent, 'utf8'),
+        },
+        {
+          filename: `compliance-report-${opts.dateLabel}.pdf`,
+          content: opts.pdfBuffer,
+        },
+      ],
+    });
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send compliance report email:', error);
+    return { success: false, error };
+  }
+}
+
 export async function sendMandateSignRequestEmail(
   email: string,
   opts: { clientName: string; mandateTitle: string; signUrl: string; expiresAt?: Date }

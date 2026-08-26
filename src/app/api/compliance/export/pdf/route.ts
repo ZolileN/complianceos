@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import {
-  buildComplianceCsv,
+  buildCompliancePdf,
   mapComplianceItemsToRows,
 } from '@/lib/compliance-export';
 
@@ -31,14 +31,13 @@ export async function GET() {
     });
 
     const rows = mapComplianceItemsToRows(items);
+    const pdf = await buildCompliancePdf(rows);
+    const filename = `compliance-report-${new Date().toISOString().split('T')[0]}.pdf`;
 
-    const csv = buildComplianceCsv(rows);
-    const filename = `compliance-export-${new Date().toISOString().split('T')[0]}.csv`;
-
-    return new NextResponse(csv, {
+    return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });

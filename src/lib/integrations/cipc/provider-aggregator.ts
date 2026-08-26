@@ -17,23 +17,30 @@ export class CipcAggregatorProvider implements CipcRegistryProvider {
     return Boolean(this.baseUrl && this.apiKey);
   }
 
+  private headers(): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.apiKey}`,
+      Accept: 'application/json',
+    };
+  }
+
   async getCompanyProfile(enterpriseNumber: string): Promise<CompanyProfile | null> {
     if (!this.configured()) return null;
 
     try {
       const res = await fetch(
         `${this.baseUrl}/company/${encodeURIComponent(enterpriseNumber)}`,
-        { headers: { Authorization: `Bearer ${this.apiKey}` } }
+        { headers: this.headers() }
       );
       if (!res.ok) return null;
       const data = (await res.json()) as Record<string, string>;
       return {
         enterpriseNumber,
-        companyName: data.companyName || data.name || 'Unknown',
-        registrationDate: data.registrationDate,
-        status: data.status,
-        financialYearEnd: data.financialYearEnd,
-        taxNumber: data.taxNumber,
+        companyName: data.companyName || data.name || data.enterpriseName || 'Unknown',
+        registrationDate: data.registrationDate || data.incorporationDate,
+        status: data.status || data.companyStatus,
+        financialYearEnd: data.financialYearEnd || data.financial_year_end,
+        taxNumber: data.taxNumber || data.incomeTaxNumber,
         source: 'aggregator',
       };
     } catch {
@@ -47,14 +54,19 @@ export class CipcAggregatorProvider implements CipcRegistryProvider {
     try {
       const res = await fetch(
         `${this.baseUrl}/company/${encodeURIComponent(enterpriseNumber)}/bo`,
-        { headers: { Authorization: `Bearer ${this.apiKey}` } }
+        { headers: this.headers() }
       );
       if (!res.ok) return null;
       const data = (await res.json()) as Record<string, string | boolean>;
       return {
         enterpriseNumber,
-        filed: Boolean(data.filed),
-        lastFiledDate: typeof data.lastFiledDate === 'string' ? data.lastFiledDate : undefined,
+        filed: Boolean(data.filed ?? data.boFiled ?? data.beneficialOwnershipFiled),
+        lastFiledDate:
+          typeof data.lastFiledDate === 'string'
+            ? data.lastFiledDate
+            : typeof data.last_filed_date === 'string'
+              ? data.last_filed_date
+              : undefined,
         source: 'aggregator',
       };
     } catch {
