@@ -1,4 +1,3 @@
-import type { BoStatus, CipcProviderMode, CompanyProfile } from './types';
 import { createCipcProvider, lookupCompanyProfile } from './index';
 import { persistRegistrySnapshot } from './registry-snapshot';
 import {
