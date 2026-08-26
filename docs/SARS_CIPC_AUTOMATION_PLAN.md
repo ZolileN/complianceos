@@ -1,9 +1,52 @@
 # SARS & CIPC Automation — Implementation Plan
 
-**Status:** Approved for implementation  
-**Last updated:** 29 July 2026  
+**Status:** Phase 1A and Phase 1B **core engineering shipped** (August 2026)  
+**Last updated:** 26 August 2026  
 **Scope:** Read-only CIPC registry data + SARS document/correspondence intelligence  
 **Out of scope:** Automated filing or submission to SARS or CIPC (staff remain responsible for all submissions via eFiling and CIPC eServices)
+
+---
+
+## Implementation status (August 2026)
+
+### Phase 1A — SARS document intelligence
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| OCR parsers (ITA34, VAT201, EMP201, eFiling ack, SARS letters) | ✅ Shipped | `src/lib/sars-document-parsers.ts` |
+| Upload route classification | ✅ Shipped | `src/app/api/documents/upload/route.ts` |
+| Inbound email SARS routing | ✅ Shipped | `src/lib/inbound-sars-routing.ts`, Resend webhook |
+| Inbound WhatsApp PDF routing | ✅ Shipped | `src/lib/inbound-document-processor.ts`, Twilio webhook |
+| Unassigned doc queue UI | ✅ Shipped | `/dashboard/documents/unassigned` |
+| Workflow auto-complete rules | ✅ Shipped | `src/lib/documentMatch.ts`, `workflowEngine.ts` |
+| Staff OCR approval gate | ✅ Shipped | `/api/documents/[id]/ocr/approve` |
+| Fixture unit tests | ✅ Partial | `src/lib/__fixtures__/sars/` (ITA34, VAT201, SARS letter) |
+| Production match-rate validation | ⏳ Pending | Ops — target ≥80% when tax/VAT number present |
+
+### Phase 1B — CIPC registry integration
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Provider interface (`ocr` / `direct` / `aggregator`) | ✅ Shipped | `src/lib/integrations/cipc/` |
+| `ClientRegistrySnapshot` model | ✅ Shipped | `prisma/schema.prisma` |
+| Daily sync cron | ✅ Shipped | `/api/cron/cipc-registry-sync` |
+| Staff sync API | ✅ Shipped | `POST /api/integrations/cipc/sync` |
+| Client detail registry panel | ✅ Shipped | `CipcRegistryPanel` on client page |
+| `cipc-ar-checker` skill (live provider) | ✅ Shipped | `src/lib/skill-engine.ts` |
+| Auto-validation on client create/edit | ❌ Not yet | Manual lookup via panel only |
+| Onboarding form CIPC validation | ❌ Not yet | — |
+| Compliance tab “registry vs estimated” labels | ❌ Not yet | — |
+| Admin CIPC settings UI | ❌ Not yet | — |
+| Live `direct` / `aggregator` in production | ⏳ Blocked | Needs CIPC API or aggregator credentials |
+
+### Phase 2 — deferred
+
+| Item | Status |
+|------|--------|
+| SARS Compliance Assistant (RAG Q&A) | Not started |
+| AI workflow suggestions | Partial overlap with compliance monitor |
+
+**Default production config:** `CIPC_PROVIDER=ocr` (no regression from pre-integration behaviour).
 
 ---
 
@@ -71,7 +114,7 @@ Gaps this plan closes:
 All modes implement the same interface:
 
 ```typescript
-// src/lib/integrations/cipc/types.ts (planned)
+// src/lib/integrations/cipc/types.ts
 interface CipcRegistryProvider {
   getCompanyProfile(enterpriseNumber: string): Promise<CompanyProfile>;
   getBeneficialOwnershipStatus(enterpriseNumber: string): Promise<BoStatus>;
@@ -135,12 +178,14 @@ Keep OCR approve flow (`/api/documents/[id]/ocr/approve`):
 
 ### Phase 1A deliverables
 
-- [ ] OCR parsers for ITA34, VAT201 confirmation, SARS letters, EMP201 confirmation
-- [ ] Document category updates in upload route
-- [ ] Inbound email handler: SARS attachment routing
-- [ ] `documentMatch.ts` rules for new SARS document types
-- [ ] Workflow auto-complete mappings
-- [ ] Unit tests with fixture PDF text (`scratch/` pattern)
+- [x] OCR parsers for ITA34, VAT201 confirmation, SARS letters, EMP201 confirmation, eFiling ack
+- [x] Document category updates in upload route
+- [x] Inbound email handler: SARS attachment routing
+- [x] Inbound WhatsApp handler: PDF attachment routing
+- [x] `documentMatch.ts` rules for new SARS document types
+- [x] Workflow auto-complete mappings
+- [x] Unit tests with fixture PDF text (`src/lib/__fixtures__/sars/`)
+- [ ] Production validation of inbound match rate (≥80% target)
 
 ### Phase 1A success criteria
 
@@ -230,12 +275,15 @@ CIPC_AGGREGATOR_API_KEY=
 
 ### Phase 1B deliverables
 
-- [ ] Provider interface + `ocr` / `direct` / `aggregator` implementations
-- [ ] `POST /api/integrations/cipc/sync` (staff-triggered) + daily cron route
+- [x] Provider interface + `ocr` / `direct` / `aggregator` implementations
+- [x] `POST /api/integrations/cipc/sync` (staff-triggered) + daily cron route
 - [ ] Client create/edit validation hooks
-- [ ] `ClientRegistrySnapshot` in Prisma schema
-- [ ] Updated `cipc-ar-checker` skill
-- [ ] `.env.example` + README documentation
+- [x] `ClientRegistrySnapshot` in Prisma schema
+- [x] Updated `cipc-ar-checker` skill
+- [x] `.env.example` + README documentation
+- [x] Client detail registry panel (manual lookup + apply)
+- [ ] Compliance tab source labels (registry vs estimated)
+- [ ] Admin settings UI for provider/credentials
 
 ### Phase 1B success criteria
 
@@ -323,14 +371,22 @@ CIPC_AGGREGATOR_API_KEY=
 
 | Area | Path |
 |------|------|
+| SARS parsers | `src/lib/sars-document-parsers.ts` |
+| Inbound SARS routing | `src/lib/inbound-sars-routing.ts`, `src/lib/inbound-document-processor.ts` |
 | Compliance catalog | `src/lib/compliance-catalog.ts` |
 | Compliance monitor | `src/lib/compliance-monitor.ts` |
+| Compliance PDF export | `src/lib/compliance-report-pdf.ts` |
 | Workflow engine | `src/lib/workflowEngine.ts` |
 | Document matching | `src/lib/documentMatch.ts` |
 | OCR upload | `src/app/api/documents/upload/route.ts` |
 | OCR approve | `src/app/api/documents/[id]/ocr/approve/route.ts` |
-| CIPC skill (stub) | `scripts/seed-skills.js` |
+| CIPC integration | `src/lib/integrations/cipc/` |
+| CIPC sync cron | `src/app/api/cron/cipc-registry-sync/route.ts` |
+| CIPC registry panel | client detail UI (`CipcRegistryPanel`) |
+| CIPC skill | `src/lib/skill-engine.ts` |
 | Workflow seeds | `scripts/seed-workflows.ts` |
+
+**Docs:** [`README.md`](../README.md) · [`PILOT_RUNBOOK.md`](./PILOT_RUNBOOK.md) · [`AGENTS.md`](../AGENTS.md)
 
 ---
 

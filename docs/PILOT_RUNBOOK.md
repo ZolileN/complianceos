@@ -203,4 +203,4 @@ Track weekly with the pilot firm:
 
 ---
 
-*Last updated: August 2026 · See also [`SARS_CIPC_AUTOMATION_PLAN.md`](./SARS_CIPC_AUTOMATION_PLAN.md) and [`AGENTS.md`](../AGENTS.md).*
+*Last updated: August 2026 · See also [`README.md`](../README.md), [`SARS_CIPC_AUTOMATION_PLAN.md`](./SARS_CIPC_AUTOMATION_PLAN.md), and [`AGENTS.md`](../AGENTS.md).*

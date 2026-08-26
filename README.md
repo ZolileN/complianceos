@@ -1,64 +1,91 @@
 # ComplianceOS (PraxisOne)
 
-ComplianceOS is a robust, multi-tenant B2B SaaS platform designed to streamline corporate compliance, document management, and workflow automation. Built with modern web technologies, it empowers consultancy firms to manage their clients' regulatory obligations efficiently.
+ComplianceOS is a multi-tenant B2B SaaS platform for compliance consultancies — client management, document vaults with OCR, deadline monitoring, workflows, WhatsApp/email inbox, and revenue tooling. Built with Next.js 16 (App Router), TypeScript, Prisma, and PostgreSQL.
 
-**Two dashboards:** tenant staff (`/dashboard`) and platform ops (`/admin`). There is no client login portal — clients interact via WhatsApp, email, public onboarding (`/onboard/{slug}`), and mandate signing (`/sign/{token}`).
+**Two dashboards:**
 
-## 📋 SARS & CIPC automation roadmap
+| Dashboard | Path | Who |
+|-----------|------|-----|
+| **Tenant staff** | `/dashboard/*` | `administrator`, `operations_manager`, `consultant` |
+| **PraxisAdmin** | `/admin/*` | Platform ops (master tenants only) |
 
-Approved implementation plan (read-only CIPC + SARS document intelligence; **submissions remain manual**):
+There is **no client login portal**. End clients interact via WhatsApp, email, public onboarding (`/onboard/{slug}`), and mandate e-signing (`/sign/[token]`).
 
-- [`docs/SARS_CIPC_AUTOMATION_PLAN.md`](docs/SARS_CIPC_AUTOMATION_PLAN.md)
+**Pilot rollout:** see [`docs/PILOT_RUNBOOK.md`](docs/PILOT_RUNBOOK.md).
 
-| Phase | Scope | Blocked on CIPC API? |
-|-------|--------|----------------------|
-| **Phase 1A** | SARS document OCR, inbound routing, workflow auto-complete | No — start immediately |
-| **Phase 1B** | CIPC registry integration (`ocr` / `direct` / `aggregator` providers) | Build now; activate when credentials arrive |
-| **Ops track** | CIPC enquiry or commercial aggregator contract | Parallel — [guide.cipc.co.za](https://guide.cipc.co.za) is currently down |
+---
 
-## ✅ Phase A hardening (CI, billing, skill approvals)
+## Product areas
 
-*   **CI:** GitHub Actions runs `lint`, `typecheck`, and Vitest unit tests on PRs (`npm test`).
-*   **Billing:** Paid signups get a one-month `currentPeriodEnd`; checkout no longer unlocks `past_due` tenants; cancel-at-period-end is finalized by the daily trial-expiry cron; key write APIs enforce read-only mode.
-*   **Skills:** Human-approval steps pause as `pending_approval` and can be Approved/Rejected from Marketplace → Execution Log (`POST /api/skills/executions/[id]/resume`).
+| Area | Routes / APIs | Notes |
+|------|---------------|-------|
+| Auth & signup | `/login`, `/signup`, `/accept-invite` | Starter plan includes 14-day trial |
+| Clients | `/dashboard/clients` | Consultant-scoped access |
+| Documents + OCR | `/dashboard/documents` | COR14.3, tax certs, SARS doc types; staff approval gate |
+| Unassigned queue | `/dashboard/documents/unassigned` | Inbound docs without client match |
+| Compliance | `/dashboard/compliance` | CSV + branded PDF export |
+| Workflows & tasks | `/dashboard/workflows`, `/dashboard/tasks` | Document-triggered step completion |
+| Inbox | `/dashboard/inbox` | WhatsApp (Twilio) + inbound email (Resend) |
+| Mandates | `/sign/[token]` | Public e-sign, no login |
+| Billing | `/dashboard/billing` | Paystack primary; Ozow when Paystack unset |
+| Revenue | `/dashboard/revenue` | Quotes, invoices, retainers, MRR (admin/ops) |
+| Marketplace / skills | `/dashboard/marketplace` | Optional OpenAI; human-approval steps |
+| Help center | `/help` | Searchable articles |
+| Legal / trust | `/terms`, `/privacy`, `/dpa`, `/security`, `/cookies`, `/refund-policy` | Public, SEO metadata |
+| PraxisAdmin | `/admin`, `/admin/infrastructure` | Fleet, webhooks, diagnostics |
 
-## 🚀 Key Features
+---
 
-*   **Multi-Tenant Architecture:** Strict data isolation utilizing NextAuth and Prisma to ensure operations managers, consultants, and clients only access authorized data.
-*   **Automated OCR Pipeline:** Server-side PDF text extraction automatically processes uploaded regulatory documents (like COR14.3 and Tax Certificates), updates client profiles, and resolves pending compliance alerts upon staff approval.
-*   **SLA-Driven Workflows:** Customizable, multi-step workflow engines allow operations managers to define and track client onboarding and service processes against strict Service Level Agreements.
-*   **Omnichannel Inbox:** Twilio WhatsApp integration lets consultants send and receive messages from the platform without exposing personal numbers.
-*   **Compliance Monitoring Engine:** Daily cron escalates overdue obligations, alerts assigned consultants and ops/admins, and drains the skill-event queue (`/api/cron/compliance-deadlines`, `/api/cron/skill-events`).
-*   **Comprehensive Audit Trail:** An immutable ledger that tracks every significant state mutation (`CREATE`, `UPDATE`, `DELETE`) performed across the platform for full administrative transparency.
+## SARS & CIPC automation
 
-## 🛠 Tech Stack
+Read-only CIPC registry data + SARS document intelligence. **Submissions to SARS and CIPC remain manual.**
 
-### Application core
+- **Plan:** [`docs/SARS_CIPC_AUTOMATION_PLAN.md`](docs/SARS_CIPC_AUTOMATION_PLAN.md)
+- **Phase 1A (shipped):** SARS OCR parsers, inbound email/WhatsApp routing, workflow auto-complete, staff OCR approval
+- **Phase 1B (shipped, `ocr` default):** CIPC provider abstraction (`ocr` / `direct` / `aggregator`), registry sync cron, client panel lookup; live registry needs API credentials
+- **Ops track:** CIPC API subscription or commercial aggregator — parallel to engineering
 
-*   **Framework:** Next.js 16 (App Router)
-*   **Language:** TypeScript
-*   **Runtime:** React 19
-*   **Database ORM:** Prisma 5
-*   **Database:** PostgreSQL (Neon in production)
-*   **Authentication:** NextAuth.js v4 (credentials provider, multi-tenant RBAC)
-*   **File storage:** UploadThing v7 (`@uploadthing/react`, server `UTApi`)
-*   **Document processing:** pdfjs-dist / pdf-parse (server-side OCR pipeline)
+---
 
-### UI & design system
+## Plans & billing
 
-*   **Styling:** Tailwind CSS v4 — CSS-first config via `@import "tailwindcss"` in `src/app/globals.css` (PostCSS: `@tailwindcss/postcss`)
-*   **Component library:** [shadcn/ui](https://ui.shadcn.com) (**new-york** style, neutral palette) — `Button`, `Card`, `Badge`, etc. in `src/components/ui/`
-*   **Primitives:** Radix UI (`@radix-ui/react-slot`)
-*   **Utilities:** `class-variance-authority`, `clsx`, `tailwind-merge` (`cn()` helper)
-*   **Icons:** Lucide React
-*   **Theme:** Custom **Precision Ops** design system — CSS variables, light/dark modes, glassmorphic dashboard chrome (`.precision-ops` in `globals.css`)
-*   **Layout:** Shared `PageHeader` + `.page-heading-row` for stable left-aligned page titles
+Catalog and limits: `src/lib/plans.ts`.
 
-### UploadThing + Tailwind v4 integration
+| Plan | Price (ZAR/mo) | Trial | AI |
+|------|----------------|-------|-----|
+| Starter | R999 | 14 days | No |
+| Growth | R2 999 | — | No |
+| Professional | R7 999 | — | Yes |
+| Enterprise | Contact sales | — | Yes |
 
-Do **not** import `@uploadthing/react/styles.css` on individual pages — it injects a conflicting global Tailwind bundle and can break responsive layout (e.g. page headings shifting right on client navigation).
+- **Paystack** is the primary checkout rail when `PAYSTACK_SECRET_KEY` is set (even if `BILLING_PROVIDER=ozow`).
+- **Ozow** is used only when Paystack is not configured.
+- Billing email resolves from firm settings (`Tenant.email`) or falls back to the administrator login email.
+- Month-to-month billing with a 7-day grace period after period end; `past_due` tenants are read-only.
 
-Instead, wire UploadThing into the main Tailwind build in `src/app/globals.css`:
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router), React 19, TypeScript |
+| Database | PostgreSQL (Neon), Prisma 5 |
+| Auth | NextAuth.js v4 (credentials, multi-tenant RBAC) |
+| Files | UploadThing v7 (`UPLOADTHING_TOKEN`) |
+| OCR | pdfjs-dist / pdf-parse |
+| Email | Resend (outbound + inbound webhook) |
+| WhatsApp | Twilio (OTP connect, `/api/webhooks/twilio`) |
+| Billing | Paystack + Ozow fallback |
+| Cache / queue | Upstash Redis (skills, admin telemetry) |
+| PDF reports | pdfkit (compliance export) |
+| Observability | Sentry |
+| Hosting | Vercel |
+| UI | Tailwind CSS v4, shadcn/ui, Lucide |
+
+### UploadThing + Tailwind v4
+
+Do **not** import `@uploadthing/react/styles.css` on individual pages. Wire UploadThing into the main Tailwind build in `src/app/globals.css`:
 
 ```css
 @import "tailwindcss";
@@ -66,126 +93,146 @@ Instead, wire UploadThing into the main Tailwind build in `src/app/globals.css`:
 @source "../node_modules/@uploadthing/react/dist";
 ```
 
-### Integrations & platform services
+---
 
-*   **Email:** Resend (transactional + inbound webhook, reply, attachment proxy)
-*   **WhatsApp:** Twilio (send/receive, OTP number connect)
-*   **Billing (ZAR):** Stitch Express + Ozow hosted checkout; plan entitlements in `src/lib/plans.ts`
-*   **Cache / queue:** Upstash Redis (skill events, admin telemetry)
-*   **Observability:** Sentry
-*   **Hosting:** Vercel
-*   **Skills / automation:** OpenAI (optional) + internal skill engine with human-approval steps
+## Project structure
 
-## 📂 Project Structure
+```
+src/app/dashboard/*     Tenant staff UI
+src/app/(internal)/admin/*   PraxisAdmin UI
+src/app/api/*           Route handlers (REST + webhooks + crons)
+src/components/*        Shared UI
+src/lib/*               Business logic (billing, OCR, CIPC, compliance, etc.)
+prisma/schema.prisma    Database schema
+docs/                   Automation plan + pilot runbook
+```
 
-*   `src/app/dashboard/*`: Contains all frontend views for the administrative application (e.g., clients, documents, compliance, workflows, inbox).
-*   `src/app/api/*`: The serverless backend composed of Next.js Route Handlers.
-*   `src/components/*`: Reusable UI components.
-*   `src/lib/*`: Core utility functions, including Twilio WhatsApp (`twilio.ts`) and Audit Logger (`auditLogger.ts`).
-*   `prisma/schema.prisma`: The central database schema defining all relations and models.
+---
 
-## ⚙️ Getting Started
+## Getting started
 
 ### Prerequisites
 
-Ensure you have the following installed:
-*   Node.js (v20+)
-*   npm or yarn
+- Node.js 20+
+- npm
 
-### Installation
-
-1.  Clone the repository and install dependencies:
-    ```bash
-    npm install
-    ```
-
-2.  Set up your environment variables. You will need:
-    *   `DATABASE_URL` (PostgreSQL connection string)
-    *   `NEXTAUTH_SECRET` and `NEXTAUTH_URL`
-    *   `NEXT_PUBLIC_APP_URL` (public origin for onboarding/invite links — production: `https://praxis.mlkcomputer.com`)
-    *   `UPLOADTHING_TOKEN` (UploadThing v7 — base64 token from the UploadThing dashboard; used by file router + `UTApi` deletes)
-    *   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, and `TWILIO_VERIFY_SERVICE_SID`.
-    *   `OPENAI_API_KEY` (optional — required for Skills LLM steps; or set `SKILL_LLM_SIMULATE=true` for local stubs).
-    *   `TWILIO_SKIP_OTP=true` (optional — bypasses SMS OTP **only** when this flag is set; for Twilio sandbox/trial testing. Leave unset in production).
-    *   `CRON_SECRET` (required for `/api/cron/compliance-deadlines`, `/api/cron/skill-events`, and `/api/cron/trial-expiry`). Set the same value in the Vercel project env.
-        *   **Compliance deadlines:** Vercel Cron in `vercel.json` — daily `0 6 * * *` (Hobby-safe). Vercel sends `Authorization: Bearer $CRON_SECRET`.
-        *   **Trial expiry:** Vercel Cron daily `0 7 * * *` — moves expired trials to `past_due` (read-only).
-        *   **Skill events:** external [cron-job.org](https://cron-job.org) every 5 minutes → `GET https://praxis.mlkcomputer.com/api/cron/skill-events` with header `Authorization: Bearer $CRON_SECRET` (Vercel Hobby only allows once-per-day crons).
-    *   Billing (optional until go-live): `BILLING_PROVIDER`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `OZOW_SITE_CODE`, `OZOW_PRIVATE_KEY`, `OZOW_API_KEY`. Plan limits live in `src/lib/plans.ts`.
-    *   **Redis (required in production for skills queue, tenant admin logs, and Infrastructure health):**
-        *   **Preferred on Vercel:** install [Upstash Redis](https://vercel.com/marketplace/upstash) and connect it to the project. That injects:
-            *   `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
-            *   (or legacy aliases `KV_REST_API_URL` / `KV_REST_API_TOKEN`)
-        *   **Alternative (TCP):** set `REDIS_URL` or `KV_URL` to a `rediss://…` connection string.
-        *   After env vars are set, **redeploy** so serverless functions pick them up.
-        *   Verify at `/admin/infrastructure` — Redis should show **Connected** (not “Not configured”).
-        *   Without Redis in production the app keeps running, but skill-event processing and Redis-backed admin logs are no-ops and platform health is **degraded**.
-    *   **Sentry (production alerting):** project `praxisone` in org `mlk-computer-consulting`
-        *   `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` (same DSN value; public prefix is required for the browser SDK)
-        *   Optional: `SENTRY_ORG=mlk-computer-consulting`, `SENTRY_PROJECT=praxisone`, `SENTRY_AUTH_TOKEN` (source maps), `SENTRY_ENVIRONMENT`
-        *   Cron jobs report Redis outages and unhandled job failures to Sentry.
-        *   In Sentry → Alerts, enable email/Slack notifications for new high-priority issues.
-
-3.  Generate the Prisma Client and push the schema to your database:
-    ```bash
-    npx prisma generate
-    npx prisma db push
-    ```
-
-4.  Start the development server:
-    ```bash
-    npm run dev
-    ```
-
-5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## 🚀 Production deploy checklist
-
-After merging schema changes to `main`, apply the database **before** or immediately after Vercel redeploys:
+### Install
 
 ```bash
-# From your machine — use the production DATABASE_URL from Vercel/Neon
+npm install
+cp .env.example .env.local   # fill in values
+npx prisma generate
+npx prisma db push
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+Prisma CLI reads `.env` (not `.env.local`). For Prisma commands:
+
+```bash
+export DATABASE_URL="$(grep -m1 ^DATABASE_URL .env.local | cut -d= -f2- | tr -d '\"')"
+npx prisma db push
+```
+
+### Environment variables
+
+Copy `.env.example` → `.env.local`. Key groups:
+
+| Group | Required vars |
+|-------|----------------|
+| Core | `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_URL` |
+| Files | `UPLOADTHING_TOKEN` |
+| Email | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INBOUND_EMAIL_DOMAIN` |
+| WhatsApp | `TWILIO_*` (see `.env.example`) |
+| Crons | `CRON_SECRET` |
+| Billing | `PAYSTACK_SECRET_KEY` (+ Ozow vars only if Paystack unset) |
+| CIPC | `CIPC_PROVIDER=ocr` (default); direct/aggregator creds when available |
+| Redis (prod) | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
+| Sentry (prod) | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` |
+| Skills (optional) | `OPENAI_API_KEY` or `SKILL_LLM_SIMULATE=true` |
+
+### Scheduled jobs (`vercel.json`)
+
+| Schedule (UTC) | Route | Purpose |
+|----------------|-------|---------|
+| Daily 06:00 | `/api/cron/compliance-deadlines` | Escalate overdue compliance |
+| Daily 06:30 | `/api/cron/cipc-registry-sync` | Registry snapshots (skipped in `ocr` mode) |
+| Daily 07:00 | `/api/cron/trial-expiry` | Expire trials → `past_due` |
+| Daily 08:00 | `/api/cron/billing-renewals` | Renewal dunning emails |
+| Mon 09:00 | `/api/cron/compliance-report-email` | Weekly portfolio PDF email |
+
+**External cron required:** `/api/cron/skill-events` every 5 minutes (Vercel Hobby limit) — configure at [cron-job.org](https://cron-job.org) with `Authorization: Bearer $CRON_SECRET`.
+
+All cron routes require `CRON_SECRET` (Vercel sends `Authorization: Bearer` automatically).
+
+### Webhooks to configure in provider dashboards
+
+| Provider | URL |
+|----------|-----|
+| Twilio WhatsApp | `https://<app>/api/webhooks/twilio` |
+| Resend inbound | `POST https://<app>/api/webhooks/resend` |
+| Paystack | `https://<app>/api/billing/paystack/webhook` |
+
+Set `TWILIO_WEBHOOK_URL` to the exact public Twilio webhook URL in production (signature validation).
+
+---
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Development server (port 3000) |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm test` | Vitest unit tests |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
+
+CI (`.github/workflows/ci.yml`): lint, typecheck, test on every PR.
+
+---
+
+## Production deploy checklist
+
+1. Merge to `main` and let Vercel deploy.
+2. Sync database schema **before or immediately after** deploy:
+
+```bash
 DATABASE_URL="postgresql://..." ./scripts/sync-production-schema.sh
+# or: DATABASE_URL="..." npx prisma db push
 ```
 
-Or:
+3. Verify `/admin/infrastructure` — Redis, Paystack, Ozow health.
+4. Confirm webhooks (Twilio, Resend, Paystack) point at production URLs.
+5. Run a test checkout on `/dashboard/billing` if billing is enabled.
 
-```bash
-DATABASE_URL="postgresql://..." npx prisma db push
-```
+If schema sync is skipped, APIs for invoices, revenue, and registry snapshots will fail.
 
-If this step is skipped, Sentry will report errors like `The table public.Invoice does not exist` on `/api/invoices`, `/api/revenue/summary`, and `/api/emails`.
+---
 
-## 🔒 Security & Roles
+## Security & roles
 
-The platform enforces strict Role-Based Access Control (RBAC):
-*   **Administrator:** Full platform access, global visibility across the tenant, and complete management of the PraxisAdmin internal control plane.
-*   **Operations Manager:** Full platform access across the tenant.
-*   **Consultant:** Restricted access; can only view and modify clients, tasks, and workflows explicitly assigned to them.
+| Role | Access |
+|------|--------|
+| **Administrator** | Full tenant access; PraxisAdmin for master tenants |
+| **Operations manager** | Full tenant access |
+| **Consultant** | Assigned clients, tasks, workflows only |
 
-There is no **client user role** — end clients use WhatsApp, email, onboarding links, and mandate signing instead of logging in.
+PraxisAdmin (`/admin/*`) is restricted to master tenant slugs (`praxisone`, `mlk-computer-consulting`) and requires the `administrator` role.
 
-### 👑 Administrator Setup & Access Guide
+---
 
-To log in as a platform administrator and access the PraxisAdmin control plane:
+## Administrator setup
 
-1.  **Register a Workspace:**
-    *   Navigate to the `/signup` screen.
-    *   Enter your Email, Password, Full Name, and Firm Name.
-    *   The platform will automatically provision a new Tenant workspace and register you as the **workspace owner (role: `administrator`)**.
+1. **Register:** `/signup` (or `/signup?plan=starter` for trial).
+2. **Configure:** Settings → Company (billing email), Team, WhatsApp.
+3. **PraxisAdmin:** `/admin` (master tenants only).
 
-2.  **Access the Control Plane:**
-    *   Go to `/admin` in your web browser.
-    *   This is the entry point for the **PraxisAdmin Internal Platform OS**, featuring:
-        *   **Fleet Registry (`/admin`)**: Suspension controls and WhatsApp disconnects.
-        *   **FinOps Metering (`/admin/webhooks`)**: Live webhook logs, payload inspection, and token capacity meters.
-        *   **Infrastructure Controls (`/admin/infrastructure`)**: Resource usage monitoring and background PG vacuum triggers.
-        *   **Isolated Debug Console (`/admin/console`)**: Interactive shell diagnostic commands.
+---
 
-3.  **Strict Middleware Protection:**
-    *   All `/admin/*` and `/api/admin/*` paths are guarded at the gateway level.
-    *   Non-administrator roles attempting to access these routes are automatically redirected back to `/dashboard?error=unauthorized` or receive a `403 Forbidden` JSON payload.
+## Further reading
 
-
-
-
+- [`docs/PILOT_RUNBOOK.md`](docs/PILOT_RUNBOOK.md) — Phase 1 friendly-firm pilot
+- [`docs/SARS_CIPC_AUTOMATION_PLAN.md`](docs/SARS_CIPC_AUTOMATION_PLAN.md) — automation roadmap & status
+- [`AGENTS.md`](AGENTS.md) — Cursor Cloud agent instructions
