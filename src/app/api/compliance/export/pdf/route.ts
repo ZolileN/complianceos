@@ -31,7 +31,14 @@ export async function GET() {
     });
 
     const rows = mapComplianceItemsToRows(items);
-    const pdf = await buildCompliancePdf(rows);
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+    const pdf = await buildCompliancePdf(rows, {
+      title: 'Compliance portfolio report',
+      tenantName: tenant?.name,
+    });
     const filename = `compliance-report-${new Date().toISOString().split('T')[0]}.pdf`;
 
     return new NextResponse(new Uint8Array(pdf), {

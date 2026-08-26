@@ -53,7 +53,8 @@ export async function runComplianceReportEmailJob(): Promise<ComplianceReportEma
     const rows = mapComplianceItemsToRows(items);
     const csv = buildComplianceCsv(rows);
     const pdf = await buildCompliancePdf(rows, {
-      title: `${tenant.name} — Compliance Report`,
+      title: 'Compliance portfolio report',
+      tenantName: tenant.name,
     });
     const dateLabel = new Date().toISOString().split('T')[0];
 
