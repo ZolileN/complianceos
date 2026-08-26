@@ -1,5 +1,6 @@
 import { createCipcProvider, lookupCompanyProfile } from './index';
 import { persistRegistrySnapshot } from './registry-snapshot';
+import type { CipcProviderMode } from './types';
 import {
   annualReturnsStatusForDueDate,
   computeAnnualReturnsDueDate,
