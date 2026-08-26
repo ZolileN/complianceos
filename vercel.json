@@ -5,12 +5,20 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/cipc-registry-sync",
+      "schedule": "30 6 * * *"
+    },
+    {
       "path": "/api/cron/trial-expiry",
       "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/billing-renewals",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/compliance-report-email",
+      "schedule": "0 9 * * 1"
     }
   ]
 }
