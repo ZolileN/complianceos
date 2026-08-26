@@ -9,6 +9,7 @@ const PAGE_META: Record<string, { changeFrequency: MetadataRoute.Sitemap[number]
   '/help': { changeFrequency: 'weekly', priority: 0.8 },
   '/security': { changeFrequency: 'monthly', priority: 0.7 },
   '/privacy': { changeFrequency: 'yearly', priority: 0.5 },
+  '/dpa': { changeFrequency: 'yearly', priority: 0.5 },
   '/terms': { changeFrequency: 'yearly', priority: 0.5 },
   '/cookies': { changeFrequency: 'yearly', priority: 0.4 },
   '/refund-policy': { changeFrequency: 'yearly', priority: 0.4 },

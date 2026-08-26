@@ -159,6 +159,7 @@ export default function LandingShell({ children }: { children: React.ReactNode }
             <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
               <li><a href="#contact">Contact</a></li>
               <li><Link href="/privacy">Privacy policy</Link></li>
+              <li><Link href="/dpa">Data processing agreement</Link></li>
               <li><Link href="/terms">Terms of service</Link></li>
               <li><Link href="/cookies">Cookie policy</Link></li>
               <li><Link href="/refund-policy">Refund policy</Link></li>
